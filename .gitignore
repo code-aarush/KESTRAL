@@ -1,0 +1,81 @@
+# KESTREL .gitignore
+# Toolchain: g++ (MSYS2 UCRT64 / MinGW), CMake (pending install), Windows
+
+# ----- Build output -----------------------------------------------------------
+build/
+Build/
+out/
+cmake-build-*/
+
+# Compiled binaries
+*.exe
+*.o
+*.a
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.exp
+*.obj
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+CTestTestfile.cmake
+_deps/
+
+# CTest output
+Testing/
+LastTest.log
+LastTestsFailed.log
+
+# ----- IDE and editor files ---------------------------------------------------
+.vscode/
+.vs/
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.vcxproj.user
+.idea/
+*.iml
+*.clangd
+.cache/
+
+# ----- Windows OS artifacts ---------------------------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ----- Temporary and scratch files --------------------------------------------
+*.tmp
+*.bak
+*.swp
+*~
+*.log
+
+# Benchmark raw result files (generated, not committed — see docs/reports/)
+benchmarks/results/*.csv
+benchmarks/results/*.json
+benchmarks/results/*.txt
+
+# ----- Python (if any tooling scripts use Python) ----------------------------
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ----- Frontend (stack TBD at Gate 10) ----------------------------------------
+frontend/node_modules/
+frontend/dist/
+frontend/.next/
+
+# ----- Secrets and local environment -----------------------------------------
+.env
+.env.*
+*.local

@@ -101,8 +101,8 @@ See `docs/architecture/ARCHITECTURE.md` for the full architecture document.
 | Gate | Title | Status |
 |------|-------|--------|
 | GATE-00 | Repository Reconnaissance and Specification | **PASS** |
-| GATE-01 | Geometry Primitives | **OPEN** |
-| GATE-02 | Entity Model and Store | OPEN |
+| GATE-01 | Geometry Primitives | **PASS** |
+| GATE-02 | Entity Model and Store | **OPEN** |
 | GATE-03 | R-tree Structural Foundation | OPEN |
 | GATE-04 | Insertion and Splitting | OPEN |
 | GATE-05 | Range Queries and Pruning | OPEN |
@@ -113,8 +113,8 @@ See `docs/architecture/ARCHITECTURE.md` for the full architecture document.
 | GATE-10 | Mission-Control Visualization | OPEN |
 | GATE-11 | Final Verification and Academic Defence | OPEN |
 
-**Active gate:** GATE-01  
-**Gate status note:** Gate-00 closed as PASS on 2026-10-10 with explicit Project Owner approval following independent verification. Gate-01 is now the active gate for planning and geometry implementation.
+**Active gate:** GATE-02  
+**Gate status note:** Gate-01 implementation completed and passed all tests. Awaiting owner review to formally transition to GATE-02.
 
 ---
 
@@ -196,12 +196,7 @@ These invariants must hold at all times once the relevant component is implement
 | git | Available | 2.55.0.windows.4 |
 | C++ standard | Target | C++17 (safe with g++ 16.1.0) |
 
-**Important:** CMake is not currently available on the system PATH. The `CMakeLists.txt` scaffold
-is included for future use. Until CMake is available, the documented manual build command using
-`g++` and `mingw32-make` is the reference build method.
-
-**Owner decision required:** Confirm whether CMake should be installed, or whether a Makefile-first
-build workflow is preferred. This decision gates CMakeLists.txt activation.
+**Important:** CMake is the active build system as per OD-001. The `CMakeLists.txt` is fully activated.
 
 ---
 

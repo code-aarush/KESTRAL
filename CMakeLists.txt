@@ -1,4 +1,4 @@
-# KESTREL — CMakeLists.txt
+# KESTREL - CMakeLists.txt
 #
 # STATUS: Scaffold only. CMake is not currently available on the system PATH.
 # This file will be activated at Gate 01 when source files are introduced.
@@ -20,7 +20,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
     kestrel
     VERSION 0.1.0
-    DESCRIPTION "Kepler Belt Mission Backend — Dynamic Spatial Indexing and Hazard Detection"
+    DESCRIPTION "Kepler Belt Mission Backend - Dynamic Spatial Indexing and Hazard Detection"
     LANGUAGES CXX
 )
 
@@ -40,8 +40,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 # ----- Source directories (populated at Gate 01 and later) --------------------
-# add_subdirectory(src)
-# add_subdirectory(tests)
+enable_testing()
+add_subdirectory(src)
+add_subdirectory(tests)
 # add_subdirectory(benchmarks)
 
 # Note: CTest support will be enabled (enable_testing()) when tests are added.

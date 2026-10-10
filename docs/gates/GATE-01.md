@@ -1,4 +1,4 @@
-# GATE-01 — Geometry Primitives
+# GATE-01 â€” Geometry Primitives
 
 **Gate ID:** GATE-01  
 **Status:** OPEN  
@@ -19,9 +19,9 @@ subsequent components depend on. No spatial index or entity logic is introduced 
 
 | Prerequisite | Gate | Status |
 |-------------|------|--------|
-| Repository setup | GATE-00 | OPEN |
-| ADR-002 accepted by owner | ADR-002 | Proposed |
-| Build system decision resolved | OD-001 | Pending |
+| Repository setup | GATE-00 | PASS |
+| ADR-002 accepted by owner | ADR-002 | Accepted |
+| Build system decision resolved | OD-001 | Resolved (CMake 4.4.0) |
 
 ---
 
@@ -47,7 +47,7 @@ subsequent components depend on. No spatial index or entity logic is introduced 
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| ADR-002 | Geometry model | Proposed — owner acceptance required |
+| ADR-002 | Geometry model | Accepted (Closed boundary semantics confirmed) |
 
 ---
 
@@ -83,7 +83,7 @@ cd build && ctest --output-on-failure
 
 ## Acceptance Criteria
 
-### GATE-01-AC-01 — Point struct is defined
+### GATE-01-AC-01 â€” Point struct is defined
 
 **Requirement:** `kestrel::Point` has `double x` and `double y` members. It is in `src/geometry.h`.  
 **Verification:** Read `geometry.h`; confirm struct definition in `kestrel` namespace.  
@@ -92,7 +92,7 @@ cd build && ctest --output-on-failure
 
 ---
 
-### GATE-01-AC-02 — BoundingBox struct is defined with correct validity semantics
+### GATE-01-AC-02 â€” BoundingBox struct is defined with correct validity semantics
 
 **Requirement:** `kestrel::BoundingBox` has `double min_x, min_y, max_x, max_y`. `is_valid`
 returns true iff `min_x <= max_x`, `min_y <= max_y`, and all coordinates are finite.
@@ -104,7 +104,7 @@ point box (min==max on both axes) returns true; box with NaN coordinate returns 
 
 ---
 
-### GATE-01-AC-03 — area is correct for rectangular and degenerate boxes
+### GATE-01-AC-03 â€” area is correct for rectangular and degenerate boxes
 
 **Requirement:** `area(b) == (b.max_x - b.min_x) * (b.max_y - b.min_y)`. Returns 0.0
 for a zero-area (degenerate) box.  
@@ -115,7 +115,7 @@ degenerate box (area=0.0).
 
 ---
 
-### GATE-01-AC-04 — union_of is the correct MBR of two boxes
+### GATE-01-AC-04 â€” union_of is the correct MBR of two boxes
 
 **Requirement:** `union_of(a, b)` returns the smallest AABB containing both `a` and `b`.
 `union_of(a, a) == a`. `union_of` of disjoint boxes contains both.  
@@ -126,7 +126,7 @@ Check all four coordinates of the result.
 
 ---
 
-### GATE-01-AC-05 — intersects has documented boundary semantics and correct results
+### GATE-01-AC-05 â€” intersects has documented boundary semantics and correct results
 
 **Requirement:** `intersects(a, b)` implements the boundary semantics documented in ADR-002
 (proposed: closed/inclusive). Boxes sharing only an edge or corner return true (if inclusive
@@ -138,19 +138,19 @@ corner-touching, one containing the other, one is a point-box touching the other
 
 ---
 
-### GATE-01-AC-06 — contains is correct for all cases
+### GATE-01-AC-06 â€” contains is correct for all cases
 
 **Requirement:** `contains(outer, inner)` returns true iff `inner` is fully within `outer`
 (inclusive boundaries as per ADR-002 proposed semantics). A box contains itself.  
 **Verification:** Test: outer strictly contains inner; identical boxes (self-containment);
 inner extends beyond outer on one side; touching boundary (contained); touching boundary
-(not contained — inner is larger).  
+(not contained â€” inner is larger).  
 **Status:** NOT TESTED  
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-01-AC-07 — enlargement is correct
+### GATE-01-AC-07 â€” enlargement is correct
 
 **Requirement:** `enlargement(base, to_add) == area(union_of(base, to_add)) - area(base)`.
 Returns 0.0 when `to_add` is already contained in `base`.  
@@ -161,7 +161,7 @@ from `base` (enlargement = positive value); verify against manual calculation.
 
 ---
 
-### GATE-01-AC-08 — NaN and infinity policy is documented and tested
+### GATE-01-AC-08 â€” NaN and infinity policy is documented and tested
 
 **Requirement:** The behaviour of all geometry operations with NaN or infinite coordinate
 values is documented in a code comment or `geometry.h` header comment. At minimum,
@@ -173,7 +173,7 @@ documented policy in the header.
 
 ---
 
-### GATE-01-AC-09 — All geometry code is in the kestrel namespace
+### GATE-01-AC-09 â€” All geometry code is in the kestrel namespace
 
 **Requirement:** All types and functions from Gate-01 are in the `kestrel` namespace.
 No global namespace pollution.  
@@ -183,7 +183,7 @@ No global namespace pollution.
 
 ---
 
-### GATE-01-AC-10 — Compilation succeeds with required flags
+### GATE-01-AC-10 â€” Compilation succeeds with required flags
 
 **Requirement:** `src/geometry.cpp` and `tests/test_geometry.cpp` compile without errors
 or warnings using `g++ -std=c++17 -Wall -Wextra -Wpedantic`.  
@@ -203,16 +203,16 @@ or warnings using `g++ -std=c++17 -Wall -Wextra -Wpedantic`.
 
 | Criterion | Reviewer Status | Evidence |
 |-----------|----------------|---------|
-| GATE-01-AC-01 | NOT TESTED | — |
-| GATE-01-AC-02 | NOT TESTED | — |
-| GATE-01-AC-03 | NOT TESTED | — |
-| GATE-01-AC-04 | NOT TESTED | — |
-| GATE-01-AC-05 | NOT TESTED | — |
-| GATE-01-AC-06 | NOT TESTED | — |
-| GATE-01-AC-07 | NOT TESTED | — |
-| GATE-01-AC-08 | NOT TESTED | — |
-| GATE-01-AC-09 | NOT TESTED | — |
-| GATE-01-AC-10 | NOT TESTED | — |
+| GATE-01-AC-01 | NOT TESTED | â€” |
+| GATE-01-AC-02 | NOT TESTED | â€” |
+| GATE-01-AC-03 | NOT TESTED | â€” |
+| GATE-01-AC-04 | NOT TESTED | â€” |
+| GATE-01-AC-05 | NOT TESTED | â€” |
+| GATE-01-AC-06 | NOT TESTED | â€” |
+| GATE-01-AC-07 | NOT TESTED | â€” |
+| GATE-01-AC-08 | NOT TESTED | â€” |
+| GATE-01-AC-09 | NOT TESTED | â€” |
+| GATE-01-AC-10 | NOT TESTED | â€” |
 
 ---
 
@@ -220,8 +220,8 @@ or warnings using `g++ -std=c++17 -Wall -Wextra -Wpedantic`.
 
 | ID | Description | Severity | Status |
 |----|-------------|---------|--------|
-| OD-001 | CMake not on PATH; may affect exact build command | Medium | Open |
-| OD-ADR002 | ADR-002 boundary semantics require owner confirmation | High | Open |
+| OD-001 | CMake 4.4.0 installed and verified | Low | Resolved |
+| OD-ADR002 | ADR-002 closed boundary semantics confirmed and accepted | Low | Resolved |
 
 ---
 
@@ -236,5 +236,5 @@ or warnings using `g++ -std=c++17 -Wall -Wextra -Wpedantic`.
 
 | Action | Owner | Date | Notes |
 |--------|-------|------|-------|
-| Plan approved | PENDING | — | — |
-| Gate PASS approved | PENDING | — | — |
+| Plan approved | PENDING | â€” | â€” |
+| Gate PASS approved | PENDING | â€” | â€” |

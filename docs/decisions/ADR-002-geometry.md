@@ -1,15 +1,16 @@
-# ADR-002 — Geometry Model
+# ADR-002 ï¿½ Geometry Model
 
-**Status:** Proposed  
+**Status:** Accepted  
 **Date:** 2026-10-09  
-**Requires owner acceptance before Gate 01 implementation begins.**
+**Last updated:** 2026-10-10  
+**Formally approved by Project Owner on 2026-10-10.**
 
 ---
 
 ## Context
 
-KESTREL operates in a 2D simulated space. All spatial operations — entity bounds,
-R-tree MBRs, range queries, and trajectory corridors — depend on a well-defined
+KESTREL operates in a 2D simulated space. All spatial operations ï¿½ entity bounds,
+R-tree MBRs, range queries, and trajectory corridors ï¿½ depend on a well-defined
 geometry model. Inconsistent or undocumented boundary semantics are a common source
 of correctness defects in spatial data structures.
 
@@ -18,7 +19,7 @@ component is implemented.
 
 ---
 
-## Decision (Proposed)
+## Decision (Accepted)
 
 ### Coordinate System
 - 2D Cartesian coordinates using `double` for both axes.
@@ -59,7 +60,7 @@ are to be added without a gate criterion requiring them.
 | `contains` | `bool contains(BoundingBox outer, BoundingBox inner)` | True iff inner is fully within outer |
 | `enlargement` | `double enlargement(BoundingBox base, BoundingBox to_add)` | `area(union_of(base, to_add)) - area(base)` |
 
-### Boundary Intersection Semantics (Critical — must be tested)
+### Boundary Intersection Semantics (Critical ï¿½ must be tested)
 
 **Proposed: closed (inclusive) boundaries.**
 
@@ -74,10 +75,9 @@ This means:
 - Boxes that share only an edge or a corner are considered to intersect.
 - A point-box intersects any box that contains that point (inclusive boundary).
 
-**The chosen semantics must be documented and tested before any code depends on it.**
-
-**Owner decision required:** Confirm whether closed (inclusive) or half-open (exclusive)
-boundary semantics are desired. This decision affects range query results at boundary edges.
+**Semantics confirmed:** Closed (inclusive) boundary semantics are formally accepted.
+Two boxes sharing only an edge or a corner intersect. A point box on the boundary of another box intersects it.
+Any coordinate containing NaN or infinity is strictly invalid (is_valid returns false).
 
 ### Containment Semantics (Proposed)
 Box `inner` is contained within `outer` if and only if:
@@ -144,5 +144,4 @@ Gate 01 will:
 
 | Reviewer | Decision | Date | Notes |
 |----------|---------|------|-------|
-| Project Owner | PENDING | — | Required before Gate 01 implementation begins |
-| Project Owner | Boundary semantics: closed / half-open | — | Required explicitly |
+| Project Owner | ACCEPTED | 2026-10-10 | Formally accepted with closed (inclusive) boundary semantics |

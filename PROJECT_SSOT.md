@@ -1,7 +1,7 @@
-# PROJECT SSOT — KESTREL Single Source of Truth
+# PROJECT SSOT ï¿½ KESTREL Single Source of Truth
 
 **Document version:** 0.1.0  
-**Last updated:** 2026-10-09  
+**Last updated:** 2026-10-10  
 **Maintained by:** Project Owner  
 
 > This document is the authoritative reference for every agent, developer, and reviewer.
@@ -15,8 +15,8 @@
 | Field | Value |
 |-------|-------|
 | Codename | KESTREL |
-| Full form | Kepler Exploration — Spatial Tree for Risk Evaluation and Localization |
-| Formal title | Kepler Belt Mission Backend — Dynamic Spatial Indexing and Hazard Detection Using R-Trees |
+| Full form | Kepler Exploration ï¿½ Spatial Tree for Risk Evaluation and Localization |
+| Formal title | Kepler Belt Mission Backend ï¿½ Dynamic Spatial Indexing and Hazard Detection Using R-Trees |
 | Repository folder | `kestrel/` |
 | C++ namespace | `kestrel` |
 | Demo executable | `kestrel_demo` |
@@ -83,16 +83,16 @@ See `docs/architecture/ARCHITECTURE.md` for the full architecture document.
 | Entity | A simulated Kepler Belt object (asteroid, probe, etc.) with an ID, position, and bounding box |
 | Entity Store | A `std::unordered_map<int, Entity>` that owns entity records |
 | Bounding Box (BB) | An axis-aligned rectangle enclosing an entity or subtree |
-| MBR | Minimum Bounding Rectangle — the tightest AABB enclosing a set of entries |
+| MBR | Minimum Bounding Rectangle ï¿½ the tightest AABB enclosing a set of entries |
 | R-tree Node | A tree node containing up to `M` entries (leaf or internal) |
 | Leaf Node | An R-tree node whose entries point to entity IDs and their bounding boxes |
 | Internal Node | An R-tree node whose entries point to child nodes and their MBRs |
-| Broad Phase | R-tree candidate retrieval — returns a superset of query results |
+| Broad Phase | R-tree candidate retrieval ï¿½ returns a superset of query results |
 | Narrow Phase | Precise geometry check applied to broad-phase candidates |
 | Hazard | An entity whose narrow-phase check confirms a trajectory intersection |
 | Gate | A verified development milestone with explicit acceptance criteria |
-| SSOT | This document — Single Source of Truth |
-| MNI | Minimum Necessary Implementation — the engineering doctrine |
+| SSOT | This document ï¿½ Single Source of Truth |
+| MNI | Minimum Necessary Implementation ï¿½ the engineering doctrine |
 
 ---
 
@@ -100,8 +100,8 @@ See `docs/architecture/ARCHITECTURE.md` for the full architecture document.
 
 | Gate | Title | Status |
 |------|-------|--------|
-| GATE-00 | Repository Reconnaissance and Specification | **OPEN** |
-| GATE-01 | Geometry Primitives | OPEN |
+| GATE-00 | Repository Reconnaissance and Specification | **PASS** |
+| GATE-01 | Geometry Primitives | **OPEN** |
 | GATE-02 | Entity Model and Store | OPEN |
 | GATE-03 | R-tree Structural Foundation | OPEN |
 | GATE-04 | Insertion and Splitting | OPEN |
@@ -113,36 +113,31 @@ See `docs/architecture/ARCHITECTURE.md` for the full architecture document.
 | GATE-10 | Mission-Control Visualization | OPEN |
 | GATE-11 | Final Verification and Academic Defence | OPEN |
 
-**Active gate:** GATE-00  
-**Gate-00 status note:** Repository setup is currently being established by the Setup Agent.
-No R-tree implementation, simulation, or application feature has been created.
-Gate-00 has **NOT** been passed. It remains OPEN pending:
-- Owner review of this setup diff.
-- Confirmation that all gate files, rules, skills, and documentation are consistent.
-- Owner explicit approval of Gate-00 acceptance criteria.
+**Active gate:** GATE-01  
+**Gate status note:** Gate-00 closed as PASS on 2026-10-10 with explicit Project Owner approval following independent verification. Gate-01 is now the active gate for planning and geometry implementation.
 
 ---
 
 ## 7. Links
 
 ### Gate Specifications
-- [GATE-00](docs/gates/GATE-00.md) — Repository Reconnaissance and Specification
-- [GATE-01](docs/gates/GATE-01.md) — Geometry Primitives
-- [GATE-02](docs/gates/GATE-02.md) — Entity Model and Store
-- [GATE-03](docs/gates/GATE-03.md) — R-tree Structural Foundation
-- [GATE-04](docs/gates/GATE-04.md) — Insertion and Splitting
-- [GATE-05](docs/gates/GATE-05.md) — Range Queries and Pruning
-- [GATE-06](docs/gates/GATE-06.md) — Deletion and Dynamic Updates
-- [GATE-07](docs/gates/GATE-07.md) — Kepler Belt Simulation
-- [GATE-08](docs/gates/GATE-08.md) — Mission Queries and Hazard Assessment
-- [GATE-09](docs/gates/GATE-09.md) — Benchmarking and Research Evaluation
-- [GATE-10](docs/gates/GATE-10.md) — Mission-Control Visualization
-- [GATE-11](docs/gates/GATE-11.md) — Final Verification and Academic Defence
+- [GATE-00](docs/gates/GATE-00.md) ï¿½ Repository Reconnaissance and Specification
+- [GATE-01](docs/gates/GATE-01.md) ï¿½ Geometry Primitives
+- [GATE-02](docs/gates/GATE-02.md) ï¿½ Entity Model and Store
+- [GATE-03](docs/gates/GATE-03.md) ï¿½ R-tree Structural Foundation
+- [GATE-04](docs/gates/GATE-04.md) ï¿½ Insertion and Splitting
+- [GATE-05](docs/gates/GATE-05.md) ï¿½ Range Queries and Pruning
+- [GATE-06](docs/gates/GATE-06.md) ï¿½ Deletion and Dynamic Updates
+- [GATE-07](docs/gates/GATE-07.md) ï¿½ Kepler Belt Simulation
+- [GATE-08](docs/gates/GATE-08.md) ï¿½ Mission Queries and Hazard Assessment
+- [GATE-09](docs/gates/GATE-09.md) ï¿½ Benchmarking and Research Evaluation
+- [GATE-10](docs/gates/GATE-10.md) ï¿½ Mission-Control Visualization
+- [GATE-11](docs/gates/GATE-11.md) ï¿½ Final Verification and Academic Defence
 
 ### Architecture Decision Records
-- [ADR-001](docs/decisions/ADR-001-rtree-variant.md) — R-tree variant (Status: Proposed)
-- [ADR-002](docs/decisions/ADR-002-geometry.md) — Geometry model (Status: Proposed)
-- [ADR-003](docs/decisions/ADR-003-entity-storage.md) — Entity storage and indexing (Status: Proposed)
+- [ADR-001](docs/decisions/ADR-001-rtree-variant.md) ï¿½ R-tree variant (Status: Accepted)
+- [ADR-002](docs/decisions/ADR-002-geometry.md) ï¿½ Geometry model (Status: Accepted)
+- [ADR-003](docs/decisions/ADR-003-entity-storage.md) ï¿½ Entity storage and indexing (Status: Accepted)
 
 ### Agent Procedures
 - [Agent Instructions](AGENTS.md)
@@ -197,7 +192,7 @@ These invariants must hold at all times once the relevant component is implement
 |------|--------|---------------|
 | g++ (C++ compiler) | Available | 16.1.0, MSYS2 UCRT64 (`C:\msys64\ucrt64\bin\g++.exe`) |
 | mingw32-make | Available | MSYS2 UCRT64 (`C:\msys64\ucrt64\bin\mingw32-make.exe`) |
-| cmake | **Not on PATH** | Not found in MSYS2 ucrt64/bin; must be installed or added to PATH before Gates using CMake |
+| cmake | Available | 4.4.0, MSYS2 UCRT64 (C:\msys64\ucrt64\bin\cmake.exe) |
 | git | Available | 2.55.0.windows.4 |
 | C++ standard | Target | C++17 (safe with g++ 16.1.0) |
 
@@ -214,9 +209,9 @@ build workflow is preferred. This decision gates CMakeLists.txt activation.
 
 | ID | Decision | Status |
 |----|---------|--------|
-| OD-001 | CMake installation vs Makefile-first build workflow | **Pending** |
+| OD-001 | CMake installation vs Makefile-first build workflow | **Resolved (CMake 4.4.0 adopted)** |
 | OD-002 | Frontend visualization technology stack (Gate 10) | **Pending** |
 | OD-003 | Final R-tree node capacity parameters (m, M) | **Pending** |
 | OD-004 | Benchmark dataset sizes and performance thresholds | **Pending** |
 | OD-005 | Whether R*-tree is in scope as an extension | **Pending** |
-| OD-006 | ADR-001, ADR-002, ADR-003 formal acceptance | **Pending** |
+| OD-006 | ADR-001, ADR-002, ADR-003 formal acceptance | **Resolved (ADR-001, 002, 003 Accepted)** |

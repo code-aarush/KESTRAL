@@ -1,8 +1,9 @@
-# ADR-003 — Entity Storage and Indexing
+# ADR-003 ï¿½ Entity Storage and Indexing
 
-**Status:** Proposed  
+**Status:** Accepted  
 **Date:** 2026-10-09  
-**Requires owner acceptance before Gate 02 implementation begins.**
+**Last updated:** 2026-10-10  
+**Formally approved by Project Owner on 2026-10-10.**
 
 ---
 
@@ -21,7 +22,7 @@ spatial index, and how to enforce consistency between them.
 
 ---
 
-## Decision (Proposed)
+## Decision (Accepted)
 
 ### Entity Representation (minimum viable entity)
 
@@ -94,7 +95,7 @@ adding complexity not justified by any current criterion.
 
 Maintaining this invariant is the responsibility of the code that calls both the store
 and the R-tree. This coordination logic lives outside both components (in the simulator
-or a façade — to be determined at the relevant gate).
+or a faï¿½ade ï¿½ to be determined at the relevant gate).
 
 **Update consistency:**
 When an entity moves, the following must happen atomically from the perspective of the
@@ -111,19 +112,19 @@ defined at Gate 06 or 07, whichever introduces movement.
 
 ## Alternatives Considered
 
-### Alternative 1 — Embed the R-tree entry in the Entity struct
+### Alternative 1 ï¿½ Embed the R-tree entry in the Entity struct
 - Tighter coupling between entity data and spatial index.
 - Makes it harder to test the R-tree independently of entity logic.
 - **Rejected:** Separation allows the R-tree to be tested with minimal entity objects
   (just IDs and bounding boxes), improving testability.
 
-### Alternative 2 — Intrusive list or array-based store with ID-to-index mapping
+### Alternative 2 ï¿½ Intrusive list or array-based store with ID-to-index mapping
 - Potentially better cache locality for iteration.
 - More complex to implement correctly with dynamic insertions and deletions.
 - **Rejected:** The complexity is not justified by any current requirement.
   Cache locality matters at benchmarking time; if it becomes relevant, reconsider at Gate 09.
 
-### Alternative 3 — Store entity records inside R-tree leaf nodes
+### Alternative 3 ï¿½ Store entity records inside R-tree leaf nodes
 - Eliminates the separate lookup step after a query.
 - Tightly couples R-tree internals to entity representation.
 - Complicates node splitting (entity data moves with entries).
@@ -143,8 +144,7 @@ defined at Gate 06 or 07, whichever introduces movement.
 **Risks:**
 - Consistency between the store and R-tree requires discipline. Every code path that
   modifies one must also update the other. Tests must explicitly verify the invariant.
-- `std::unordered_map` has non-deterministic iteration order. Tests relying on
-  iteration order must sort results before comparison.
+- `std::unordered_map` has non-deterministic iteration order. **Policy:** All tests and benchmarks comparing R-tree query results with the brute-force oracle MUST sort entity ID lists before asserting equality.
 
 ---
 
@@ -166,4 +166,4 @@ Gate 06 will verify the consistency invariant with mixed insert/update/remove se
 
 | Reviewer | Decision | Date | Notes |
 |----------|---------|------|-------|
-| Project Owner | PENDING | — | Required before Gate 02 implementation begins |
+| Project Owner | ACCEPTED | 2026-10-10 | Formally accepted with sorted oracle comparison policy |

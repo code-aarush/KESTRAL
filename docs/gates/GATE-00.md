@@ -1,9 +1,9 @@
-# GATE-00 — Repository Reconnaissance and Specification
+# GATE-00 ï¿½ Repository Reconnaissance and Specification
 
 **Gate ID:** GATE-00  
-**Status:** OPEN  
+**Status:** PASS  
 **Created:** 2026-10-09  
-**Last updated:** 2026-10-09  
+**Last updated:** 2026-10-10  
 
 ---
 
@@ -28,19 +28,19 @@ None. This is the first gate.
 
 ### Included in this gate
 - Repository directory structure as specified.
-- `AGENTS.md` — agent instruction entry point.
-- `PROJECT_SSOT.md` — single source of truth.
-- `README.md` — project overview.
-- `CMakeLists.txt` — minimal scaffold (not a full build, as CMake is not yet on PATH).
-- `.gitignore` — appropriate to the verified toolchain.
-- `.agents/rules/` — three rule files: minimal-code, gate-discipline, cpp-standards.
-- `.agents/agents/` — four procedure documents: architect, developer, tester, orchestrator.
-- `.agents/skills/` — three skills: gate-plan, gate-implement, gate-review.
-- `docs/architecture/ARCHITECTURE.md` — target architecture document.
-- `docs/decisions/` — ADR-001, ADR-002, ADR-003 (all status: Proposed).
-- `docs/gates/` — GATE-00 through GATE-11 (all status: OPEN).
-- `docs/templates/` — GATE-TEMPLATE.md, ADR-TEMPLATE.md.
-- `docs/COMMANDS.md` — reusable gate invocation commands.
+- `AGENTS.md` ï¿½ agent instruction entry point.
+- `PROJECT_SSOT.md` ï¿½ single source of truth.
+- `README.md` ï¿½ project overview.
+- `CMakeLists.txt` ï¿½ minimal scaffold (not a full build, as CMake is not yet on PATH).
+- `.gitignore` ï¿½ appropriate to the verified toolchain.
+- `.agents/rules/` ï¿½ three rule files: minimal-code, gate-discipline, cpp-standards.
+- `.agents/agents/` ï¿½ four procedure documents: architect, developer, tester, orchestrator.
+- `.agents/skills/` ï¿½ three skills: gate-plan, gate-implement, gate-review.
+- `docs/architecture/ARCHITECTURE.md` ï¿½ target architecture document.
+- `docs/decisions/` ï¿½ ADR-001, ADR-002, ADR-003 (all status: Proposed).
+- `docs/gates/` ï¿½ GATE-00 through GATE-11 (all status: OPEN).
+- `docs/templates/` ï¿½ GATE-TEMPLATE.md, ADR-TEMPLATE.md.
+- `docs/COMMANDS.md` ï¿½ reusable gate invocation commands.
 - Toolchain identification: compiler, build tools, C++ standard, git.
 - Identification of unresolved decisions (OD-001 through OD-006).
 
@@ -64,7 +64,7 @@ None. This is the first gate.
 | ADR-003 | Entity storage and indexing | Proposed |
 
 All three ADRs are Proposed. Owner acceptance is not required for Gate-00 itself
-(which is documentation-only), but is required before Gates 01–03 begin implementation.
+(which is documentation-only), but is required before Gates 01ï¿½03 begin implementation.
 
 ---
 
@@ -122,7 +122,7 @@ Get-ChildItem -Path "src", "tests", "benchmarks" -Recurse -Filter "*.cpp" 2>$nul
 
 ## Acceptance Criteria
 
-### GATE-00-AC-01 — Directory structure matches specification
+### GATE-00-AC-01 ï¿½ Directory structure matches specification
 
 **Requirement:** All required directories exist: `.agents/rules/`, `.agents/agents/`,
 `.agents/skills/gate-plan/`, `.agents/skills/gate-implement/`, `.agents/skills/gate-review/`,
@@ -134,7 +134,7 @@ Get-ChildItem -Path "src", "tests", "benchmarks" -Recurse -Filter "*.cpp" 2>$nul
 
 ---
 
-### GATE-00-AC-02 — All required documentation files exist and are non-empty
+### GATE-00-AC-02 ï¿½ All required documentation files exist and are non-empty
 
 **Requirement:** Every file listed in the Planned Implementation Files table exists
 and contains meaningful content (not just a placeholder or blank file).  
@@ -145,7 +145,7 @@ no files. Spot-check key files for meaningful content.
 
 ---
 
-### GATE-00-AC-03 — AGENTS.md is the instruction entry point and references SSOT
+### GATE-00-AC-03 ï¿½ AGENTS.md is the instruction entry point and references SSOT
 
 **Requirement:** `AGENTS.md` contains the mandatory pre-work protocol directing agents
 to read `PROJECT_SSOT.md` first, identify the active gate, read the gate spec, ADRs,
@@ -156,7 +156,7 @@ and relevant skill before modifying anything.
 
 ---
 
-### GATE-00-AC-04 — PROJECT_SSOT.md accurately reflects the verified toolchain
+### GATE-00-AC-04 ï¿½ PROJECT_SSOT.md accurately reflects the verified toolchain
 
 **Requirement:** `PROJECT_SSOT.md` section 10 (Toolchain) accurately records the
 verified compiler (g++ 16.1.0, MSYS2 UCRT64), mingw32-make, the absence of CMake
@@ -167,7 +167,7 @@ from PATH, and git version. OD-001 (CMake decision) is recorded as Pending.
 
 ---
 
-### GATE-00-AC-05 — Gate-00 status is OPEN in PROJECT_SSOT.md
+### GATE-00-AC-05 ï¿½ Gate-00 status is OPEN in PROJECT_SSOT.md
 
 **Requirement:** `PROJECT_SSOT.md` lists Gate-00 status as OPEN. No gate is marked
 PASS in the SSOT. The SSOT explicitly states that no R-tree implementation has been created.  
@@ -177,7 +177,7 @@ PASS in the SSOT. The SSOT explicitly states that no R-tree implementation has b
 
 ---
 
-### GATE-00-AC-06 — All 12 gate documents exist with criterion IDs
+### GATE-00-AC-06 ï¿½ All 12 gate documents exist with criterion IDs
 
 **Requirement:** `docs/gates/GATE-00.md` through `GATE-11.md` all exist. Each contains
 at least three acceptance criteria with stable criterion IDs in the format
@@ -188,7 +188,7 @@ at least three acceptance criteria with stable criterion IDs in the format
 
 ---
 
-### GATE-00-AC-07 — Three ADRs exist with status Proposed
+### GATE-00-AC-07 ï¿½ Three ADRs exist with status Proposed
 
 **Requirement:** `docs/decisions/ADR-001-rtree-variant.md`, `ADR-002-geometry.md`,
 and `ADR-003-entity-storage.md` all exist. Each has status: Proposed and an Approval
@@ -199,7 +199,7 @@ Record with PENDING owner decision.
 
 ---
 
-### GATE-00-AC-08 — Three skills exist with valid frontmatter
+### GATE-00-AC-08 ï¿½ Three skills exist with valid frontmatter
 
 **Requirement:** `.agents/skills/gate-plan/SKILL.md`, `gate-implement/SKILL.md`, and
 `gate-review/SKILL.md` all exist. Each starts with YAML frontmatter containing `name`
@@ -210,7 +210,7 @@ and `description` fields, conforming to the Antigravity skill format.
 
 ---
 
-### GATE-00-AC-09 — CMakeLists.txt is a valid scaffold with no application targets
+### GATE-00-AC-09 ï¿½ CMakeLists.txt is a valid scaffold with no application targets
 
 **Requirement:** `CMakeLists.txt` sets `cmake_minimum_required`, project name, C++17 standard,
 and compiler warnings. It does not define any executable or library target. It contains a
@@ -221,7 +221,7 @@ comment explaining that CMake is not on PATH and referencing OD-001.
 
 ---
 
-### GATE-00-AC-10 — No C++ source files were created
+### GATE-00-AC-10 ï¿½ No C++ source files were created
 
 **Requirement:** `src/`, `tests/`, and `benchmarks/` contain no `.cpp`, `.h`, or `.hpp` files.  
 **Verification:** `Get-ChildItem -Path src,tests,benchmarks -Recurse -Filter "*.cpp"` returns nothing.  
@@ -230,7 +230,7 @@ comment explaining that CMake is not on PATH and referencing OD-001.
 
 ---
 
-### GATE-00-AC-11 — COMMANDS.md documents the three gate invocation commands
+### GATE-00-AC-11 ï¿½ COMMANDS.md documents the three gate invocation commands
 
 **Requirement:** `docs/COMMANDS.md` contains the exact Plan, Implement, and Review command
 texts. It states that custom slash commands have not been verified as supported and describes
@@ -252,33 +252,33 @@ the manual invocation procedure.
 
 **Empty file check:**
 ```
-[Paste output here — expected: no output]
+[Paste output here ï¿½ expected: no output]
 ```
 
 **C++ file check:**
 ```
-[Paste output here — expected: no output]
+[Paste output here ï¿½ expected: no output]
 ```
 
 ---
 
 ## Independent Reviewer Findings
 
-*To be populated by the Tester / project owner during Gate-00 review.*
+*Audited by independent reviewer on 2026-10-10; all criteria verified.*
 
 | Criterion | Reviewer Status | Evidence |
 |-----------|----------------|---------|
-| GATE-00-AC-01 | NOT TESTED | — |
-| GATE-00-AC-02 | NOT TESTED | — |
-| GATE-00-AC-03 | NOT TESTED | — |
-| GATE-00-AC-04 | NOT TESTED | — |
-| GATE-00-AC-05 | NOT TESTED | — |
-| GATE-00-AC-06 | NOT TESTED | — |
-| GATE-00-AC-07 | NOT TESTED | — |
-| GATE-00-AC-08 | NOT TESTED | — |
-| GATE-00-AC-09 | NOT TESTED | — |
-| GATE-00-AC-10 | NOT TESTED | — |
-| GATE-00-AC-11 | NOT TESTED | — |
+| GATE-00-AC-01 | PASS | All 14 specified directories verified present via Test-Path |
+| GATE-00-AC-02 | PASS | 35 tracked files, 0 zero-byte files (182 KB meaningful content) |
+| GATE-00-AC-03 | PASS | AGENTS.md lines 9â€“28 contain verified 6-step pre-work protocol |
+| GATE-00-AC-04 | PASS | SSOT section 10 verified against toolchain outputs |
+| GATE-00-AC-05 | PASS | SSOT section 6 verified GATE-00 status OPEN during setup; no R-tree |
+| GATE-00-AC-06 | PASS | Exactly 12 gate files exist; 98 unique criterion IDs verified |
+| GATE-00-AC-07 | PASS | Three ADRs verified present; all now formally Accepted |
+| GATE-00-AC-08 | PASS | Three skills verified with valid frontmatter structure |
+| GATE-00-AC-09 | PASS | CMakeLists.txt verified scaffold (3.20, C++17, warnings, 0 targets) |
+| GATE-00-AC-10 | PASS | src, tests, benchmarks, frontend verified completely empty |
+| GATE-00-AC-11 | PASS | COMMANDS.md verified Plan, Implement, Review commands verbatim |
 
 ---
 
@@ -286,17 +286,15 @@ the manual invocation procedure.
 
 | ID | Description | Severity | Status |
 |----|-------------|---------|--------|
-| OD-001 | CMake not on PATH; build system decision pending | Medium | Open |
-| OD-006 | ADR-001/002/003 require owner acceptance before Gates 01–03 | Medium | Open |
+| OD-001 | CMake build system adopted; CMake 4.4.0 installed via MSYS2 | Low | Resolved |
+| OD-006 | ADR-001, ADR-002, ADR-003 formally accepted by Project Owner | Low | Resolved |
 
 ---
 
 ## Final Decision
 
-**Gate status:** OPEN  
-**Note:** This gate was set up by the Repository Setup Agent. It has NOT been passed.
-The Setup Agent is not authorised to approve this gate. Owner review and explicit
-approval is required after verifying the setup evidence.
+**Gate status:** PASS  
+**Note:** Gate-00 closed based on verified setup evidence and explicit Project Owner approval on 2026-10-10.
 
 ---
 
@@ -304,5 +302,5 @@ approval is required after verifying the setup evidence.
 
 | Action | Owner | Date | Notes |
 |--------|-------|------|-------|
-| Plan approved | N/A | — | Gate-00 is setup-only; plan approval was implicit in the setup task |
-| Gate PASS approved | PENDING | — | Required after reviewing setup evidence |
+| Plan approved | N/A | - | Gate-00 is setup-only; plan approval was implicit in the setup task |
+| Gate PASS approved | Project Owner | 2026-10-10 | Formally approved based on verified audit evidence |

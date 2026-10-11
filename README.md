@@ -2,92 +2,97 @@
 
 **Kepler Exploration — Spatial Tree for Risk Evaluation and Localization**
 
-A C++ academic project investigating a custom, dynamically updated, two-dimensional R-tree
-for spatial indexing in a fictional Kepler Belt exploration simulation.
+[![Language: C++17](https://img.shields.io/badge/Language-C%2B%2B17-blue.svg)](https://en.cppreference.com/w/cpp/17)
+[![Tests: 9/9 Passing](https://img.shields.io/badge/Tests-9%2F9%20Passing-brightgreen.svg)](tests/)
+[![Status: MVP Complete](https://img.shields.io/badge/Status-MVP%20Complete-success.svg)](PROJECT_SSOT.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
+
+An academic C++17 project investigating a custom, dynamically updated two-dimensional R-tree for spatial indexing and hazard assessment in a simulated deep-space environment.
 
 ---
 
 ## Research Question
 
-> *"How effectively can a dynamic spatial index (R-tree) support continuous region monitoring
-> and hazard detection in a simulated deep-space environment?"*
+> *"How effectively can a dynamic spatial index (R-tree) support continuous region monitoring and hazard detection in a simulated deep-space environment?"*
 
 ---
 
-## Project Overview
+## Project Overview & Current MVP State
 
-KESTREL builds a complete spatial-indexing system around a hand-written R-tree — no
-third-party spatial-indexing libraries. The simulation places fictional Kepler Belt objects
-(asteroids, probes, hazards) in 2D space. Mission queries search for entities within a region,
-near a trajectory corridor, or at risk of collision. Deterministic test suites provide
-correctness verification, and load analysis quantifies the R-tree's query-cost advantage.
+KESTREL builds a complete spatial-indexing and hazard-assessment pipeline around a **hand-written, zero-dependency 2D dynamic R-tree** (Guttman quadratic split, $M=4, m=2$) with no third-party spatial libraries.
 
----
+The simulation models fictional Kepler Belt entities (asteroids, probes, navigational hazards) moving deterministically through 2D space. Mission queries perform broad-phase bounding-box filtering via the R-tree followed by narrow-phase geometric verification.
 
-## Planned Architecture
-
-```
-Kepler Belt Simulator
-    ¦  (seeded, deterministic entity movement and lifecycle)
-    ?
-Entity Store  ---------------------------------------------+
-    ¦  std::unordered_map<int, Entity>                      ¦
-    ¦  (owns entity records)                               ¦
-    ?                                                       ¦
-R-tree Spatial Index                                        ¦
-    ¦  2D, dynamic, quadratic split                        ¦
-    ¦  (indexes bounding boxes and entity IDs)             ¦
-    ?                                                       ¦
-Mission Query / Hazard Assessment Layer                     ¦
-    ¦  Broad phase: R-tree candidates                      ¦
-    ¦  Narrow phase: precise geometry checks               ¦
-    ?                                                       ?
-                            Test Suite
-
-Frontend Visualization (planned, Gate 10 — stack TBD)
-```
+### What is Implemented in the MVP
+- **Native C++17 R-Tree Core:** Complete node splitting (quadratic algorithm), area/perimeter minimization, recursive MBR propagation, dynamic insertion, deletion with underflow re-insertion, and window pruning.
+- **Two-Phase Hazard Assessment Pipeline:** Broad-phase spatial candidate retrieval combined with narrow-phase geometric checks (corridors, distance radii, region bounds).
+- **Deterministic Simulation Engine:** Kepler Belt orbital motion model with seeded deterministic pseudo-random entity lifecycles.
+- **Rigorous Verification:** 9 automated CTest regression suites (100% pass rate) covering geometry, node structure, insertions, splits, deletions, stress loads, and full pipeline integration.
+- **Empirical Benchmarking Engine:** Scalability evaluation comparing R-tree queries against linear brute-force baseline across entity scales ($N = 100$ to $100{,}000$).
+- **Mission Control Frontend:** A decoupled HTML5 Canvas visualizer rendering radar grids, entity markers, dynamic leaf/internal MBR hierarchies, query windows, and glowing hazard alerts.
+- **Single-Command Demo Orchestrator (`run_demo.py`):** An end-to-end Python launcher that verifies the toolchain, builds stale targets, runs the simulation, exports the R-tree state to JSON, hosts a local server, and launches Mission Control in the browser.
 
 ---
 
-## Repository Structure
+## Implemented Architecture
 
 ```
-kestrel/
-+-- AGENTS.md           Agent instruction entry point
-+-- PROJECT_SSOT.md     Single Source of Truth — read this first
-+-- README.md           This file
-+-- CMakeLists.txt      CMake scaffold (CMake not yet on PATH — see SSOT)
-+-- .gitignore
-+-- .agents/            Rules, agent procedures, and skills
-+-- docs/
-¦   +-- architecture/   ARCHITECTURE.md
-¦   +-- decisions/      ADR-001, ADR-002, ADR-003
-¦   +-- gates/          GATE-00 through GATE-11
-¦   +-- templates/      Gate and ADR templates
-¦   +-- reports/        Benchmark and review reports
-¦   +-- COMMANDS.md     Reusable gate invocation commands
-+-- src/                C++ implementation (PLANNED — not yet present)
-+-- tests/              Test suite (PLANNED — not yet present)
-+-- frontend/           2D visualization (PLANNED — stack TBD at Gate 10)
+                      +-----------------------------+
+                      |    Kepler Belt Simulator    |
+                      |  (Seeded motion & lifecycle)|
+                      +--------------+--------------+
+                                     |
+                                     v
+                      +-----------------------------+
+                      |        Entity Store         |
+                      | std::unordered_map<int,Ent> |
+                      +--------------+--------------+
+                                     |
+                                     v
+                      +-----------------------------+
+                      |     2D Dynamic R-tree       |
+                      |   (Guttman Quadratic Split) |
+                      +--------------+--------------+
+                                     |
+                                     v
+                      +-----------------------------+
+                      |   Hazard Assessment Layer   |
+                      |  Broad phase: R-tree search |
+                      |  Narrow phase: Exact geom   |
+                      +--------------+--------------+
+                                     |
+               +---------------------+---------------------+
+               |                                           |
+               v                                           v
++-----------------------------+             +-----------------------------+
+|    State Exporter (CLI)     |             |    Deterministic Testing    |
+|   (Exports to state.json)   |             |   & Benchmark Suite (CTest) |
++--------------+--------------+             +-----------------------------+
+               |
+               v
++-----------------------------+
+|   Mission Control Visual    |
+| (HTML5 Canvas / Vanilla JS) |
++-----------------------------+
 ```
 
 ---
 
 ## Quick Start — Single-Command Demo Launcher
 
-The easiest way to run the entire KESTREL simulation and Mission Control visualizer:
+The primary and recommended way to build, execute, and view the KESTREL demo:
 
 ```bash
 python run_demo.py
 ```
 
-This single command automatically:
-1. Verifies your toolchain environment (CMake, C++17 compiler, Python).
-2. Builds the CMake targets (`kestrel_demo`, `kestrel_export`) if missing or stale.
-3. Executes the C++ simulation demo and validates completion.
-4. Exports the simulation and R-tree hierarchical MBR state to `build/state.json`.
-5. Validates the JSON schema (entities, leaf MBRs, internal MBRs, query results).
-6. Starts a local HTTP server and opens **Mission Control** in your default web browser (`http://127.0.0.1:8000/frontend/index.html`).
+### What this Command Does Automatically
+1. **Preflight:** Validates environment dependencies (CMake 3.20+, C++17 compiler, Python 3.8+).
+2. **Build Check:** Builds `kestrel_demo` and `kestrel_export` using CMake if binaries are missing or source code has been modified.
+3. **Simulation:** Runs the native C++ Kepler Belt demo (`kestrel_demo.exe`) and verifies output.
+4. **State Export:** Executes `kestrel_export.exe` to serialize entities, R-tree MBR bounding boxes, and active query results to `build/state.json`.
+5. **JSON Schema Validation:** Verifies schema integrity (entities, leaf MBRs, internal MBRs, query matches).
+6. **Local Server & Launch:** Starts an HTTP server on port 8000 (with automatic port conflict resolution) and opens the **Mission Control visualizer** in your default web browser (`http://127.0.0.1:8000/frontend/index.html`).
 
 ### Launcher Options & Flags
 
@@ -95,77 +100,195 @@ This single command automatically:
 python run_demo.py --help
 ```
 
-- `python run_demo.py`: Standard full demo launch with browser opening.
-- `python run_demo.py --rebuild`: Force re-compilation of C++ targets before launching.
-- `python run_demo.py --port 8080`: Use a specific port for the local web server (default: 8000).
-- `python run_demo.py --no-browser`: Start the server without opening the browser automatically.
-- `python run_demo.py --once`: Execute simulation, export, and JSON validation, then exit without running the HTTP server.
+| Flag | Description |
+|------|-------------|
+| *(none)* | Full demo launch: preflight, build check, run, export, validate, serve, and open browser. |
+| `--rebuild` | Force a clean CMake configuration and target rebuild before execution. |
+| `--port <PORT>` | Specify a custom HTTP port (default: `8000`). Automatically falls back if port is occupied. |
+| `--host <HOST>` | Bind to a custom host interface (default: `127.0.0.1`). |
+| `--no-browser` | Launch HTTP server without automatically opening the browser (useful for remote/WSL). |
+| `--once` | Run preflight, simulation, state export, and validation, then exit without launching the server. |
 
 ### Troubleshooting
-
-- **CMake or Compiler Not Found:** Ensure CMake 3.20+ and a C++17 compiler (e.g. GCC via MSYS2 UCRT64, or Clang) are installed and added to your `PATH`.
-- **Port Conflict:** If port 8000 is occupied by another application, `run_demo.py` automatically detects and binds the next available port (e.g. 8001), or reuses an existing active KESTREL instance.
-- **Server Shutdown:** Press `Ctrl+C` in the launcher terminal to cleanly shut down only launcher-owned server processes.
+- **Compiler/CMake Not Found:** Ensure CMake 3.20+ and a C++17 compiler (GCC/MinGW, Clang, or MSVC) are on your system `PATH`.
+- **Port Conflict:** If port 8000 is occupied, `run_demo.py` automatically detects active KESTREL servers or safely shifts to the next open port (8001–8010).
+- **Graceful Shutdown:** Press `Ctrl+C` in the terminal to terminate the launcher. Only launcher-spawned servers are stopped.
 
 ---
 
-## Build and Test Workflow
+## Manual Build and Test Workflow
+
+If you prefer building and running individual C++ components manually:
 
 ### Prerequisites
 
-| Tool | Required | Status |
-|------|----------|--------|
-| g++ 11+ / Clang 11+ | Yes | Available (16.1.0, MSYS2 UCRT64) |
-| CMake 3.20+ | Yes | Available (4.4.0) |
-| Python 3.8+ | Yes | Available (3.13.0) |
+| Tool | Minimum Version | Tested With | Status |
+|------|-----------------|-------------|--------|
+| **C++ Compiler** | C++17 compatible | GCC 16.1.0 (MSYS2 UCRT64) / MSVC 2022 | Available |
+| **CMake** | 3.20+ | CMake 4.4.0 | Available |
+| **Python** | 3.8+ | Python 3.13.0 | Available |
 
-### Manual Build Commands
+### 1. Build the Entire Solution
 
 ```bash
 cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 ```
 
-### Run Core Regression Tests
+### 2. Run All Unit & Integration Tests
 
 ```bash
 cd build && ctest --output-on-failure
 ```
 
-### Run Benchmarks
+*Expected output: `100% tests passed, 0 tests failed out of 9`.*
+
+### 3. Run Scaling Benchmarks
 
 ```bash
 ./build/benchmarks/kestrel_benchmark.exe
 ```
 
----
+*Generates query performance metrics and outputs `benchmark_results.csv` comparing linear scan vs. R-tree spatial index across $N=100$ to $N=100{,}000$ entities.*
 
-## Gate Progression
+### 4. Run State Exporter Directly
 
-| Gate | Title | Status |
-|------|-------|--------|
-| 00 | Repository Reconnaissance and Specification | OPEN |
-| 01 | Geometry Primitives | OPEN |
-| 02 | Entity Model and Store | OPEN |
-| 03 | R-tree Structural Foundation | OPEN |
-| 04 | Insertion and Splitting | OPEN |
-| 05 | Range Queries and Pruning | OPEN |
-| 06 | Deletion and Dynamic Updates | OPEN |
-| 07 | Kepler Belt Simulation | OPEN |
-| 08 | Mission Queries and Hazard Assessment | OPEN |
-| 09 | Benchmarking and Research Evaluation | OPEN |
-| 10 | Mission-Control Visualization | OPEN |
-| 11 | Final Verification and Academic Defence | OPEN |
+```bash
+./build/src/kestrel_export.exe build/state.json
+```
 
 ---
 
-## Key Documents
+## Repository Structure
 
-- [PROJECT_SSOT.md](PROJECT_SSOT.md) — Authoritative source of truth
-- [AGENTS.md](AGENTS.md) — Agent instruction entry point
-- [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) — System architecture
-- [COMMANDS.md](docs/COMMANDS.md) — Gate invocation commands
-- [Gate specifications](docs/gates/) — GATE-00 through GATE-11
-- [ADR-001](docs/decisions/ADR-001-rtree-variant.md) — R-tree variant decision
-- [ADR-002](docs/decisions/ADR-002-geometry.md) — Geometry model decision
-- [ADR-003](docs/decisions/ADR-003-entity-storage.md) — Entity storage decision
+```text
+KESTREL/
+|-- run_demo.py                   # Automated single-command demo orchestrator
+|-- CMakeLists.txt                # Root CMake project configuration
+|-- PROJECT_SSOT.md               # Single Source of Truth & gate governance
+|-- AGENTS.md                     # Agent operating guidelines and entry point
+|-- README.md                     # Project documentation and quick start
+|-- state.json                    # Exported spatial state fallback
+|-- benchmark_results.csv         # Empirically measured R-tree scaling data
+|
+|-- src/                          # Native C++17 Engine Core
+|   |-- geometry.h / .cpp         # Point, BoundingBox (AABB), geometric intersection algorithms
+|   |-- rtree_node.h / .cpp       # Node representation, Guttman quadratic split, MBR updates
+|   |-- rtree.h / .cpp            # 2D R-tree insert, delete, search, range query, pruning
+|   |-- entity.h / .cpp           # Kepler Belt entity model (position, velocity, bounding box)
+|   |-- entity_store.h / .cpp     # Map-based entity ownership store
+|   |-- simulator.h / .cpp        # Deterministic orbital motion simulation & entity lifecycle
+|   |-- mission.h / .cpp          # Broad-phase/narrow-phase corridor & hazard queries
+|   |-- main.cpp                  # CLI simulation demonstration executable (kestrel_demo)
+|   +-- export.cpp                # JSON state exporter executable (kestrel_export)
+|
+|-- tests/                        # Deterministic Regression Test Suites
+|   |-- test_entity.cpp           # Entity properties and store operations
+|   |-- test_rtree.cpp            # Structural R-tree invariant tests
+|   |-- test_rtree_insert.cpp     # Insertion correctness and quadratic split validation
+|   |-- test_rtree_query.cpp      # Spatial range queries and pruning verification
+|   |-- test_rtree_delete.cpp     # Deletion, node underflow, and re-insertion tests
+|   |-- test_simulator.cpp        # Deterministic simulation physics and reproducibility
+|   |-- test_mission.cpp          # Region, nearby, and corridor hazard assessment
+|   +-- test_stress.cpp           # Large-scale load and boundary condition stress tests
+|
+|-- benchmarks/                   # Empirical Evaluation Suite
+|   +-- benchmark_main.cpp        # Microbenchmarks: R-tree vs Brute Force (kestrel_benchmark)
+|
+|-- frontend/                     # Mission Control Web Visualizer
+|   |-- index.html                # 2D radar interface markup and control panel
+|   |-- app.js                    # HTML5 Canvas visualizer, MBR hierarchy rendering, telemetry
+|   +-- css/style.css             # Glassmorphism dark-mode mission dashboard styling
+|
++-- docs/                         # Specifications, Decisions, and Academic Reports
+    |-- architecture/             # ARCHITECTURE.md (detailed subsystem blueprints)
+    |-- decisions/                # Architecture Decision Records (ADR-001 through ADR-005)
+    |-- gates/                    # Gate evidence files (GATE-00 through GATE-11)
+    +-- reports/                  # BENCHMARK-REPORT.md, FINAL-VERIFICATION-REPORT.md, DEFENCE-PREPARATION.md
+```
+
+---
+
+## Roadmap & Planned Features
+
+While the core C++17 engine, test suites, exporter, and baseline Mission Control visualizer are fully operational as an MVP, future iterations are planned to extend user interactivity and telemetry:
+
+```
+[Current MVP]                                    [Planned Future Enhancements]
+Static JSON State Visualizer  ─────────────>  Interactive Dynamic Spatial Map
+All MBR Levels Overlaid       ─────────────>  Interactive R-tree Hierarchy Visualizer
+Pre-programmed Demo Query     ─────────────>  Custom User-Drawn Spatial Queries
+Single-Step State Snapshot    ─────────────>  Interactive Traversal & Pruning Step-Through
+Static Terminal Benchmarks    ─────────────>  Real-Time Query Metrics Dashboard
+Hardcoded Simulation Seed     ─────────────>  Configurable / Live Simulation Control
+```
+
+### 1. Interactive Spatial Map
+- **Smooth Pan & Zoom:** Canvas navigation with mouse-drag panning, pinch-to-zoom, and mini-map navigation.
+- **Entity Inspection Tooltips:** Hover over and click asteroids, probes, or debris to inspect real-time position, velocity vectors, entity IDs, and bounding coordinates.
+
+### 2. R-Tree Hierarchy Visualizer
+- **Level-by-Level Filtering:** Toggle visibility of specific tree depths (Root $\rightarrow$ Internal Levels $\rightarrow$ Leaf MBRs).
+- **Subtree Highlighting:** Click any bounding box to isolate and highlight its parent-child lineage and enclosed entities.
+
+### 3. Custom Dynamic Spatial Queries
+- **User-Drawn Query Windows:** Click-and-drag bounding rectangles directly on the radar grid to trigger live range queries.
+- **Trajectory Corridor Generation:** Define origin and destination waypoints to dynamically visualize swept corridors and hazard intersections.
+
+### 4. Traversal & Pruning Step-Through Mode
+- **Visual Branch-and-Bound Debugger:** Step-by-step visual animation demonstrating how the R-tree searches for hazards:
+  - Yellow: Nodes currently evaluated.
+  - Red: Pruned subtrees (MBR does not intersect query window).
+  - Green: Accepted candidate leaves proceeding to narrow-phase geometry checks.
+
+### 5. Real-Time Query Performance & Metrics Dashboard
+- **Telemetry Overlay:** Real-time HUD showing:
+  - Candidates evaluated vs. total entity count.
+  - Pruning efficiency percentage ($\frac{\text{Pruned Nodes}}{\text{Total Nodes}} \times 100$).
+  - Broad-phase vs. narrow-phase execution time breakdown.
+  - Theoretical speedup factor over naive $O(N)$ linear scan.
+
+### 6. Configurable Simulation Environment
+- **Live Parameter Controls:** UI sliders to adjust entity density ($N = 10$ to $10{,}000$), velocity ranges, and hazard generation frequencies without recompilation.
+- **Interactive Hazard Injection:** Manual placement of high-risk obstacles into trajectory paths to test real-time avoidance responses.
+
+---
+
+## Gate Progression & Verification Status
+
+KESTREL follows strict **Gate Discipline**, where each stage must meet defined formal acceptance criteria before progression.
+
+| Gate | Title | Focus Area | Status |
+|:---:|:---|:---|:---:|
+| **GATE-00** | Repository Reconnaissance & Specification | Baseline repository setup & SSOT | **PASS** |
+| **GATE-01** | Geometry Primitives | Point, BoundingBox (AABB), intersection | **PASS** |
+| **GATE-02** | Entity Model and Store | Entity records & `EntityStore` map | **PASS** |
+| **GATE-03** | R-Tree Structural Foundation | Node memory model, invariants, capacity $M=4, m=2$ | **PASS** |
+| **GATE-04** | Insertion and Splitting | Guttman quadratic split, area minimization | **PASS** |
+| **GATE-05** | Range Queries and Pruning | Bounding-box search & subtree pruning | **PASS** |
+| **GATE-06** | Deletion and Dynamic Updates | Leaf deletion, underflow handling, re-insertion | **PASS** |
+| **GATE-07** | Kepler Belt Simulation | Deterministic orbital motion & lifecycle | **PASS** |
+| **GATE-08** | Mission Queries & Hazard Assessment | Broad/narrow hazard detection pipeline | **PASS** |
+| **GATE-09** | Benchmarking & Research Evaluation | Scaling benchmarks ($N=100$ to $100{,}000$) vs baseline | **PASS** |
+| **GATE-10** | Mission-Control Visualization | Decoupled HTML5 Canvas radar frontend & exporter | **PASS** |
+| **GATE-11** | Final Verification & Academic Defence | End-to-end integration, audit report, defence slides | **IN REVIEW** |
+
+*Note: GATE-00 through GATE-10 are formally verified and closed. GATE-11 technical verification is complete (9/9 CTests passing, benchmark reports published, defence notes finalized) and submitted for Project Owner sign-off.*
+
+---
+
+## Key Documents & References
+
+- **[PROJECT_SSOT.md](PROJECT_SSOT.md)** — Authoritative Single Source of Truth for architecture, terminology, and scope.
+- **[ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)** — In-depth architectural design and data flow specifications.
+- **[COMMANDS.md](docs/COMMANDS.md)** — Reusable build, test, and verification command reference.
+- **Architectural Decision Records (ADRs):**
+  - [ADR-001: R-Tree Variant Selection (Standard Guttman Quadratic)](docs/decisions/ADR-001-rtree-variant.md)
+  - [ADR-002: Geometry & Coordinate Representation](docs/decisions/ADR-002-geometry.md)
+  - [ADR-003: Entity Storage Model (`std::unordered_map`)](docs/decisions/ADR-003-entity-storage.md)
+  - [ADR-004: Benchmarking Methodology & Baselines](docs/decisions/ADR-004-benchmarks.md)
+  - [ADR-005: Decoupled Frontend Visualization Architecture](docs/decisions/ADR-005-frontend-stack.md)
+- **Academic & Verification Reports:**
+  - [Final Verification Report](docs/reports/FINAL-VERIFICATION-REPORT.md)
+  - [Benchmark & Load Evaluation Report](docs/reports/BENCHMARK-REPORT.md)
+  - [Academic Defence Preparation Guide](docs/reports/DEFENCE-PREPARATION.md)

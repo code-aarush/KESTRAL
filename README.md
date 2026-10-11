@@ -1,37 +1,58 @@
-# KESTREL
+<div align="center">
 
-**Kepler Exploration — Spatial Tree for Risk Evaluation and Localization**
+# 🛰️ KESTREL
+
+### **K**epler **E**xploration — **S**patial **T**ree for **R**isk **E**valuation and **L**ocalization
 
 [![Language: C++17](https://img.shields.io/badge/Language-C%2B%2B17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![Tests: 9/9 Passing](https://img.shields.io/badge/Tests-9%2F9%20Passing-brightgreen.svg)](tests/)
 [![Status: MVP Complete](https://img.shields.io/badge/Status-MVP%20Complete-success.svg)](PROJECT_SSOT.md)
 
-
 An academic C++17 project investigating a custom, dynamically updated two-dimensional R-tree for spatial indexing and hazard assessment in a simulated deep-space environment.
 
+</div>
+
+---
 ---
 
-## Research Question
+## 🔬 Research Question
 
 > *"How effectively can a dynamic spatial index (R-tree) support continuous region monitoring and hazard detection in a simulated deep-space environment?"*
 
 ---
 
-## Project Overview & Current MVP State
+## 🌌 Project Overview & Current MVP State
 
 KESTREL builds a complete spatial-indexing and hazard-assessment pipeline around a **hand-written, zero-dependency 2D dynamic R-tree** (Guttman quadratic split, $M=4, m=2$) with no third-party spatial libraries.
 
 The simulation models fictional Kepler Belt entities (asteroids, probes, navigational hazards) moving deterministically through 2D space. Mission queries perform broad-phase bounding-box filtering via the R-tree followed by narrow-phase geometric verification.
 
 ### What is Implemented in the MVP
-- **Native C++17 R-Tree Core:** Complete node splitting (quadratic algorithm), area/perimeter minimization, recursive MBR propagation, dynamic insertion, deletion with underflow re-insertion, and window pruning.
-- **Two-Phase Hazard Assessment Pipeline:** Broad-phase spatial candidate retrieval combined with narrow-phase geometric checks (corridors, distance radii, region bounds).
-- **Deterministic Simulation Engine:** Kepler Belt orbital motion model with seeded deterministic pseudo-random entity lifecycles.
-- **Rigorous Verification:** 9 automated CTest regression suites (100% pass rate) covering geometry, node structure, insertions, splits, deletions, stress loads, and full pipeline integration.
-- **Empirical Benchmarking Engine:** Scalability evaluation comparing R-tree queries against linear brute-force baseline across entity scales ($N = 100$ to $100{,}000$).
-- **Mission Control Frontend:** A decoupled HTML5 Canvas visualizer rendering radar grids, entity markers, dynamic leaf/internal MBR hierarchies, query windows, and glowing hazard alerts.
-- **Single-Command Demo Orchestrator (`run_demo.py`):** An end-to-end Python launcher that verifies the toolchain, builds stale targets, runs the simulation, exports the R-tree state to JSON, hosts a local server, and launches Mission Control in the browser.
+- 🌲 **Native C++17 R-Tree Core:** Complete node splitting (quadratic algorithm), area/perimeter minimization, recursive MBR propagation, dynamic insertion, deletion with underflow re-insertion, and window pruning.
+- ☄️ **Two-Phase Hazard Assessment Pipeline:** Broad-phase spatial candidate retrieval combined with narrow-phase geometric checks (corridors, distance radii, region bounds).
+- 🪐 **Deterministic Simulation Engine:** Kepler Belt orbital motion model with seeded deterministic pseudo-random entity lifecycles.
+- ✅ **Rigorous Verification:** 9 automated CTest regression suites (100% pass rate) covering geometry, node structure, insertions, splits, deletions, stress loads, and full pipeline integration.
+- 📊 **Empirical Benchmarking Engine:** Scalability evaluation comparing R-tree queries against linear brute-force baseline across entity scales ($N = 100$ to $100{,}000$).
+- 🖥️ **Mission Control Frontend:** A decoupled HTML5 Canvas visualizer rendering radar grids, entity markers, dynamic leaf/internal MBR hierarchies, query windows, and glowing hazard alerts.
+- 🚀 **Single-Command Demo Orchestrator (`run_demo.py`):** An end-to-end Python launcher that verifies the toolchain, builds stale targets, runs the simulation, exports the R-tree state to JSON, hosts a local server, and launches Mission Control in the browser.
 
+
+---
+## 🛠️ Tech Stack
+ 
+<p align="center">
+  <img src="https://cdn.simpleicons.org/cplusplus" width="50" alt="C++17"/>
+  &nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.simpleicons.org/cmake" width="50" alt="CMake"/>
+  &nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.simpleicons.org/python" width="50" alt="Python"/>
+</p>
+<p align="center">
+  <strong>C++17</strong> •
+  <strong>CMake / CTest</strong> •
+  <strong>Python</strong>
+</p>
+ 
 ---
 
 ## Implemented Architecture

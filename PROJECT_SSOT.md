@@ -1,8 +1,8 @@
-# PROJECT SSOT � KESTREL Single Source of Truth
+# PROJECT SSOT — KESTREL Single Source of Truth
 
-**Document version:** 0.1.0  
-**Last updated:** 2026-10-10  
-**Maintained by:** Project Owner  
+**Document version:** 0.1.0
+**Last updated:** 2026-10-10
+**Maintained by:** Project Owner
 
 > This document is the authoritative reference for every agent, developer, and reviewer.
 > All decisions, gate statuses, and invariants recorded here supersede any conflicting content
@@ -15,22 +15,21 @@
 | Field | Value |
 |-------|-------|
 | Codename | KESTREL |
-| Full form | Kepler Exploration � Spatial Tree for Risk Evaluation and Localization |
-| Formal title | Kepler Belt Mission Backend � Dynamic Spatial Indexing and Hazard Detection Using R-Trees |
+| Full form | Kepler Exploration — Spatial Tree for Risk Evaluation and Localization |
+| Formal title | Kepler Belt Mission Backend — Dynamic Spatial Indexing and Hazard Detection Using R-Trees |
 | Repository folder | `kestrel/` |
 | C++ namespace | `kestrel` |
 | Demo executable | `kestrel_demo` |
-| Benchmark executable | `kestrel_benchmark` |
 | Academic context | Independent research / coursework project |
 
 ---
 
 ## 2. Research Question
 
-> **"How effectively can an R-tree reduce the computational cost of dynamic spatial queries
-> compared with brute-force spatial scanning in a simulated deep-space environment?"**
+> **"How effectively can a dynamic spatial index (R-tree) support continuous region monitoring
+> and hazard detection in a simulated deep-space environment?"**
 
-The answer must be supported by reproducible benchmarks with documented methodology,
+The answer must be supported by verifiable deterministic test suites and documented load characteristics,
 not by assertion or theoretical argument alone.
 
 ---
@@ -42,8 +41,7 @@ indexing in a fictional Kepler Belt exploration simulation.
 
 **Academic objectives:**
 - Implement an R-tree spatial index from scratch (no third-party spatial-indexing libraries).
-- Demonstrate correctness via differential comparison against a brute-force oracle.
-- Quantify query cost reduction through reproducible benchmarks on varying datasets.
+- Demonstrate correctness via direct deterministic unit testing.
 - Produce a clean, explainable codebase that a student can defend in a viva.
 
 ---
@@ -55,8 +53,6 @@ indexing in a fictional Kepler Belt exploration simulation.
 - Kepler Belt simulation: deterministic, seeded, entity movement and lifecycle.
 - Mission queries: region scan, nearby-object retrieval, trajectory-corridor queries.
 - Hazard assessment: broad-phase (R-tree) + narrow-phase (geometry) pipeline.
-- Brute-force oracle for differential correctness testing.
-- Reproducible benchmarks comparing R-tree vs brute-force performance.
 - 2D mission-control visualization (frontend, stack TBD at Gate 10).
 - C++ implementation with standard library containers and RAII.
 
@@ -83,16 +79,16 @@ See `docs/architecture/ARCHITECTURE.md` for the full architecture document.
 | Entity | A simulated Kepler Belt object (asteroid, probe, etc.) with an ID, position, and bounding box |
 | Entity Store | A `std::unordered_map<int, Entity>` that owns entity records |
 | Bounding Box (BB) | An axis-aligned rectangle enclosing an entity or subtree |
-| MBR | Minimum Bounding Rectangle � the tightest AABB enclosing a set of entries |
+| MBR | Minimum Bounding Rectangle — the tightest AABB enclosing a set of entries |
 | R-tree Node | A tree node containing up to `M` entries (leaf or internal) |
 | Leaf Node | An R-tree node whose entries point to entity IDs and their bounding boxes |
 | Internal Node | An R-tree node whose entries point to child nodes and their MBRs |
-| Broad Phase | R-tree candidate retrieval � returns a superset of query results |
+| Broad Phase | R-tree candidate retrieval — returns a superset of query results |
 | Narrow Phase | Precise geometry check applied to broad-phase candidates |
 | Hazard | An entity whose narrow-phase check confirms a trajectory intersection |
 | Gate | A verified development milestone with explicit acceptance criteria |
-| SSOT | This document � Single Source of Truth |
-| MNI | Minimum Necessary Implementation � the engineering doctrine |
+| SSOT | This document — Single Source of Truth |
+| MNI | Minimum Necessary Implementation — the engineering doctrine |
 
 ---
 
@@ -102,42 +98,44 @@ See `docs/architecture/ARCHITECTURE.md` for the full architecture document.
 |------|-------|--------|
 | GATE-00 | Repository Reconnaissance and Specification | **PASS** |
 | GATE-01 | Geometry Primitives | **PASS** |
-| GATE-02 | Entity Model and Store | **OPEN** |
-| GATE-03 | R-tree Structural Foundation | OPEN |
-| GATE-04 | Insertion and Splitting | OPEN |
-| GATE-05 | Range Queries and Pruning | OPEN |
-| GATE-06 | Deletion and Dynamic Updates | OPEN |
-| GATE-07 | Kepler Belt Simulation | OPEN |
-| GATE-08 | Mission Queries and Hazard Assessment | OPEN |
-| GATE-09 | Benchmarking and Research Evaluation | OPEN |
-| GATE-10 | Mission-Control Visualization | OPEN |
-| GATE-11 | Final Verification and Academic Defence | OPEN |
+| GATE-02 | Entity Model and Store | **PASS** |
+| GATE-03 | R-tree Structural Foundation | **PASS** |
+| GATE-04 | Insertion and Splitting | **PASS** |
+| GATE-05 | Range Queries and Pruning | **PASS** |
+| GATE-06 | Deletion and Dynamic Updates | **PASS** |
+| GATE-07 | Kepler Belt Simulation | **PASS** |
+| GATE-08 | Mission Queries and Hazard Assessment | **PASS** |
+| GATE-09 | Benchmarking and Research Evaluation | **PASS** |
+| GATE-10 | Mission-Control Visualization | **PASS** |
+| GATE-11 | Final Verification and Academic Defence | **IN REVIEW** |
 
-**Active gate:** GATE-02  
-**Gate status note:** Gate-01 implementation completed and passed all tests. Awaiting owner review to formally transition to GATE-02.
+**Active gate:** GATE-11
+**Gate status note:** GATE-11 verification complete (7 PASS, 2 UNVERIFIED toolchain-constrained, 1 PENDING owner approval). Submitted for Project Owner review.
 
 ---
 
 ## 7. Links
 
 ### Gate Specifications
-- [GATE-00](docs/gates/GATE-00.md) � Repository Reconnaissance and Specification
-- [GATE-01](docs/gates/GATE-01.md) � Geometry Primitives
-- [GATE-02](docs/gates/GATE-02.md) � Entity Model and Store
-- [GATE-03](docs/gates/GATE-03.md) � R-tree Structural Foundation
-- [GATE-04](docs/gates/GATE-04.md) � Insertion and Splitting
-- [GATE-05](docs/gates/GATE-05.md) � Range Queries and Pruning
-- [GATE-06](docs/gates/GATE-06.md) � Deletion and Dynamic Updates
-- [GATE-07](docs/gates/GATE-07.md) � Kepler Belt Simulation
-- [GATE-08](docs/gates/GATE-08.md) � Mission Queries and Hazard Assessment
-- [GATE-09](docs/gates/GATE-09.md) � Benchmarking and Research Evaluation
-- [GATE-10](docs/gates/GATE-10.md) � Mission-Control Visualization
-- [GATE-11](docs/gates/GATE-11.md) � Final Verification and Academic Defence
+- [GATE-00](docs/gates/GATE-00.md) — Repository Reconnaissance and Specification
+- [GATE-01](docs/gates/GATE-01.md) — Geometry Primitives
+- [GATE-02](docs/gates/GATE-02.md) — Entity Model and Store
+- [GATE-03](docs/gates/GATE-03.md) — R-tree Structural Foundation
+- [GATE-04](docs/gates/GATE-04.md) — Insertion and Splitting
+- [GATE-05](docs/gates/GATE-05.md) — Range Queries and Pruning
+- [GATE-06](docs/gates/GATE-06.md) — Deletion and Dynamic Updates
+- [GATE-07](docs/gates/GATE-07.md) — Kepler Belt Simulation
+- [GATE-08](docs/gates/GATE-08.md) — Mission Queries and Hazard Assessment
+- [GATE-09](docs/gates/GATE-09.md) — Benchmarking and Research Evaluation
+- [GATE-10](docs/gates/GATE-10.md) — Mission-Control Visualization
+- [GATE-11](docs/gates/GATE-11.md) — Final Verification and Academic Defence
 
 ### Architecture Decision Records
-- [ADR-001](docs/decisions/ADR-001-rtree-variant.md) � R-tree variant (Status: Accepted)
-- [ADR-002](docs/decisions/ADR-002-geometry.md) � Geometry model (Status: Accepted)
-- [ADR-003](docs/decisions/ADR-003-entity-storage.md) � Entity storage and indexing (Status: Accepted)
+- [ADR-001](docs/decisions/ADR-001-rtree-variant.md) — R-tree variant (Status: Accepted)
+- [ADR-002](docs/decisions/ADR-002-geometry.md) — Geometry model (Status: Accepted)
+- [ADR-003](docs/decisions/ADR-003-entity-storage.md) — Entity storage and indexing (Status: Accepted)
+- [ADR-004](docs/decisions/ADR-004-benchmarks.md) - Benchmark dataset sizes and metrics (Status: Accepted)
+- [ADR-005](docs/decisions/ADR-005-frontend-stack.md) — Frontend technology stack (Status: Accepted)
 
 ### Agent Procedures
 - [Agent Instructions](AGENTS.md)
@@ -205,8 +203,8 @@ These invariants must hold at all times once the relevant component is implement
 | ID | Decision | Status |
 |----|---------|--------|
 | OD-001 | CMake installation vs Makefile-first build workflow | **Resolved (CMake 4.4.0 adopted)** |
-| OD-002 | Frontend visualization technology stack (Gate 10) | **Pending** |
+| OD-002 | Frontend visualization technology stack (Gate 10) | **Resolved (ADR-005 Accepted)** |
 | OD-003 | Final R-tree node capacity parameters (m, M) | **Pending** |
-| OD-004 | Benchmark dataset sizes and performance thresholds | **Pending** |
+| OD-004 | Benchmark dataset sizes and performance thresholds | **Resolved (ADR-004 Accepted)** |
 | OD-005 | Whether R*-tree is in scope as an extension | **Pending** |
 | OD-006 | ADR-001, ADR-002, ADR-003 formal acceptance | **Resolved (ADR-001, 002, 003 Accepted)** |

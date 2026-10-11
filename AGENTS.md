@@ -1,4 +1,4 @@
-# KESTREL — Agent Instructions
+# KESTREL â€” Agent Instructions
 
 > **Read this file first. Then read `PROJECT_SSOT.md` before touching anything else.**
 
@@ -11,22 +11,22 @@ It is automatically loaded by Antigravity for any file opened within the `kestre
 
 Before modifying any file, every agent must complete the following steps in order:
 
-1. **Read `PROJECT_SSOT.md`** — establishes project identity, research question, active gate,
+1. **Read `PROJECT_SSOT.md`** â€” establishes project identity, research question, active gate,
    architecture, terminology, and critical invariants. Do not proceed without reading it.
 
-2. **Identify the active gate** — check `PROJECT_SSOT.md` for the current gate number and status.
+2. **Identify the active gate** â€” check `PROJECT_SSOT.md` for the current gate number and status.
    Do not work on any gate other than the explicitly active one.
 
-3. **Read the gate specification** — open `docs/gates/GATE-NN.md` for the active gate. Extract
+3. **Read the gate specification** â€” open `docs/gates/GATE-NN.md` for the active gate. Extract
    every acceptance criterion. Do not modify or reinterpret them.
 
-4. **Read relevant ADRs** — check which ADRs apply to the active gate (listed in the gate spec)
+4. **Read relevant ADRs** â€” check which ADRs apply to the active gate (listed in the gate spec)
    and read them from `docs/decisions/`.
 
-5. **Read the relevant skill** — if planning, read `gate-plan/SKILL.md`; if implementing, read
+5. **Read the relevant skill** â€” if planning, read `gate-plan/SKILL.md`; if implementing, read
    `gate-implement/SKILL.md`; if reviewing, read `gate-review/SKILL.md`.
 
-6. **Read `docs/architecture/ARCHITECTURE.md`** — understand the target structure without assuming
+6. **Read `docs/architecture/ARCHITECTURE.md`** â€” understand the target structure without assuming
    unimplemented components exist.
 
 ---
@@ -111,16 +111,16 @@ kestrel/
 +-- CMakeLists.txt          <- Build scaffold (CMake not yet on PATH)
 +-- .gitignore
 +-- .agents/
-¦   +-- rules/              <- Always-active rule files
-¦   +-- agents/             <- Role procedure documents
-¦   +-- skills/             <- On-demand skill procedures
+Â¦   +-- rules/              <- Always-active rule files
+Â¦   +-- agents/             <- Role procedure documents
+Â¦   +-- skills/             <- On-demand skill procedures
 +-- docs/
-¦   +-- architecture/       <- ARCHITECTURE.md
-¦   +-- decisions/          <- ADR-001 through ADR-003
-¦   +-- gates/              <- GATE-00 through GATE-11
-¦   +-- templates/          <- GATE-TEMPLATE.md, ADR-TEMPLATE.md
-¦   +-- reports/            <- Benchmark and review reports
-¦   +-- COMMANDS.md         <- Reusable gate invocation commands
+Â¦   +-- architecture/       <- ARCHITECTURE.md
+Â¦   +-- decisions/          <- ADR-001 through ADR-003
+Â¦   +-- gates/              <- GATE-00 through GATE-11
+Â¦   +-- templates/          <- GATE-TEMPLATE.md, ADR-TEMPLATE.md
+Â¦   +-- reports/            <- Benchmark and review reports
+Â¦   +-- COMMANDS.md         <- Reusable gate invocation commands
 +-- src/                    <- C++ implementation (empty until Gate 01)
 +-- tests/                  <- Test files (empty until Gate 01)
 +-- benchmarks/             <- Benchmark code (empty until Gate 09)

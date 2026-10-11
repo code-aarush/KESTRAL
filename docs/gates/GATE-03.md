@@ -1,4 +1,4 @@
-# GATE-03 — R-tree Structural Foundation
+# GATE-03 â€” R-tree Structural Foundation
 
 **Gate ID:** GATE-03  
 **Status:** OPEN  
@@ -11,7 +11,7 @@
 
 Define the internal node and entry data structures of the R-tree and establish all
 structural invariants. Implement structural validation for use in subsequent gates.
-Do not add insertion or query logic in this gate — only the data structure and
+Do not add insertion or query logic in this gate â€” only the data structure and
 its verifiable invariants.
 
 ---
@@ -52,7 +52,7 @@ its verifiable invariants.
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| ADR-001 | R-tree variant | Proposed — owner acceptance required |
+| ADR-001 | R-tree variant | Proposed â€” owner acceptance required |
 | ADR-002 | Geometry model | Proposed |
 
 ---
@@ -70,7 +70,7 @@ its verifiable invariants.
 
 ## Acceptance Criteria
 
-### GATE-03-AC-01 — Leaf and internal node types are defined
+### GATE-03-AC-01 â€” Leaf and internal node types are defined
 
 **Requirement:** The implementation defines separate representations for leaf nodes
 (entries containing `BoundingBox` + `entity_id`) and internal nodes (entries containing
@@ -82,7 +82,7 @@ clear distinction.
 
 ---
 
-### GATE-03-AC-02 — Occupancy parameters are configurable
+### GATE-03-AC-02 â€” Occupancy parameters are configurable
 
 **Requirement:** Node capacity `M` (maximum entries) and `m` (minimum entries, `m <= M/2`)
 are configurable at R-tree construction time or compile time. Default values are documented.  
@@ -93,7 +93,7 @@ enforced or asserted.
 
 ---
 
-### GATE-03-AC-03 — An empty tree satisfies structural invariants
+### GATE-03-AC-03 â€” An empty tree satisfies structural invariants
 
 **Requirement:** A newly constructed R-tree has height 0 (or 1 with an empty root),
 zero entries, and passes `validate_structure()`.  
@@ -103,7 +103,7 @@ zero entries, and passes `validate_structure()`.
 
 ---
 
-### GATE-03-AC-04 — MBR recomputation is correct
+### GATE-03-AC-04 â€” MBR recomputation is correct
 
 **Requirement:** A helper function that computes the MBR of a node's entries produces
 the correct union of all entry bounding boxes.  
@@ -114,7 +114,7 @@ expected union.
 
 ---
 
-### GATE-03-AC-05 — validate_structure detects violations
+### GATE-03-AC-05 â€” validate_structure detects violations
 
 **Requirement:** `validate_structure()` detects and reports: entries outside their parent's
 MBR, occupancy violations (too many or too few entries for non-root nodes), incorrect MBRs,
@@ -126,7 +126,7 @@ confirm `validate_structure()` returns false or throws. Repeat for each violatio
 
 ---
 
-### GATE-03-AC-06 — All R-tree code is in the kestrel namespace
+### GATE-03-AC-06 â€” All R-tree code is in the kestrel namespace
 
 **Requirement:** All types and functions from Gate-03 are in the `kestrel` namespace.  
 **Verification:** Read header files; confirm namespace.  
@@ -135,7 +135,7 @@ confirm `validate_structure()` returns false or throws. Repeat for each violatio
 
 ---
 
-### GATE-03-AC-07 — Compilation succeeds with required flags
+### GATE-03-AC-07 â€” Compilation succeeds with required flags
 
 **Requirement:** All Gate-03 files compile without errors or warnings using
 `g++ -std=c++17 -Wall -Wextra -Wpedantic`.  
@@ -155,13 +155,13 @@ confirm `validate_structure()` returns false or throws. Repeat for each violatio
 
 | Criterion | Reviewer Status | Evidence |
 |-----------|----------------|---------|
-| GATE-03-AC-01 | NOT TESTED | — |
-| GATE-03-AC-02 | NOT TESTED | — |
-| GATE-03-AC-03 | NOT TESTED | — |
-| GATE-03-AC-04 | NOT TESTED | — |
-| GATE-03-AC-05 | NOT TESTED | — |
-| GATE-03-AC-06 | NOT TESTED | — |
-| GATE-03-AC-07 | NOT TESTED | — |
+| GATE-03-AC-01 | NOT TESTED | â€” |
+| GATE-03-AC-02 | NOT TESTED | â€” |
+| GATE-03-AC-03 | NOT TESTED | â€” |
+| GATE-03-AC-04 | NOT TESTED | â€” |
+| GATE-03-AC-05 | NOT TESTED | â€” |
+| GATE-03-AC-06 | NOT TESTED | â€” |
+| GATE-03-AC-07 | NOT TESTED | â€” |
 
 ---
 
@@ -173,5 +173,5 @@ confirm `validate_structure()` returns false or throws. Repeat for each violatio
 
 | Action | Owner | Date | Notes |
 |--------|-------|------|-------|
-| Plan approved | PENDING | — | — |
-| Gate PASS approved | PENDING | — | — |
+| Plan approved | PENDING | â€” | â€” |
+| Gate PASS approved | PENDING | â€” | â€” |

@@ -1,11 +1,14 @@
-# GATE-06 — Deletion and Dynamic Updates
+# GATE-06 â€” Deletion and Dynamic Updates
 
-**Gate ID:** GATE-06  
-**Status:** OPEN  
-**Created:** 2026-10-09  
-**Last updated:** 2026-10-09  
+**Gate ID:** GATE-06
+**Status:** IN REVIEW
+**Created:** 2026-10-09
+**Last updated:** 2026-10-10
 
 ---
+
+> **Current Direction Note:** As of the latest architecture decision, KESTREL exclusively uses the native R-tree for spatial queries. The brute-force oracle and related differential comparisons are obsolete. This document remains historically intact.
+
 
 ## Purpose
 
@@ -62,97 +65,97 @@ mixed operation sequences. Continue differential testing against the brute-force
 
 ## Acceptance Criteria
 
-### GATE-06-AC-01 — Removing the only entry leaves an empty tree
+### GATE-06-AC-01 â€” Removing the only entry leaves an empty tree
 
 **Requirement:** After inserting 1 entry and removing it, `search(any_box)` returns empty,
-size=0, and `validate_structure()` passes.  
-**Verification:** Insert 1 entry, remove it, check size and search result.  
-**Status:** NOT TESTED  
+size=0, and `validate_structure()` passes.
+**Verification:** Insert 1 entry, remove it, check size and search result.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-06-AC-02 — Removing entries without underflow maintains invariants
+### GATE-06-AC-02 â€” Removing entries without underflow maintains invariants
 
 **Requirement:** Removing entries from a tree that has more than `m` entries per node does
-not trigger reinsertion. `validate_structure()` passes after removal.  
-**Verification:** Fill a node to M entries; remove one; validate_structure() passes.  
-**Status:** NOT TESTED  
+not trigger reinsertion. `validate_structure()` passes after removal.
+**Verification:** Fill a node to M entries; remove one; validate_structure() passes.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-06-AC-03 — Underflow triggers condensation and reinsertion
+### GATE-06-AC-03 â€” Underflow triggers condensation and reinsertion
 
 **Requirement:** When a node falls below `m` entries after a removal, the node is eliminated
 and its remaining entries are reinserted. The tree is still valid after condensation.
-`validate_structure()` passes.  
+`validate_structure()` passes.
 **Verification:** Construct a scenario where removal causes underflow; verify condensation occurs;
-validate_structure() passes; all remaining entries are still searchable.  
-**Status:** NOT TESTED  
+validate_structure() passes; all remaining entries are still searchable.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-06-AC-04 — Root adjustment occurs when root has one child
+### GATE-06-AC-04 â€” Root adjustment occurs when root has one child
 
 **Requirement:** After a condensation that leaves the root with a single child,
-the child becomes the new root and tree height decreases by one.  
+the child becomes the new root and tree height decreases by one.
 **Verification:** Construct a two-level tree; remove entries until root has one child;
-confirm height decreases; validate_structure() passes.  
-**Status:** NOT TESTED  
+confirm height decreases; validate_structure() passes.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-06-AC-05 — Update is atomic: no stale entries remain
+### GATE-06-AC-05 â€” Update is atomic: no stale entries remain
 
 **Requirement:** After `update(old_box, new_box, entity_id)`, searching with `old_box` does
-not return `entity_id`, and searching with a box overlapping `new_box` returns `entity_id`.  
-**Verification:** Insert entry, update it, verify old location does not return it; new location does.  
-**Status:** NOT TESTED  
+not return `entity_id`, and searching with a box overlapping `new_box` returns `entity_id`.
+**Verification:** Insert entry, update it, verify old location does not return it; new location does.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-06-AC-06 — MBRs and parent links are correct after all operations
+### GATE-06-AC-06 â€” MBRs and parent links are correct after all operations
 
 **Requirement:** After any mixed sequence of insertions, removals, and updates,
-`validate_structure()` passes.  
+`validate_structure()` passes.
 **Verification:** Run a sequence of 50+ mixed operations with fixed seed; validate_structure()
-passes after the sequence.  
-**Status:** NOT TESTED  
+passes after the sequence.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-06-AC-07 — Oracle comparison passes after mixed operations
+### GATE-06-AC-07 â€” Oracle comparison passes after mixed operations
 
 **Requirement:** After any mixed sequence of operations, the R-tree search results match the
-brute-force oracle results for all tested query boxes. No discrepancy is tolerated.  
+brute-force oracle results for all tested query boxes. No discrepancy is tolerated.
 **Verification:** Mirror all operations in the oracle (a set of active entries); run 20+ queries;
-compare results.  
-**Status:** NOT TESTED  
+compare results.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-06-AC-08 — Removing a non-existent entry is handled gracefully
+### GATE-06-AC-08 â€” Removing a non-existent entry is handled gracefully
 
 **Requirement:** Calling `remove` with an ID or bounding box that does not exist in the tree
 does not corrupt the tree. Either an error is returned/thrown, or a no-op with documented
-behaviour occurs.  
-**Verification:** Remove a non-existent entry; validate_structure() still passes.  
-**Status:** NOT TESTED  
+behaviour occurs.
+**Verification:** Remove a non-existent entry; validate_structure() still passes.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-06-AC-09 — Compilation succeeds with required flags
+### GATE-06-AC-09 â€” Compilation succeeds with required flags
 
-**Requirement:** All Gate-06 files compile without errors or warnings.  
-**Verification:** Compile command output; zero warnings expected.  
-**Status:** NOT TESTED  
+**Requirement:** All Gate-06 files compile without errors or warnings.
+**Verification:** Compile command output; zero warnings expected.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -167,25 +170,25 @@ behaviour occurs.
 
 | Criterion | Reviewer Status | Evidence |
 |-----------|----------------|---------|
-| GATE-06-AC-01 | NOT TESTED | — |
-| GATE-06-AC-02 | NOT TESTED | — |
-| GATE-06-AC-03 | NOT TESTED | — |
-| GATE-06-AC-04 | NOT TESTED | — |
-| GATE-06-AC-05 | NOT TESTED | — |
-| GATE-06-AC-06 | NOT TESTED | — |
-| GATE-06-AC-07 | NOT TESTED | — |
-| GATE-06-AC-08 | NOT TESTED | — |
-| GATE-06-AC-09 | NOT TESTED | — |
+| GATE-06-AC-01 | NOT TESTED | â€” |
+| GATE-06-AC-02 | NOT TESTED | â€” |
+| GATE-06-AC-03 | NOT TESTED | â€” |
+| GATE-06-AC-04 | NOT TESTED | â€” |
+| GATE-06-AC-05 | NOT TESTED | â€” |
+| GATE-06-AC-06 | NOT TESTED | â€” |
+| GATE-06-AC-07 | NOT TESTED | â€” |
+| GATE-06-AC-08 | NOT TESTED | â€” |
+| GATE-06-AC-09 | NOT TESTED | â€” |
 
 ---
 
 ## Final Decision
 
-**Gate status:** OPEN  
+**Gate status:** OPEN
 
 ## Owner Approval Record
 
 | Action | Owner | Date | Notes |
 |--------|-------|------|-------|
-| Plan approved | PENDING | — | — |
-| Gate PASS approved | PENDING | — | — |
+| Plan approved | PENDING | â€” | â€” |
+| Gate PASS approved | PENDING | â€” | â€” |

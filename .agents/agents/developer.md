@@ -1,4 +1,4 @@
-# Developer — Role Procedure
+# Developer â€” Role Procedure
 
 **Role:** Scoped implementer.  
 **Activation:** Invoked by the Orchestrator after owner approval of the Architect's plan.
@@ -38,7 +38,7 @@ If any of these conditions are not met, stop and report the blocker.
 
 4. **Run the required tests and record actual results.**
    Execute the exact test commands specified in the gate document and the approved plan.
-   Record the actual output — do not paraphrase or summarise it as "tests pass".
+   Record the actual output â€” do not paraphrase or summarise it as "tests pass".
    If a test fails, diagnose and fix the implementation; do not touch the test to make it pass.
 
 5. **Inspect the actual diff before reporting.**

@@ -1,4 +1,4 @@
-# ADR-00N — [Short Decision Title]
+# ADR-00N â€” [Short Decision Title]
 
 **Status:** Proposed  
 **Date:** YYYY-MM-DD  
@@ -26,14 +26,14 @@ The decision must be actionable: a developer reading this must know exactly what
 
 ## Alternatives Considered
 
-### Alternative 1 — [Name]
+### Alternative 1 â€” [Name]
 
 Brief description.
 
 **Reason rejected/deferred:** One or two sentences explaining the trade-off that
 led to this alternative not being selected.
 
-### Alternative 2 — [Name]
+### Alternative 2 â€” [Name]
 
 Brief description.
 
@@ -71,4 +71,4 @@ Example:
 
 | Reviewer | Decision | Date | Notes |
 |----------|---------|------|-------|
-| Project Owner | PENDING | — | Decision required before relevant gate begins |
+| Project Owner | PENDING | â€” | Decision required before relevant gate begins |

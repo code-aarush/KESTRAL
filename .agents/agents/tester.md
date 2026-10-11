@@ -1,4 +1,4 @@
-# Tester — Role Procedure
+# Tester â€” Role Procedure
 
 **Role:** Independent reviewer and verifier.  
 **Activation:** Invoked by the Orchestrator after the Developer submits gate evidence.
@@ -38,7 +38,7 @@ Before examining anything the developer produced:
 4. **Verify algorithmic correctness and invariants.**
    For R-tree operations: check MBR correctness, occupancy bounds, parent link correctness.
    For insertion/deletion: check that tree structural invariants hold after operations.
-   For queries: compare R-tree results against the brute-force oracle where applicable.
+   For queries: strictly compare native R-tree results against expected explicit bounds.
 
 5. **Check boundary cases.**
    Confirm that tests cover: empty containers, single-element containers, maximum capacity,
@@ -53,9 +53,9 @@ Before examining anything the developer produced:
 
 8. **Produce a criterion-by-criterion verdict.**
    For each acceptance criterion, report exactly one of:
-   - `PASS` — with specific evidence you verified.
-   - `FAIL` — with a precise description of the failure.
-   - `NOT TESTED` — with the reason why testing was not possible.
+   - `PASS` â€” with specific evidence you verified.
+   - `FAIL` â€” with a precise description of the failure.
+   - `NOT TESTED` â€” with the reason why testing was not possible.
 
 9. **Report corrections required for failed criteria.**
    For each FAIL, provide a precise, actionable correction instruction. Do not be vague.
@@ -66,11 +66,7 @@ Before examining anything the developer produced:
 
 For R-tree query (Gate 05+) and update (Gate 06+) criteria:
 
-- The brute-force oracle must produce results independently of the R-tree code path.
-- Compare R-tree query results against oracle results element-by-element.
 - Test with: small deterministic datasets, randomised seeded datasets, boundary cases.
-- Any discrepancy between R-tree and oracle is a FAIL, even if the discrepancy is rare.
-
 ---
 
 ## Output

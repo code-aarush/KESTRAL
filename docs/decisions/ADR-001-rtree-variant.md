@@ -1,8 +1,8 @@
 # ADR-001 - R-tree Variant
 
-**Status:** Accepted  
-**Date:** 2026-10-09  
-**Last updated:** 2026-10-10  
+**Status:** Accepted
+**Date:** 2026-10-09
+**Last updated:** 2026-10-10
 **Formally approved by Project Owner on 2026-10-10.**
 
 ---
@@ -59,7 +59,7 @@ Implement a conventional, dynamic, in-memory 2D R-tree using:
 - Significantly better query performance than the original R-tree due to:
   forced reinsertion, overlap minimisation, and margin-based split.
 - **Deferred:** Implementing R*-tree requires substantially more complexity.
-  The research question focuses on R-tree vs brute-force, not R-tree vs R*-tree.
+  The research question focuses on native R-tree load capacity, not R-tree vs R*-tree.
   If results justify it, R*-tree can be introduced as a later extension with owner approval.
 
 ### Alternative 3 — Third-Party Library (e.g., Boost.Geometry, libspatialindex)
@@ -80,12 +80,11 @@ Implement a conventional, dynamic, in-memory 2D R-tree using:
 **Benefits:**
 - Quadratic split is well-documented, teachable, and defensible.
 - The implementation is manageable within the project timeline.
-- Correctness can be verified against a brute-force oracle at each gate.
+- Correctness can be verified deterministically at each gate.
 
 **Risks:**
 - Quadratic split is slower than R*-tree for large datasets.
-  This is acceptable because performance comparison is against brute-force, not against
-  an optimised R-tree variant.
+  This is acceptable because performance comparison establishes baseline native R-tree latency under structural load.
 - Node capacity (m, M) significantly affects both query performance and tree structure.
   Owner must choose values intentionally (OD-003) rather than arbitrarily.
 
@@ -101,7 +100,7 @@ Implement a conventional, dynamic, in-memory 2D R-tree using:
 
 Gate 03 will verify that the node and entry data structures satisfy structural invariants.
 Gate 04 will verify that insertion and quadratic splitting preserve tree invariants.
-Gate 05 will verify that range queries return correct results compared to the brute-force oracle.
+Gate 05 will verify that range queries return correct deterministic results.
 Gate 06 will verify that deletion and updates maintain consistency.
 
 ---

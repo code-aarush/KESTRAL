@@ -1,0 +1,4 @@
+size,build_ms,update_ms,region_us,region_nodes,nearby_us,nearby_nodes,nearby_narrow,corridor_us,corridor_nodes,corridor_narrow
+100,0.363,0.260,0.570,0.003,0.923,0.004,1.268,10.745,0.007,12.858
+1000,4.540,3.953,1.796,0.009,4.318,0.010,12.642,93.731,0.025,126.920
+10000,53.180,61.609,6.034,0.040,28.863,0.045,125.813,935.111,0.164,1264.294

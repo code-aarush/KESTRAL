@@ -14,35 +14,35 @@ The agent must follow every step in order. Do not skip steps. Do not edit source
 
 ---
 
-## Step 1 — Read Project Context
+## Step 1 â€” Read Project Context
 
 1. Read `PROJECT_SSOT.md` and identify the active gate number, its status, and the
    current toolchain details (compiler, standard, build tool).
 2. Confirm the gate is OPEN. If it is not OPEN, stop and report the current status.
 3. Read `docs/architecture/ARCHITECTURE.md`.
 
-## Step 2 — Read the Gate Specification
+## Step 2 â€” Read the Gate Specification
 
 1. Open `docs/gates/GATE-NN.md` for the active gate.
 2. Extract every acceptance criterion verbatim, with its criterion ID (e.g., `GATE-01-AC-03`).
 3. Note the gate's prerequisites, dependencies, scope, and explicit exclusions.
 4. Note the required test commands and expected observable properties.
 
-## Step 3 — Read Relevant ADRs
+## Step 3 â€” Read Relevant ADRs
 
 1. Identify which ADRs are listed in the gate specification.
 2. Read each referenced ADR from `docs/decisions/`.
-3. Note any decisions that are still Proposed (not Accepted) — these may require owner
+3. Note any decisions that are still Proposed (not Accepted) â€” these may require owner
    approval before implementation proceeds.
 
-## Step 4 — Examine Existing Code and Tests
+## Step 4 â€” Examine Existing Code and Tests
 
 1. List and read all existing files in `src/`, `tests/`, and `benchmarks/`.
 2. Identify what already exists that the gate can build on.
 3. Identify what must be added or modified to satisfy the acceptance criteria.
 4. Note any existing test infrastructure.
 
-## Step 5 — Apply the MNI Five-Question Check
+## Step 5 â€” Apply the MNI Five-Question Check
 
 For every proposed file, class, function, or addition:
 
@@ -54,7 +54,7 @@ For every proposed file, class, function, or addition:
 
 Only proceed with items that pass all five questions.
 
-## Step 6 — Produce the Implementation Plan
+## Step 6 â€” Produce the Implementation Plan
 
 Output a structured plan containing:
 
@@ -81,7 +81,7 @@ owner approval before implementation. Do not resolve these by assumption.
 ### 6f. Test Commands
 Specify exact commands or documented fallback commands (e.g., direct `g++` invocation).
 
-## Step 7 — Stop
+## Step 7 â€” Stop
 
 Do not modify any source file, test file, or documentation file.
 Submit the plan to the Orchestrator for owner approval.

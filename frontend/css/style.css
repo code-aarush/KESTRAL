@@ -1,0 +1,266 @@
+/* KESTREL Mission Control Visualization Stylesheet */
+:root {
+    --bg-primary: #0a0e17;
+    --bg-secondary: #121826;
+    --bg-card: #182234;
+    --border-color: #24344d;
+    --border-highlight: #3b5278;
+    --text-primary: #f0f4fc;
+    --text-secondary: #9ab0d3;
+    --text-muted: #5e7399;
+    --accent-blue: #00b0ff;
+    --accent-green: #00e676;
+    --accent-red: #ff1744;
+    --accent-magenta: #e040fb;
+    --accent-yellow: #ffd600;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+}
+
+.mission-header {
+    width: 100%;
+    max-width: 900px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 14px;
+}
+
+.title-group h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.title-group h1 .badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(0, 176, 255, 0.15);
+    border: 1px solid rgba(0, 176, 255, 0.4);
+    color: var(--accent-blue);
+    letter-spacing: 1px;
+}
+
+.title-group p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.mission-clock {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.control-panel {
+    width: 100%;
+    max-width: 900px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.button-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+button {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border-highlight);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+button:hover {
+    background: #202d45;
+    border-color: var(--accent-blue);
+    color: #fff;
+}
+
+button.primary {
+    background: #0066cc;
+    border-color: #0088ff;
+}
+
+button.primary:hover {
+    background: #0077ee;
+}
+
+.status-badge {
+    margin-left: auto;
+    font-size: 12px;
+    font-family: monospace;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: #111a29;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #555;
+}
+
+.status-dot.success {
+    background: var(--accent-green);
+    box-shadow: 0 0 8px var(--accent-green);
+}
+
+.status-dot.loading {
+    background: var(--accent-yellow);
+    box-shadow: 0 0 8px var(--accent-yellow);
+}
+
+.status-dot.error {
+    background: var(--accent-red);
+    box-shadow: 0 0 8px var(--accent-red);
+}
+
+.layers-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+
+.layers-bar label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.legend-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+.legend-swatch.entity {
+    background: rgba(0, 230, 118, 0.6);
+    border: 1px solid var(--accent-green);
+}
+
+.legend-swatch.leaf {
+    background: transparent;
+    border: 1.5px solid var(--accent-magenta);
+}
+
+.legend-swatch.internal {
+    background: transparent;
+    border: 1.5px dashed #ffffff;
+}
+
+.legend-swatch.query {
+    background: rgba(255, 214, 0, 0.2);
+    border: 1.5px solid var(--accent-yellow);
+}
+
+.legend-swatch.result {
+    background: rgba(255, 23, 68, 0.85);
+    border: 1.5px solid var(--accent-red);
+}
+
+.canvas-container {
+    width: 100%;
+    max-width: 900px;
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    background: #04070d;
+}
+
+canvas#radar {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    background: #04070d;
+}
+
+.telemetry-bar {
+    width: 100%;
+    max-width: 900px;
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+}
+
+.metric-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px 14px;
+}
+
+.metric-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.metric-value {
+    font-size: 16px;
+    font-family: monospace;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-top: 4px;
+}

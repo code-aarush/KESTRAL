@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KESTREL — Mission Control Visualization</title>
+    <link rel="stylesheet" href="css/style.css?v=4">
+</head>
+<body>
+    <header class="mission-header">
+        <div class="title-group">
+            <h1>
+                KESTREL Mission Control
+                <span class="badge">GATE-10</span>
+            </h1>
+            <p>Kepler Exploration — Spatial Tree for Risk Evaluation and Localization</p>
+        </div>
+        <div class="mission-clock" id="missionClock">SYS: READY</div>
+    </header>
+
+    <div class="control-panel">
+        <div class="button-bar">
+            <button id="btnLoad" class="primary" title="Fetch state.json from server">
+                <span>⟳</span> Load state.json
+            </button>
+            <button id="btnBrowse" title="Load local state.json file without server">
+                <span>📁</span> Upload JSON
+            </button>
+            <input type="file" id="fileInput" accept=".json" style="display:none;">
+
+            <div class="status-badge">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="status">Waiting for data...</span>
+            </div>
+        </div>
+
+        <div class="layers-bar">
+            <label>
+                <input type="checkbox" id="layerEntities" checked>
+                <span class="legend-swatch entity"></span> Active Entities
+            </label>
+            <label>
+                <input type="checkbox" id="layerResults" checked>
+                <span class="legend-swatch result"></span> Query Results
+            </label>
+            <label>
+                <input type="checkbox" id="layerLeaf" checked>
+                <span class="legend-swatch leaf"></span> Leaf MBRs
+            </label>
+            <label>
+                <input type="checkbox" id="layerInternal" checked>
+                <span class="legend-swatch internal"></span> Internal MBRs
+            </label>
+            <label>
+                <input type="checkbox" id="layerQuery" checked>
+                <span class="legend-swatch query"></span> Query Region
+            </label>
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="radar" width="800" height="600"></canvas>
+    </div>
+
+    <div class="telemetry-bar">
+        <div class="metric-card">
+            <div class="metric-label">Active Entities</div>
+            <div class="metric-value" id="valEntities">—</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Query Matched</div>
+            <div class="metric-value" id="valResults" style="color: var(--accent-red);">—</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Leaf MBRs</div>
+            <div class="metric-value" id="valLeaf" style="color: var(--accent-magenta);">—</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Internal MBRs</div>
+            <div class="metric-value" id="valInternal">—</div>
+        </div>
+    </div>
+
+    <script src="app.js?v=4"></script>
+</body>
+</html>

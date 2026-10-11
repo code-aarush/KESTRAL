@@ -1,9 +1,9 @@
-# GATE-NN — [Gate Title]
+# GATE-NN â€” [Gate Title]
 
-**Gate ID:** GATE-NN  
-**Status:** OPEN  
-**Created:** YYYY-MM-DD  
-**Last updated:** YYYY-MM-DD  
+**Gate ID:** GATE-NN
+**Status:** OPEN
+**Created:** YYYY-MM-DD
+**Last updated:** YYYY-MM-DD
 
 ---
 
@@ -73,29 +73,29 @@ cd build && ctest --output-on-failure
 
 Each criterion must have a stable ID. Do not change IDs after gate planning begins.
 
-### GATE-NN-AC-01 — [Criterion title]
+### GATE-NN-AC-01 â€” [Criterion title]
 
-**Requirement:** One sentence describing what must be true.  
-**Verification:** How to verify it: exact command, output property, or observable behaviour.  
-**Status:** NOT TESTED  
+**Requirement:** One sentence describing what must be true.
+**Verification:** How to verify it: exact command, output property, or observable behaviour.
+**Status:** NOT TESTED
 **Evidence:** [To be populated during/after implementation]
 
 ---
 
-### GATE-NN-AC-02 — [Criterion title]
+### GATE-NN-AC-02 â€” [Criterion title]
 
-**Requirement:** ...  
-**Verification:** ...  
-**Status:** NOT TESTED  
+**Requirement:** ...
+**Verification:** ...
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-NN-AC-03 — [Criterion title]
+### GATE-NN-AC-03 â€” [Criterion title]
 
-**Requirement:** ...  
-**Verification:** ...  
-**Status:** NOT TESTED  
+**Requirement:** ...
+**Verification:** ...
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -120,9 +120,9 @@ Each criterion must have a stable ID. Do not change IDs after gate planning begi
 
 | Criterion | Reviewer Status | Reviewer Evidence |
 |-----------|----------------|-----------------|
-| GATE-NN-AC-01 | NOT TESTED | — |
-| GATE-NN-AC-02 | NOT TESTED | — |
-| GATE-NN-AC-03 | NOT TESTED | — |
+| GATE-NN-AC-01 | NOT TESTED | â€” |
+| GATE-NN-AC-02 | NOT TESTED | â€” |
+| GATE-NN-AC-03 | NOT TESTED | â€” |
 
 **Reviewer notes:**
 
@@ -134,14 +134,14 @@ Each criterion must have a stable ID. Do not change IDs after gate planning begi
 
 | ID | Description | Severity | Status |
 |----|-------------|---------|--------|
-| — | None identified | — | — |
+| â€” | None identified | â€” | â€” |
 
 ---
 
 ## Final Decision
 
-**Gate status:** OPEN  
-**Authorised next step:** [Describe what happens next — e.g., "Plan Gate NN+1 only after owner approval."]  
+**Gate status:** OPEN
+**Authorised next step:** [Describe what happens next â€” e.g., "Plan Gate NN+1 only after owner approval."]
 
 ---
 
@@ -149,5 +149,5 @@ Each criterion must have a stable ID. Do not change IDs after gate planning begi
 
 | Action | Owner | Date | Notes |
 |--------|-------|------|-------|
-| Plan approved | PENDING | — | — |
-| Gate PASS approved | PENDING | — | — |
+| Plan approved | PENDING | â€” | â€” |
+| Gate PASS approved | PENDING | â€” | â€” |

@@ -1,16 +1,16 @@
-# ADR-002 � Geometry Model
+# ADR-002 — Geometry Model
 
-**Status:** Accepted  
-**Date:** 2026-10-09  
-**Last updated:** 2026-10-10  
+**Status:** Accepted
+**Date:** 2026-10-09
+**Last updated:** 2026-10-10
 **Formally approved by Project Owner on 2026-10-10.**
 
 ---
 
 ## Context
 
-KESTREL operates in a 2D simulated space. All spatial operations � entity bounds,
-R-tree MBRs, range queries, and trajectory corridors � depend on a well-defined
+KESTREL operates in a 2D simulated space. All spatial operations — entity bounds,
+R-tree MBRs, range queries, and trajectory corridors — depend on a well-defined
 geometry model. Inconsistent or undocumented boundary semantics are a common source
 of correctness defects in spatial data structures.
 
@@ -60,7 +60,7 @@ are to be added without a gate criterion requiring them.
 | `contains` | `bool contains(BoundingBox outer, BoundingBox inner)` | True iff inner is fully within outer |
 | `enlargement` | `double enlargement(BoundingBox base, BoundingBox to_add)` | `area(union_of(base, to_add)) - area(base)` |
 
-### Boundary Intersection Semantics (Critical � must be tested)
+### Boundary Intersection Semantics (Critical — must be tested)
 
 **Proposed: closed (inclusive) boundaries.**
 

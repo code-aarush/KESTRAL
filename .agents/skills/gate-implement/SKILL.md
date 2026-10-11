@@ -14,7 +14,7 @@ Follow every step in order. Do not skip steps. Do not begin the next gate.
 
 ---
 
-## Step 1 — Confirm Approval and Read Context
+## Step 1 â€” Confirm Approval and Read Context
 
 1. Confirm that the owner has explicitly approved the implementation plan for the active gate.
    If not confirmed, stop and request approval.
@@ -22,13 +22,13 @@ Follow every step in order. Do not skip steps. Do not begin the next gate.
 3. Read the gate specification (`docs/gates/GATE-NN.md`) and extract all acceptance criteria.
 4. Read the relevant ADRs and rules (`minimal-code.md`, `gate-discipline.md`, `cpp-standards.md`).
 
-## Step 2 — Verify the Working Tree
+## Step 2 â€” Verify the Working Tree
 
 1. Inspect the current state of all relevant files.
 2. Confirm there are no unrelated uncommitted changes that could be accidentally included.
 3. Note what already exists in `src/`, `tests/`, and `benchmarks/`.
 
-## Step 3 — Implement Approved Scope Only
+## Step 3 â€” Implement Approved Scope Only
 
 1. Create or modify only the files listed in the approved plan.
 2. For each addition, apply the MNI five-question check (see `minimal-code.md`).
@@ -38,7 +38,7 @@ Follow every step in order. Do not skip steps. Do not begin the next gate.
 5. Do not add anything not in the approved plan. If an additional item seems necessary,
    stop, document the need, and escalate to the owner before adding it.
 
-## Step 4 — Add Targeted Tests
+## Step 4 â€” Add Targeted Tests
 
 1. For every new function or behaviour, add at least one positive test and one failure/boundary test.
 2. Tests must be deterministic. Use fixed seeds for randomised inputs.
@@ -46,25 +46,25 @@ Follow every step in order. Do not skip steps. Do not begin the next gate.
 4. Tests must check values, not merely that execution does not crash.
 5. Do not weaken or mock tests to produce a pass. Fix the implementation.
 
-## Step 5 — Build and Run Tests
+## Step 5 â€” Build and Run Tests
 
 1. Compile using the verified toolchain command from the gate specification or plan.
    If CMake is available: `cmake -B build -G "MinGW Makefiles" && cmake --build build`.
    If CMake is not available: use direct `g++` commands as specified in the plan.
 2. Run all required tests using the exact commands from the gate specification.
-3. Record the actual, complete test output — do not paraphrase.
+3. Record the actual, complete test output â€” do not paraphrase.
 4. If a test fails: diagnose the root cause in the implementation and fix it.
    Do not modify the test to suppress the failure.
 5. Re-run tests after any fix. Record the new output.
 
-## Step 6 — Inspect the Diff
+## Step 6 â€” Inspect the Diff
 
 1. Review all changed files.
 2. Confirm the diff contains only changes required by the approved plan.
 3. Remove any debug artifacts, commented-out code, or accidental changes.
 4. Confirm no unrelated files were modified.
 
-## Step 7 — Report Evidence
+## Step 7 â€” Report Evidence
 
 Produce a report containing:
 
@@ -77,7 +77,7 @@ Produce a report containing:
 - **Diff summary:** files changed, lines added/removed.
 - **Open issues:** any blockers, ambiguities, or decisions required.
 
-## Step 8 — Stop and Submit
+## Step 8 â€” Stop and Submit
 
 Do not declare the gate PASS.
 Do not begin the next gate.

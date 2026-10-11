@@ -1,8 +1,8 @@
-# ADR-003 � Entity Storage and Indexing
+# ADR-003 — Entity Storage and Indexing
 
-**Status:** Accepted  
-**Date:** 2026-10-09  
-**Last updated:** 2026-10-10  
+**Status:** Accepted
+**Date:** 2026-10-09
+**Last updated:** 2026-10-10
 **Formally approved by Project Owner on 2026-10-10.**
 
 ---
@@ -15,7 +15,7 @@ has an ID, spatial coordinates, and a bounding box. The system must:
 1. Store and retrieve entity records by ID.
 2. Maintain a spatial index (R-tree) over entity bounding boxes.
 3. Keep the entity store and the spatial index consistent at all times.
-4. Support the brute-force oracle (linear scan over all entities).
+4. Support iteration for simulation consistency checks.
 
 The key architectural decision is how to structure entity storage separately from the
 spatial index, and how to enforce consistency between them.
@@ -62,7 +62,7 @@ namespace kestrel {
         void remove(int id);
         const Entity& get(int id) const;  // throws or aborts if not found
         bool contains(int id) const;
-        // Iterator access for brute-force oracle
+        // Iterator access for simulation consistency verification
         auto begin() const;
         auto end() const;
         std::size_t size() const;
@@ -95,7 +95,7 @@ adding complexity not justified by any current criterion.
 
 Maintaining this invariant is the responsibility of the code that calls both the store
 and the R-tree. This coordination logic lives outside both components (in the simulator
-or a fa�ade � to be determined at the relevant gate).
+or a façade — to be determined at the relevant gate).
 
 **Update consistency:**
 When an entity moves, the following must happen atomically from the perspective of the
@@ -112,19 +112,19 @@ defined at Gate 06 or 07, whichever introduces movement.
 
 ## Alternatives Considered
 
-### Alternative 1 � Embed the R-tree entry in the Entity struct
+### Alternative 1 — Embed the R-tree entry in the Entity struct
 - Tighter coupling between entity data and spatial index.
 - Makes it harder to test the R-tree independently of entity logic.
 - **Rejected:** Separation allows the R-tree to be tested with minimal entity objects
   (just IDs and bounding boxes), improving testability.
 
-### Alternative 2 � Intrusive list or array-based store with ID-to-index mapping
+### Alternative 2 — Intrusive list or array-based store with ID-to-index mapping
 - Potentially better cache locality for iteration.
 - More complex to implement correctly with dynamic insertions and deletions.
 - **Rejected:** The complexity is not justified by any current requirement.
   Cache locality matters at benchmarking time; if it becomes relevant, reconsider at Gate 09.
 
-### Alternative 3 � Store entity records inside R-tree leaf nodes
+### Alternative 3 — Store entity records inside R-tree leaf nodes
 - Eliminates the separate lookup step after a query.
 - Tightly couples R-tree internals to entity representation.
 - Complicates node splitting (entity data moves with entries).
@@ -137,14 +137,14 @@ defined at Gate 06 or 07, whichever introduces movement.
 
 **Benefits:**
 - Clean separation makes both components independently testable.
-- The brute-force oracle iterates the entity store directly without touching the R-tree.
+- Simulation consistency checks iterate the entity store directly without touching the R-tree.
 - Entity store and R-tree can be modified independently at different gates without
   breaking each other's interface.
 
 **Risks:**
 - Consistency between the store and R-tree requires discipline. Every code path that
   modifies one must also update the other. Tests must explicitly verify the invariant.
-- `std::unordered_map` has non-deterministic iteration order. **Policy:** All tests and benchmarks comparing R-tree query results with the brute-force oracle MUST sort entity ID lists before asserting equality.
+- `std::unordered_map` has non-deterministic iteration order. **Policy:** All tests verifying exact explicit results MUST sort entity ID lists before asserting equality.
 
 ---
 
@@ -166,4 +166,4 @@ Gate 06 will verify the consistency invariant with mixed insert/update/remove se
 
 | Reviewer | Decision | Date | Notes |
 |----------|---------|------|-------|
-| Project Owner | ACCEPTED | 2026-10-10 | Formally accepted with sorted oracle comparison policy |
+| Project Owner | ACCEPTED | 2026-10-10 | Formally accepted with sorted explicit comparison policy |

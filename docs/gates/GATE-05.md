@@ -1,11 +1,14 @@
-# GATE-05 — Range Queries and Pruning
+# GATE-05 â€” Range Queries and Pruning
 
-**Gate ID:** GATE-05  
-**Status:** OPEN  
-**Created:** 2026-10-09  
-**Last updated:** 2026-10-09  
+**Gate ID:** GATE-05
+**Status:** IN REVIEW
+**Created:** 2026-10-09
+**Last updated:** 2026-10-10
 
 ---
+
+> **Current Direction Note:** As of the latest architecture decision, KESTREL exclusively uses the native R-tree for spatial queries. The brute-force oracle and related differential comparisons are obsolete. This document remains historically intact.
+
 
 ## Purpose
 
@@ -60,85 +63,85 @@ require differential testing against the oracle.
 
 ## Acceptance Criteria
 
-### GATE-05-AC-01 — Empty-tree query returns empty result
+### GATE-05-AC-01 â€” Empty-tree query returns empty result
 
-**Requirement:** `search(any_box)` on an empty tree returns an empty list.  
-**Verification:** Construct empty tree; call search; confirm empty result.  
-**Status:** NOT TESTED  
+**Requirement:** `search(any_box)` on an empty tree returns an empty list.
+**Verification:** Construct empty tree; call search; confirm empty result.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-05-AC-02 — Query returns all matching entries
+### GATE-05-AC-02 â€” Query returns all matching entries
 
 **Requirement:** For any query box, `search` returns exactly the entries whose bounding
-boxes intersect the query box (per ADR-002 boundary semantics). No false negatives.  
+boxes intersect the query box (per ADR-002 boundary semantics). No false negatives.
 **Verification:** Compare against brute-force oracle on a deterministic dataset of 20 entries
-with 5 different query boxes including boundary-touching cases.  
-**Status:** NOT TESTED  
+with 5 different query boxes including boundary-touching cases.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-05-AC-03 — Query returns no false positives
+### GATE-05-AC-03 â€” Query returns no false positives
 
 **Requirement:** `search` returns no entity IDs whose bounding boxes do not intersect the
-query box.  
+query box.
 **Verification:** Oracle comparison on the same test cases as AC-02. Any ID in R-tree result
-not in oracle result is a false positive.  
-**Status:** NOT TESTED  
+not in oracle result is a false positive.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-05-AC-04 — No duplicate IDs in query result
+### GATE-05-AC-04 â€” No duplicate IDs in query result
 
-**Requirement:** `search` never returns the same entity ID more than once for a single query.  
-**Verification:** Check result list for duplicates on all test datasets.  
-**Status:** NOT TESTED  
+**Requirement:** `search` never returns the same entity ID more than once for a single query.
+**Verification:** Check result list for duplicates on all test datasets.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-05-AC-05 — Query on boundary-touching boxes is correct
+### GATE-05-AC-05 â€” Query on boundary-touching boxes is correct
 
 **Requirement:** A query box that shares only an edge or corner with an entry's bounding
 box returns that entry (per ADR-002 closed boundary semantics).
-A query box that does not touch any entry returns an empty result.  
-**Verification:** Construct specific boundary-touching cases; verify against oracle.  
-**Status:** NOT TESTED  
+A query box that does not touch any entry returns an empty result.
+**Verification:** Construct specific boundary-touching cases; verify against oracle.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-05-AC-06 — Oracle comparison passes on randomised seeded dataset
+### GATE-05-AC-06 â€” Oracle comparison passes on randomised seeded dataset
 
 **Requirement:** On a dataset of at least 100 entries with positions generated using a
 fixed seed, the R-tree search and the brute-force oracle return identical results for
-at least 20 different randomly generated query boxes. No discrepancy is tolerated.  
-**Verification:** Run the seeded test; output oracle vs R-tree result comparison; zero discrepancies.  
-**Status:** NOT TESTED  
+at least 20 different randomly generated query boxes. No discrepancy is tolerated.
+**Verification:** Run the seeded test; output oracle vs R-tree result comparison; zero discrepancies.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-05-AC-07 — Nodes visited metric is recorded
+### GATE-05-AC-07 â€” Nodes visited metric is recorded
 
 **Requirement:** The search function tracks the number of nodes visited. This value is
-accessible and non-zero for any non-empty tree query that touches at least one node.  
+accessible and non-zero for any non-empty tree query that touches at least one node.
 **Verification:** After a successful query, confirm the nodes-visited counter is > 0 and
-plausible relative to tree height.  
-**Status:** NOT TESTED  
+plausible relative to tree height.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
 
-### GATE-05-AC-08 — Compilation succeeds with required flags
+### GATE-05-AC-08 â€” Compilation succeeds with required flags
 
 **Requirement:** All Gate-05 files compile without errors or warnings using
-`g++ -std=c++17 -Wall -Wextra -Wpedantic`.  
-**Verification:** Compile output; zero warnings expected.  
-**Status:** NOT TESTED  
+`g++ -std=c++17 -Wall -Wextra -Wpedantic`.
+**Verification:** Compile output; zero warnings expected.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -153,24 +156,24 @@ plausible relative to tree height.
 
 | Criterion | Reviewer Status | Evidence |
 |-----------|----------------|---------|
-| GATE-05-AC-01 | NOT TESTED | — |
-| GATE-05-AC-02 | NOT TESTED | — |
-| GATE-05-AC-03 | NOT TESTED | — |
-| GATE-05-AC-04 | NOT TESTED | — |
-| GATE-05-AC-05 | NOT TESTED | — |
-| GATE-05-AC-06 | NOT TESTED | — |
-| GATE-05-AC-07 | NOT TESTED | — |
-| GATE-05-AC-08 | NOT TESTED | — |
+| GATE-05-AC-01 | NOT TESTED | â€” |
+| GATE-05-AC-02 | NOT TESTED | â€” |
+| GATE-05-AC-03 | NOT TESTED | â€” |
+| GATE-05-AC-04 | NOT TESTED | â€” |
+| GATE-05-AC-05 | NOT TESTED | â€” |
+| GATE-05-AC-06 | NOT TESTED | â€” |
+| GATE-05-AC-07 | NOT TESTED | â€” |
+| GATE-05-AC-08 | NOT TESTED | â€” |
 
 ---
 
 ## Final Decision
 
-**Gate status:** OPEN  
+**Gate status:** OPEN
 
 ## Owner Approval Record
 
 | Action | Owner | Date | Notes |
 |--------|-------|------|-------|
-| Plan approved | PENDING | — | — |
-| Gate PASS approved | PENDING | — | — |
+| Plan approved | PENDING | â€” | â€” |
+| Gate PASS approved | PENDING | â€” | â€” |

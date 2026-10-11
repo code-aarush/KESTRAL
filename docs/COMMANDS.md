@@ -1,4 +1,4 @@
-# KESTREL — Gate Invocation Commands
+# KESTREL â€” Gate Invocation Commands
 
 These three commands are the canonical way to invoke the KESTREL gate workflow.
 Each command is self-contained: the agent reads persistent context from `PROJECT_SSOT.md`,
@@ -14,16 +14,16 @@ Type the command text below directly into the Antigravity chat. Replace `NN` wit
 actual two-digit gate number (e.g., `01`, `04`, `11`).
 
 The Antigravity agent will automatically discover and load:
-- `.agents/rules/minimal-code.md` — MNI policy
-- `.agents/rules/gate-discipline.md` — gate acceptance protocol
-- `.agents/rules/cpp-standards.md` — C++ standards
-- `.agents/skills/gate-plan/SKILL.md` — on-demand when gate-plan is activated
-- `.agents/skills/gate-implement/SKILL.md` — on-demand when gate-implement is activated
-- `.agents/skills/gate-review/SKILL.md` — on-demand when gate-review is activated
+- `.agents/rules/minimal-code.md` â€” MNI policy
+- `.agents/rules/gate-discipline.md` â€” gate acceptance protocol
+- `.agents/rules/cpp-standards.md` â€” C++ standards
+- `.agents/skills/gate-plan/SKILL.md` â€” on-demand when gate-plan is activated
+- `.agents/skills/gate-implement/SKILL.md` â€” on-demand when gate-implement is activated
+- `.agents/skills/gate-review/SKILL.md` â€” on-demand when gate-review is activated
 
 ---
 
-## Command 1 — Plan
+## Command 1 â€” Plan
 
 ```
 Plan Gate NN only. Read the SSOT, gate specification, relevant ADRs, existing code, and gate-plan skill. Do not modify source files. Return the minimum implementation plan and criterion-to-test mapping.
@@ -40,7 +40,7 @@ issuing the Implement command.
 
 ---
 
-## Command 2 — Implement
+## Command 2 â€” Implement
 
 ```
 Implement the explicitly approved Gate NN plan only. Follow repository rules and gate-implement skill. Run required tests, inspect the diff, and report actual evidence. Do not begin the next gate or approve the gate.
@@ -59,7 +59,7 @@ Declare the gate PASS.
 
 ---
 
-## Command 3 — Review
+## Command 3 â€” Review
 
 ```
 Independently review Gate NN against every acceptance criterion. Follow gate-review skill. Inspect the actual diff and execute relevant tests. Return PASS, FAIL, or NOT TESTED for every criterion with evidence. Do not assume the developer report is correct.

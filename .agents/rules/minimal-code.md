@@ -1,7 +1,7 @@
 # Rule: Minimum Necessary Implementation (MNI)
 
 **Scope:** This rule applies to every agent, developer, and reviewer in this repository at all times.
-**Priority:** Highest — supersedes stylistic preferences and convenience.
+**Priority:** Highest â€” supersedes stylistic preferences and convenience.
 
 ---
 
@@ -56,7 +56,7 @@ Do not add any of the following without an explicitly approved, criterion-linked
 
 - Implement only the currently authorised gate.
 - Prefer straightforward C++ and descriptive names over clever or compressed code.
-- Use comments for non-obvious algorithms, invariants, and design decisions —
+- Use comments for non-obvious algorithms, invariants, and design decisions â€”
   not to narrate every line of obvious code.
 - Do not duplicate logic that already has a clear, reusable implementation.
 - Keep functions short enough to be understandable, not short by an arbitrary line count.

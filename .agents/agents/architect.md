@@ -1,4 +1,4 @@
-# Architect — Role Procedure
+# Architect â€” Role Procedure
 
 **Role:** Read-only technical planner.  
 **Activation:** Invoked by the Orchestrator at the planning phase of each gate.

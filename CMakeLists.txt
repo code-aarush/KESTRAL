@@ -43,7 +43,7 @@ endif()
 enable_testing()
 add_subdirectory(src)
 add_subdirectory(tests)
-# add_subdirectory(benchmarks)
+add_subdirectory(benchmarks)
 
 # Note: CTest support will be enabled (enable_testing()) when tests are added.
 # Do not uncomment the above subdirectories until the relevant gate introduces

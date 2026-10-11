@@ -1,4 +1,4 @@
-# Orchestrator — Coordination Procedure
+# Orchestrator â€” Coordination Procedure
 
 **Role:** Gate lifecycle coordinator.  
 **Activation:** Used by the primary agent (Antigravity) to manage each gate end-to-end.
@@ -9,55 +9,55 @@
 
 Follow this exact sequence for every gate. Do not skip steps.
 
-### Step 1 — Identify the Active Gate
+### Step 1 â€” Identify the Active Gate
 - Read `PROJECT_SSOT.md` to find the current gate number and status.
 - Confirm the gate is OPEN before proceeding.
 - If no gate is OPEN, report to the owner and stop.
 
-### Step 2 — Read Gate Context
+### Step 2 â€” Read Gate Context
 - Read the gate specification: `docs/gates/GATE-NN.md`.
 - Read all referenced ADRs.
 - Read `docs/architecture/ARCHITECTURE.md`.
 - Confirm prerequisites (prior gates marked PASS) are satisfied.
 
-### Step 3 — Architect Phase (Plan)
+### Step 3 â€” Architect Phase (Plan)
 - Invoke the Architect role (see `.agents/agents/architect.md` and `gate-plan/SKILL.md`).
 - The Architect reads the gate, existing code, and relevant ADRs, then produces a plan.
 - Do NOT begin implementation yet.
 
-### Step 4 — Owner Plan Approval
+### Step 4 â€” Owner Plan Approval
 - Present the Architect's plan to the owner.
 - Wait for explicit owner approval of the plan.
 - If the owner requests changes, return to the Architect for revision.
 - Proceed to Step 5 only after the owner has approved the plan in writing.
 
-### Step 5 — Developer Phase (Implement)
+### Step 5 â€” Developer Phase (Implement)
 - Invoke the Developer role (see `.agents/agents/developer.md` and `gate-implement/SKILL.md`).
 - The Developer implements only the approved plan scope.
 - The Developer runs the required tests and reports actual results.
 - If the Developer encounters a blocker, pause and escalate to the owner.
 
-### Step 6 — Tester Phase (Review)
+### Step 6 â€” Tester Phase (Review)
 - Invoke the Tester role (see `.agents/agents/tester.md` and `gate-review/SKILL.md`).
 - The Tester independently reviews the diff and runs tests.
 - The Tester returns criterion-by-criterion verdicts.
 - If any criterion is FAIL: set gate to FAIL, return to Developer (go to Step 7).
 - If all criteria are PASS: proceed to Step 8.
 
-### Step 7 — Failure Correction Loop
+### Step 7 â€” Failure Correction Loop
 - Return the gate to the Developer with the Tester's correction instructions.
 - The Developer addresses only the failed criteria.
 - The Tester re-reviews only the affected criteria.
-- Repeat Steps 5–7 until all criteria are PASS or the gate is BLOCKED.
+- Repeat Steps 5â€“7 until all criteria are PASS or the gate is BLOCKED.
 
-### Step 8 — Evidence Summary and Owner Approval
+### Step 8 â€” Evidence Summary and Owner Approval
 - Compile the gate evidence: developer report + tester review.
 - Present the summary to the owner.
 - Wait for explicit owner approval.
 - Record the approval in the gate document.
 - Update `PROJECT_SSOT.md` to reflect the PASS status.
 
-### Step 9 — Gate Close and Next Gate Preparation
+### Step 9 â€” Gate Close and Next Gate Preparation
 - Update the gate document status to PASS.
 - Confirm no unrelated changes were committed.
 - Identify the next gate. Do not begin it until the owner directs.
@@ -76,8 +76,8 @@ Parallelise only tasks that operate on strictly non-overlapping artifacts
 
 The Orchestrator must obtain explicit owner approval at:
 
-1. After the Architect's plan — before implementation begins.
-2. After the Tester's review — before the gate is marked PASS.
+1. After the Architect's plan â€” before implementation begins.
+2. After the Tester's review â€” before the gate is marked PASS.
 
 The Orchestrator must not self-approve either decision.
 

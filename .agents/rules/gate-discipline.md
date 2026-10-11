@@ -41,9 +41,9 @@ Every gate document in `docs/gates/GATE-NN.md` must contain:
 
 Each acceptance criterion must receive exactly one status:
 
-- `PASS` — verified with sufficient reproducible evidence. Evidence must be recorded.
-- `FAIL` — evidence demonstrates a violation. The failure must be described.
-- `NOT TESTED` — evidence is missing or verification has not been performed.
+- `PASS` â€” verified with sufficient reproducible evidence. Evidence must be recorded.
+- `FAIL` â€” evidence demonstrates a violation. The failure must be described.
+- `NOT TESTED` â€” evidence is missing or verification has not been performed.
   A NOT TESTED criterion is a blocking condition for gate PASS.
 
 ---

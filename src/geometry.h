@@ -24,6 +24,11 @@ struct BoundingBox {
     bool is_valid() const;
 };
 
+struct LineSegment {
+    Point start;
+    Point end;
+};
+
 // Calculates the area of the box. Returns 0.0 for degenerate (zero-area) boxes.
 double area(const BoundingBox& b);
 
@@ -39,9 +44,27 @@ bool intersects(const BoundingBox& a, const BoundingBox& b);
 // inner points are within outer. A box contains itself.
 bool contains(const BoundingBox& outer, const BoundingBox& inner);
 
+// Checks if two bounding boxes intersect (including touching edges/corners)
+bool intersects(const BoundingBox& a, const BoundingBox& b);
+
 // Calculates the area by which base would need to be enlarged to include to_add.
 // Returns 0.0 if to_add is already contained within base.
 double enlargement(const BoundingBox& base, const BoundingBox& to_add);
+
+// Returns shortest distance between two bounding boxes
+double distance(const BoundingBox& a, const BoundingBox& b);
+
+// Returns shortest distance from a point to a bounding box
+double distance(const Point& p, const BoundingBox& b);
+
+// Returns shortest distance from a point to a line segment
+double distance(const Point& p, const LineSegment& seg);
+
+// Checks if line segment intersects a bounding box
+bool intersects(const LineSegment& seg, const BoundingBox& box);
+
+// Returns shortest distance from a line segment to a bounding box
+double distance(const LineSegment& seg, const BoundingBox& box);
 
 } // namespace kestrel
 

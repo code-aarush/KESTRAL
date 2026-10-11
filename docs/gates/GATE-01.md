@@ -1,9 +1,9 @@
 # GATE-01 — Geometry Primitives
 
-**Gate ID:** GATE-01  
-**Status:** PASS  
-**Created:** 2026-10-09  
-**Last updated:** 2026-10-10  
+**Gate ID:** GATE-01
+**Status:** PASS
+**Created:** 2026-10-09
+**Last updated:** 2026-10-10
 
 ---
 
@@ -85,9 +85,9 @@ cd build && ctest --output-on-failure
 
 ### GATE-01-AC-01 — Point struct is defined
 
-**Requirement:** `kestrel::Point` has `double x` and `double y` members. It is in `src/geometry.h`.  
-**Verification:** Read `geometry.h`; confirm struct definition in `kestrel` namespace.  
-**Status:** NOT TESTED  
+**Requirement:** `kestrel::Point` has `double x` and `double y` members. It is in `src/geometry.h`.
+**Verification:** Read `geometry.h`; confirm struct definition in `kestrel` namespace.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -96,10 +96,10 @@ cd build && ctest --output-on-failure
 
 **Requirement:** `kestrel::BoundingBox` has `double min_x, min_y, max_x, max_y`. `is_valid`
 returns true iff `min_x <= max_x`, `min_y <= max_y`, and all coordinates are finite.
-Degenerate (zero-area) boxes with `min_x == max_x` or `min_y == max_y` are valid.  
+Degenerate (zero-area) boxes with `min_x == max_x` or `min_y == max_y` are valid.
 **Verification:** Run tests: valid box returns true; box with `min_x > max_x` returns false;
-point box (min==max on both axes) returns true; box with NaN coordinate returns false.  
-**Status:** NOT TESTED  
+point box (min==max on both axes) returns true; box with NaN coordinate returns false.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -107,10 +107,10 @@ point box (min==max on both axes) returns true; box with NaN coordinate returns 
 ### GATE-01-AC-03 — area is correct for rectangular and degenerate boxes
 
 **Requirement:** `area(b) == (b.max_x - b.min_x) * (b.max_y - b.min_y)`. Returns 0.0
-for a zero-area (degenerate) box.  
+for a zero-area (degenerate) box.
 **Verification:** Test with a unit square (area=1.0), a non-square rectangle, and a
-degenerate box (area=0.0).  
-**Status:** NOT TESTED  
+degenerate box (area=0.0).
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -118,10 +118,10 @@ degenerate box (area=0.0).
 ### GATE-01-AC-04 — union_of is the correct MBR of two boxes
 
 **Requirement:** `union_of(a, b)` returns the smallest AABB containing both `a` and `b`.
-`union_of(a, a) == a`. `union_of` of disjoint boxes contains both.  
+`union_of(a, a) == a`. `union_of` of disjoint boxes contains both.
 **Verification:** Test: two disjoint boxes, two overlapping boxes, a box with itself.
-Check all four coordinates of the result.  
-**Status:** NOT TESTED  
+Check all four coordinates of the result.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -130,10 +130,10 @@ Check all four coordinates of the result.
 
 **Requirement:** `intersects(a, b)` implements the boundary semantics documented in ADR-002
 (proposed: closed/inclusive). Boxes sharing only an edge or corner return true (if inclusive
-semantics are accepted). Disjoint boxes return false.  
+semantics are accepted). Disjoint boxes return false.
 **Verification:** Test: overlapping, disjoint, edge-touching (shared left/right edge),
-corner-touching, one containing the other, one is a point-box touching the other's boundary.  
-**Status:** NOT TESTED  
+corner-touching, one containing the other, one is a point-box touching the other's boundary.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -141,11 +141,11 @@ corner-touching, one containing the other, one is a point-box touching the other
 ### GATE-01-AC-06 — contains is correct for all cases
 
 **Requirement:** `contains(outer, inner)` returns true iff `inner` is fully within `outer`
-(inclusive boundaries as per ADR-002 proposed semantics). A box contains itself.  
+(inclusive boundaries as per ADR-002 proposed semantics). A box contains itself.
 **Verification:** Test: outer strictly contains inner; identical boxes (self-containment);
 inner extends beyond outer on one side; touching boundary (contained); touching boundary
-(not contained — inner is larger).  
-**Status:** NOT TESTED  
+(not contained — inner is larger).
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -153,10 +153,10 @@ inner extends beyond outer on one side; touching boundary (contained); touching 
 ### GATE-01-AC-07 — enlargement is correct
 
 **Requirement:** `enlargement(base, to_add) == area(union_of(base, to_add)) - area(base)`.
-Returns 0.0 when `to_add` is already contained in `base`.  
+Returns 0.0 when `to_add` is already contained in `base`.
 **Verification:** Test with: `to_add` fully inside `base` (enlargement=0); `to_add` disjoint
-from `base` (enlargement = positive value); verify against manual calculation.  
-**Status:** NOT TESTED  
+from `base` (enlargement = positive value); verify against manual calculation.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -165,10 +165,10 @@ from `base` (enlargement = positive value); verify against manual calculation.
 
 **Requirement:** The behaviour of all geometry operations with NaN or infinite coordinate
 values is documented in a code comment or `geometry.h` header comment. At minimum,
-`is_valid` returns false for NaN or infinite inputs.  
+`is_valid` returns false for NaN or infinite inputs.
 **Verification:** Test `is_valid` with NaN and infinity inputs; confirm false. Read the
-documented policy in the header.  
-**Status:** NOT TESTED  
+documented policy in the header.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -176,9 +176,9 @@ documented policy in the header.
 ### GATE-01-AC-09 — All geometry code is in the kestrel namespace
 
 **Requirement:** All types and functions from Gate-01 are in the `kestrel` namespace.
-No global namespace pollution.  
-**Verification:** Read `geometry.h`; confirm `namespace kestrel { ... }` wrapper.  
-**Status:** NOT TESTED  
+No global namespace pollution.
+**Verification:** Read `geometry.h`; confirm `namespace kestrel { ... }` wrapper.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -186,9 +186,9 @@ No global namespace pollution.
 ### GATE-01-AC-10 — Compilation succeeds with required flags
 
 **Requirement:** `src/geometry.cpp` and `tests/test_geometry.cpp` compile without errors
-or warnings using `g++ -std=c++17 -Wall -Wextra -Wpedantic`.  
-**Verification:** Run the compile command; record exact output. Zero warnings expected.  
-**Status:** NOT TESTED  
+or warnings using `g++ -std=c++17 -Wall -Wextra -Wpedantic`.
+**Verification:** Run the compile command; record exact output. Zero warnings expected.
+**Status:** NOT TESTED
 **Evidence:** [To be populated]
 
 ---
@@ -241,7 +241,7 @@ Test project D:/Aarush/Career/Projects/My-Projects/KESTREL/build
 
 ## Final Decision
 
-**Gate status:** PASS  
+**Gate status:** PASS
 **Authorised next step:** Owner reviews Gate-01 implementation and approves transition to GATE-02.
 
 ---

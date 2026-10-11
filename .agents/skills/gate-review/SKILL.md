@@ -15,17 +15,17 @@ The Tester must follow every step. Do not modify source files during review.
 
 ---
 
-## Step 1 — Read Criteria Before Examining Developer Work
+## Step 1 â€” Read Criteria Before Examining Developer Work
 
 1. Read the gate specification (`docs/gates/GATE-NN.md`) and extract every acceptance criterion
-   with its ID. This is the review standard — not the developer's interpretation.
+   with its ID. This is the review standard â€” not the developer's interpretation.
 2. Read the relevant ADRs referenced in the gate specification.
 3. Read the rules: `minimal-code.md`, `gate-discipline.md`, `cpp-standards.md`.
 4. Note what observable properties each criterion requires.
 
 Do NOT read the developer's report or diff first. Establish the standard independently.
 
-## Step 2 — Inspect the Diff
+## Step 2 â€” Inspect the Diff
 
 1. Review all files changed since the prior gate or since the known baseline.
 2. For each changed file, check:
@@ -35,7 +35,7 @@ Do NOT read the developer's report or diff first. Establish the standard indepen
    - Does it contain unrelated refactoring or incidental changes?
 3. Flag any unexpected additions as scope violations.
 
-## Step 3 — Inspect Test Coverage
+## Step 3 â€” Inspect Test Coverage
 
 1. Read every test file added or modified.
 2. For each acceptance criterion, identify which test(s) verify it.
@@ -44,7 +44,7 @@ Do NOT read the developer's report or diff first. Establish the standard indepen
 5. Check that edge cases are covered: empty inputs, single elements, max capacity,
    boundary-touching geometries, degenerate cases, invalid inputs.
 
-## Step 4 — Execute Tests Independently
+## Step 4 â€” Execute Tests Independently
 
 1. Run the test commands listed in the gate specification (not the developer's commands).
    Use the exact commands from the gate document.
@@ -53,7 +53,7 @@ Do NOT read the developer's report or diff first. Establish the standard indepen
 4. If tests cannot be run (environment issue), document exactly why and mark affected
    criteria as NOT TESTED.
 
-## Step 5 — Verify Algorithmic Correctness
+## Step 5 â€” Verify Algorithmic Correctness
 
 For each gate, verify the specific invariants listed in the gate specification:
 
@@ -62,26 +62,26 @@ For each gate, verify the specific invariants listed in the gate specification:
 - **Entity Store (Gate 02):** Check ID uniqueness invariant, update semantics.
 - **R-tree Structure (Gate 03):** Check MBR correctness, occupancy bounds, parent links.
 - **Insertion/Splitting (Gate 04):** Verify tree invariants hold after multiple insertions.
-- **Range Queries (Gate 05):** Run R-tree query against brute-force oracle on multiple datasets.
+- **Range Queries (Gate 05):** Run R-tree queries and ensure robust correctness tests.
   Any discrepancy is a FAIL.
 - **Deletion (Gate 06):** Verify no stale entries, correct underflow handling.
 - **Simulation (Gate 07):** Verify determinism with fixed seeds.
-- **Mission Queries (Gate 08):** Verify broad/narrow phase separation, oracle comparison.
+- **Mission Queries (Gate 08):** Verify broad/narrow phase separation, explicit verification.
 - **Benchmarks (Gate 09):** Verify raw output files exist and are reproducible.
 
-## Step 6 — Assess Unnecessary Complexity
+## Step 6 â€” Assess Unnecessary Complexity
 
 1. Identify any classes, functions, or files that fail the MNI five-question check.
 2. Report these as scope violations even if they do not cause test failures.
 3. Do not approve a gate that contains unrequested additions.
 
-## Step 7 — Check Regressions
+## Step 7 â€” Check Regressions
 
 1. Run any tests from prior gates that are still applicable.
 2. Confirm that existing functionality is not broken by the new changes.
 3. Report any regression as FAIL on the affected criterion.
 
-## Step 8 — Produce the Review Report
+## Step 8 â€” Produce the Review Report
 
 Output a structured report containing:
 
@@ -103,19 +103,17 @@ For each acceptance criterion:
 
 ### 8d. Algorithmic Correctness
 - Invariants verified or not.
-- Oracle comparison results (if applicable).
-
 ### 8e. Required Corrections
 For each FAIL criterion: a precise, actionable correction instruction.
 
 ### 8f. Overall Recommendation
-- `PASS` — all criteria PASS, no scope violations, regressions clear.
-- `FAIL` — one or more criteria FAIL; corrections required.
-- `BLOCKED` — criteria cannot be tested; reason documented.
+- `PASS` â€” all criteria PASS, no scope violations, regressions clear.
+- `FAIL` â€” one or more criteria FAIL; corrections required.
+- `BLOCKED` â€” criteria cannot be tested; reason documented.
 
 Note: This is a recommendation. Only the project owner can approve the gate.
 
-## Step 9 — Stop
+## Step 9 â€” Stop
 
 Do not modify source files.
 Do not approve the gate.

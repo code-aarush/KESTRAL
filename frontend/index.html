@@ -3,84 +3,301 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KESTREL — Mission Control Visualization</title>
-    <link rel="stylesheet" href="css/style.css?v=4">
+    <title>KESTREL — Spatial Index Workstation</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <header class="mission-header">
-        <div class="title-group">
-            <h1>
-                KESTREL Mission Control
-                <span class="badge">GATE-10</span>
-            </h1>
-            <p>Kepler Exploration — Spatial Tree for Risk Evaluation and Localization</p>
-        </div>
-        <div class="mission-clock" id="missionClock">SYS: READY</div>
-    </header>
-
-    <div class="control-panel">
-        <div class="button-bar">
-            <button id="btnLoad" class="primary" title="Fetch state.json from server">
-                <span>⟳</span> Load state.json
-            </button>
-            <button id="btnBrowse" title="Load local state.json file without server">
-                <span>📁</span> Upload JSON
-            </button>
-            <input type="file" id="fileInput" accept=".json" style="display:none;">
-
-            <div class="status-badge">
-                <span class="status-dot" id="statusDot"></span>
-                <span id="status">Waiting for data...</span>
+    <div class="workstation-shell">
+        <!-- 1. Brand Masthead -->
+        <header class="masthead">
+            <div class="masthead-brand">
+                <span class="brand-wordmark">KESTREL</span>
+                <span class="brand-divider" aria-hidden="true">/</span>
+                <div class="brand-meta">
+                    <span class="brand-descriptor">Spatial Index Workstation</span>
+                    <span class="brand-context">Kepler Exploration • Risk Evaluation &amp; Localization • Gate 10</span>
+                </div>
             </div>
-        </div>
 
-        <div class="layers-bar">
-            <label>
-                <input type="checkbox" id="layerEntities" checked>
-                <span class="legend-swatch entity"></span> Active Entities
-            </label>
-            <label>
-                <input type="checkbox" id="layerResults" checked>
-                <span class="legend-swatch result"></span> Query Results
-            </label>
-            <label>
-                <input type="checkbox" id="layerLeaf" checked>
-                <span class="legend-swatch leaf"></span> Leaf MBRs
-            </label>
-            <label>
-                <input type="checkbox" id="layerInternal" checked>
-                <span class="legend-swatch internal"></span> Internal MBRs
-            </label>
-            <label>
-                <input type="checkbox" id="layerQuery" checked>
-                <span class="legend-swatch query"></span> Query Region
-            </label>
+            <div class="masthead-status" title="System Ingest &amp; Operational Status">
+                <div class="status-indicator">
+                    <span class="status-dot" id="statusDot" aria-hidden="true"></span>
+                    <span class="status-text" id="status">Waiting for data...</span>
+                </div>
+                <div class="status-separator" aria-hidden="true"></div>
+                <div class="system-clock" id="missionClock">SYS: READY</div>
+            </div>
+        </header>
+
+        <!-- 2. Command Workspace (Dataset Operations, Viewport Navigation & Sensors) -->
+        <section class="command-workspace" aria-label="Command Workspace">
+            <!-- Dataset Operations Sub-Panel -->
+            <div class="cmd-group cmd-dataset" role="group" aria-label="Dataset Operations">
+                <button id="btnLoad" class="btn btn-primary" title="Fetch state.json from server">
+                    <svg class="ui-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 0 1 9.35-3.9M13.5 8a5.5 5.5 0 0 1-9.35 3.9"/><path d="M12 1.5v3h-3M4 14.5v-3h3"/></svg>
+                    <span>Load state.json</span>
+                </button>
+                <button id="btnBrowse" class="btn btn-secondary" title="Load local state.json file">
+                    <svg class="ui-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 3.5a1 1 0 0 1 1-1h3.5l1.5 2h6a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/><path d="M8 7.5v4M6 9.5l2-2 2 2"/></svg>
+                    <span>Upload JSON</span>
+                </button>
+                <input type="file" id="fileInput" accept=".json" style="display:none;">
+            </div>
+
+            <div class="cmd-separator" aria-hidden="true"></div>
+
+            <!-- Viewport Navigation Sub-Panel -->
+            <div class="cmd-group cmd-navigation" role="group" aria-label="Viewport Navigation">
+                <div class="segmented-control" role="group" aria-label="Viewport Navigation Controls">
+                    <button id="btnZoomIn" class="btn-nav" title="Zoom In (+ key)" aria-label="Zoom In (+)">
+                        <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
+                    </button>
+                    <button id="btnZoomOut" class="btn-nav" title="Zoom Out (− key)" aria-label="Zoom Out (−)">
+                        <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10"/></svg>
+                    </button>
+                    <button id="btnFitAll" class="btn-nav btn-nav-labeled" title="Fit All Geometry (F key)" aria-label="Fit All (F)">
+                        <svg class="ui-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5V2.5h3M14 5.5V2.5h-3M2 10.5v3h3M14 10.5v3h-3"/></svg>
+                        <span>Fit All</span>
+                        <kbd class="kbd-hint" aria-hidden="true">F</kbd>
+                    </button>
+                    <button id="btnResetView" class="btn-nav btn-nav-labeled" title="Reset View (R or 0 key)" aria-label="Reset View (R)">
+                        <svg class="ui-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 1 1.6 3.9"/><path d="M2.5 4v4h4"/></svg>
+                        <span>Reset</span>
+                        <kbd class="kbd-hint" aria-hidden="true">R</kbd>
+                    </button>
+                </div>
+            </div>
+
+            <div class="cmd-separator" aria-hidden="true"></div>
+
+            <!-- Viewport Telemetry Sensors Sub-Panel -->
+            <div class="cmd-group cmd-sensors" role="group" aria-label="Viewport Sensor Readouts">
+                <div class="sensor-pod" title="Current Viewport Zoom Scale">
+                    <span class="sensor-label">ZOOM</span>
+                    <span class="sensor-value" id="valZoom">100%</span>
+                </div>
+                <div class="sensor-pod sensor-coords" title="World Space Coordinates under Cursor">
+                    <span class="sensor-label">CURSOR</span>
+                    <span class="sensor-value sensor-coords-val" id="valCoords">—</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Workstation Body: Dominant Canvas Stage & Workstation Sidebar -->
+        <div class="workstation-body">
+            <!-- 3a. Dominant Spatial Canvas Stage -->
+            <main class="canvas-stage" aria-label="Spatial Radar Stage">
+                <div class="canvas-viewport-frame" id="viewportFrame">
+                    <div class="reticle reticle-tl" aria-hidden="true"></div>
+                    <div class="reticle reticle-tr" aria-hidden="true"></div>
+                    <div class="reticle reticle-bl" aria-hidden="true"></div>
+                    <div class="reticle reticle-br" aria-hidden="true"></div>
+                    <canvas id="radar" width="800" height="600"></canvas>
+
+                    <!-- Viewport Navigation HUD Hints -->
+                    <div class="viewport-hud-hints" aria-hidden="true">
+                        <span class="hud-hint-item"><kbd class="kbd-hud">Space</kbd> + Drag pan</span>
+                        <span class="hud-hint-sep">•</span>
+                        <span class="hud-hint-item">Scroll zoom</span>
+                        <span class="hud-hint-sep">•</span>
+                        <span class="hud-hint-item"><kbd class="kbd-hud">F</kbd> fit</span>
+                        <span class="hud-hint-sep">•</span>
+                        <span class="hud-hint-item"><kbd class="kbd-hud">R</kbd> reset</span>
+                    </div>
+
+                    <!-- Empty State Overlay (Active when no dataset is loaded) -->
+                    <div class="empty-state-overlay" id="emptyStateOverlay" aria-live="polite">
+                        <div class="empty-state-card">
+                            <div class="empty-target-badge">
+                                <svg class="empty-target-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="9"/>
+                                    <circle cx="12" cy="12" r="4"/>
+                                    <line x1="12" y1="2" x2="12" y2="6"/>
+                                    <line x1="12" y1="18" x2="12" y2="22"/>
+                                    <line x1="2" y1="12" x2="6" y2="12"/>
+                                    <line x1="18" y1="12" x2="22" y2="12"/>
+                                </svg>
+                                <span class="empty-badge-text">SPATIAL RADAR AWAITING INGEST</span>
+                            </div>
+                            <h2 class="empty-state-title">Load a spatial dataset to begin</h2>
+                            <p class="empty-state-desc">Ingest Kepler Belt simulation telemetry to inspect spatial entities, R-tree MBR bounding boxes, and range queries.</p>
+                            <div class="empty-state-actions">
+                                <button type="button" class="btn btn-primary" id="btnEmptyLoad" title="Fetch state.json from server">
+                                    <svg class="ui-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 0 1 9.35-3.9M13.5 8a5.5 5.5 0 0 1-9.35 3.9"/><path d="M12 1.5v3h-3M4 14.5v-3h3"/></svg>
+                                    <span>Load state.json</span>
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="btnEmptyBrowse" title="Choose local JSON file">
+                                    <svg class="ui-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 3.5a1 1 0 0 1 1-1h3.5l1.5 2h6a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/><path d="M8 7.5v4M6 9.5l2-2 2 2"/></svg>
+                                    <span>Upload JSON</span>
+                                </button>
+                            </div>
+                            <div class="empty-drop-zone">
+                                <span class="drop-zone-text">Or drag and drop a <code>.json</code> file onto this radar</span>
+                            </div>
+                            <div class="empty-state-feedback" id="emptyFeedback" style="display: none;" role="status">
+                                <span class="feedback-dot" aria-hidden="true"></span>
+                                <span class="feedback-text" id="emptyFeedbackText"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- 3b. Workstation Sidebar: Layer Dock & Telemetry Region -->
+            <aside class="workstation-sidebar" aria-label="Workstation Sidebar">
+                <!-- Structural Region: Layer Control Dock -->
+                <section class="layer-dock" aria-label="Spatial Layer Visibility Dock">
+                    <div class="panel-header">
+                        <span class="panel-title">Layer Visibility</span>
+                        <span class="panel-badge">5 CHANNELS</span>
+                    </div>
+                    <div class="layer-channel-list" role="group" aria-label="Layer Visibility Channels">
+                        <label class="channel-card" title="Toggle active spatial entities">
+                            <input type="checkbox" id="layerEntities" checked>
+                            <span class="channel-indicator entity" aria-hidden="true"></span>
+                            <span class="channel-name">Active Entities</span>
+                            <span class="channel-toggle" aria-hidden="true">
+                                <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
+                                <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
+                            </span>
+                        </label>
+                        <label class="channel-card" title="Toggle highlighted query match results">
+                            <input type="checkbox" id="layerResults" checked>
+                            <span class="channel-indicator result" aria-hidden="true"></span>
+                            <span class="channel-name">Query Hits</span>
+                            <span class="channel-toggle" aria-hidden="true">
+                                <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
+                                <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
+                            </span>
+                        </label>
+                        <label class="channel-card" title="Toggle R-tree leaf level MBRs">
+                            <input type="checkbox" id="layerLeaf" checked>
+                            <span class="channel-indicator leaf" aria-hidden="true"></span>
+                            <span class="channel-name">Leaf MBRs</span>
+                            <span class="channel-toggle" aria-hidden="true">
+                                <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
+                                <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
+                            </span>
+                        </label>
+                        <label class="channel-card" title="Toggle R-tree internal directory MBRs">
+                            <input type="checkbox" id="layerInternal" checked>
+                            <span class="channel-indicator internal" aria-hidden="true"></span>
+                            <span class="channel-name">Internal MBRs</span>
+                            <span class="channel-toggle" aria-hidden="true">
+                                <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
+                                <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
+                            </span>
+                        </label>
+                        <label class="channel-card" title="Toggle active spatial query region">
+                            <input type="checkbox" id="layerQuery" checked>
+                            <span class="channel-indicator query" aria-hidden="true"></span>
+                            <span class="channel-name">Query Region</span>
+                            <span class="channel-toggle" aria-hidden="true">
+                                <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
+                                <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- Structural Region: Contextual Telemetry Region -->
+                <section class="telemetry-region" aria-label="Contextual Spatial Telemetry">
+                    <!-- Query Performance Section -->
+                    <div class="telemetry-section">
+                        <div class="section-header">
+                            <span class="section-title">Query Performance</span>
+                            <span class="section-tag tag-query">ANALYTICS</span>
+                        </div>
+                        <div class="metric-pod">
+                            <div class="metric-head">
+                                <span class="metric-name">Matched Entities</span>
+                                <span class="channel-indicator result" aria-hidden="true"></span>
+                            </div>
+                            <div class="metric-digits-row">
+                                <span class="metric-number metric-crimson" id="valResults">—</span>
+                                <span class="metric-unit">HITS</span>
+                            </div>
+                            <span class="metric-description">Entities intersecting query envelope</span>
+                        </div>
+                    </div>
+
+                    <!-- Spatial Catalog Section -->
+                    <div class="telemetry-section">
+                        <div class="section-header">
+                            <span class="section-title">Spatial Catalog</span>
+                            <span class="section-tag tag-catalog">REGISTRY</span>
+                        </div>
+                        <div class="metric-pod">
+                            <div class="metric-head">
+                                <span class="metric-name">Active Entities</span>
+                                <span class="channel-indicator entity" aria-hidden="true"></span>
+                            </div>
+                            <div class="metric-digits-row">
+                                <span class="metric-number metric-emerald" id="valEntities">—</span>
+                                <span class="metric-unit">TOTAL</span>
+                            </div>
+                            <span class="metric-description">Indexed spatial targets in store</span>
+                        </div>
+                    </div>
+
+                    <!-- R-Tree Topology Section -->
+                    <div class="telemetry-section">
+                        <div class="section-header">
+                            <span class="section-title">R-Tree Topology</span>
+                            <span class="section-tag tag-topology">STRUCTURE</span>
+                        </div>
+                        <div class="topology-subchannels">
+                            <div class="subchannel subchannel-leaf">
+                                <div class="metric-head">
+                                    <span class="metric-name">Leaf MBRs</span>
+                                    <span class="channel-indicator leaf" aria-hidden="true"></span>
+                                </div>
+                                <div class="metric-digits-row">
+                                    <span class="subchannel-number metric-purple" id="valLeaf">—</span>
+                                    <span class="metric-unit">L0</span>
+                                </div>
+                                <span class="metric-description">Data nodes</span>
+                            </div>
+                            <div class="subchannel subchannel-internal">
+                                <div class="metric-head">
+                                    <span class="metric-name">Directory MBRs</span>
+                                    <span class="channel-indicator internal" aria-hidden="true"></span>
+                                </div>
+                                <div class="metric-digits-row">
+                                    <span class="subchannel-number metric-slate" id="valInternal">—</span>
+                                    <span class="metric-unit">DIR</span>
+                                </div>
+                                <span class="metric-description">Directory nodes</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Index System Specifications -->
+                    <div class="telemetry-section section-specs">
+                        <div class="section-header">
+                            <span class="section-title">Specifications</span>
+                            <span class="section-tag">CONFIG</span>
+                        </div>
+                        <div class="specs-grid">
+                            <div class="spec-entry">
+                                <span class="spec-label">Index Structure</span>
+                                <span class="spec-value">Quadratic R-Tree</span>
+                            </div>
+                            <div class="spec-entry">
+                                <span class="spec-label">Coordinate Frame</span>
+                                <span class="spec-value">Cartesian 2D World</span>
+                            </div>
+                            <div class="spec-entry">
+                                <span class="spec-label">Scale Model</span>
+                                <span class="spec-value">Pointer-Anchored Uniform</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </aside>
         </div>
     </div>
 
-    <div class="canvas-container">
-        <canvas id="radar" width="800" height="600"></canvas>
-    </div>
-
-    <div class="telemetry-bar">
-        <div class="metric-card">
-            <div class="metric-label">Active Entities</div>
-            <div class="metric-value" id="valEntities">—</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Query Matched</div>
-            <div class="metric-value" id="valResults" style="color: var(--accent-red);">—</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Leaf MBRs</div>
-            <div class="metric-value" id="valLeaf" style="color: var(--accent-magenta);">—</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Internal MBRs</div>
-            <div class="metric-value" id="valInternal">—</div>
-        </div>
-    </div>
-
-    <script src="app.js?v=4"></script>
+    <script src="app.js"></script>
 </body>
 </html>

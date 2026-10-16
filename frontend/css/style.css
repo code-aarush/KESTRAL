@@ -1,266 +1,1374 @@
-/* KESTREL Mission Control Visualization Stylesheet */
-:root {
-    --bg-primary: #0a0e17;
-    --bg-secondary: #121826;
-    --bg-card: #182234;
-    --border-color: #24344d;
-    --border-highlight: #3b5278;
-    --text-primary: #f0f4fc;
-    --text-secondary: #9ab0d3;
-    --text-muted: #5e7399;
-    --accent-blue: #00b0ff;
-    --accent-green: #00e676;
-    --accent-red: #ff1744;
-    --accent-magenta: #e040fb;
-    --accent-yellow: #ffd600;
+/* ==========================================================================
+   KESTREL — Spatial Engineering Workstation Design System
+   Architecture: Technical Engineering Workstation Console
+   Typography: Roboto / Technical Monospace
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Typography Declarations (@font-face with local system stacks)
+   -------------------------------------------------------------------------- */
+
+@font-face {
+    font-family: 'Roboto';
+    src: local('Roboto'), local('Roboto Regular'), local('Roboto-Regular');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
 }
 
-* {
+@font-face {
+    font-family: 'Roboto';
+    src: local('Roboto Medium'), local('Roboto-Medium');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Roboto';
+    src: local('Roboto Bold'), local('Roboto-Bold');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* --------------------------------------------------------------------------
+   2. Design System Tokens
+   -------------------------------------------------------------------------- */
+
+:root {
+    /* Interface Font Stacks */
+    --font-sans: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Liberation Sans', 'Nimbus Sans', 'Noto Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Liberation Mono', Menlo, Consolas, monospace;
+
+    /* Surface Hierarchy (Matte, High-Legibility Technical Console) */
+    --surface-ground: #06080d;           /* Deep viewport foundation */
+    --surface-shell: #090d16;            /* Master workstation outer shell */
+    --surface-masthead: #0d121e;         /* Top brand & status masthead */
+    --surface-command: #0b0f19;          /* Command & control toolbar */
+    --surface-stage: #080b12;            /* Canvas surrounding stage */
+    --surface-canvas: #04060a;           /* Spatial radar canvas background */
+    --surface-dock: #0c101b;             /* Layer visibility dock panel */
+    --surface-telemetry: #0c101b;        /* Contextual telemetry panel */
+    --surface-pod: #080b14;              /* Inset readout & metric wells */
+    --surface-control: #131926;          /* Button idle surface */
+    --surface-control-hover: #1b2336;    /* Button hover state */
+    --surface-control-active: #0c101a;   /* Button depressed state */
+
+    /* Visible Component Boundaries & Borders */
+    --border-panel: 1px solid rgba(255, 255, 255, 0.12);
+    --border-panel-strong: 1px solid rgba(255, 255, 255, 0.20);
+    --border-subtle: 1px solid rgba(255, 255, 255, 0.07);
+    --border-control: 1px solid rgba(255, 255, 255, 0.14);
+    --border-control-hover: 1px solid rgba(0, 200, 230, 0.40);
+    --border-focus: #00c8e6;
+
+    /* Semantic Spatial Channels */
+    --accent-primary: #00c8e6;           /* Precision Cyan */
+    --accent-primary-hover: #38bdf8;
+    --accent-entity: #10b981;            /* Emerald: Active Spatial Entities */
+    --accent-result: #f43f5e;            /* Crimson: Query Match Hits */
+    --accent-leaf: #a855f7;              /* Purple: Leaf MBRs */
+    --accent-internal: #94a3b8;          /* Slate: Directory MBRs */
+    --accent-query: #eab308;             /* Amber: Query Region Window */
+
+    /* High-Legibility Typography Tones */
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --text-dim: #64748b;
+
+    /* Standard Sizing & Radii */
+    --radius-sm: 3px;
+    --radius-md: 5px;
+    --control-height: 30px;
+}
+
+/* --------------------------------------------------------------------------
+   3. Base Reset & Ground Layout
+   -------------------------------------------------------------------------- */
+
+*, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
 
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--surface-ground);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
 body {
-    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    min-height: 100vh;
+    padding: 8px;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    padding: 24px;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
-.mission-header {
-    width: 100%;
-    max-width: 900px;
-    margin-bottom: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 14px;
+/* Restrained Dark-Theme Scrollbars */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
-.title-group h1 {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 10px;
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
 }
 
-.title-group h1 .badge {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 4px;
-    background: rgba(0, 176, 255, 0.15);
-    border: 1px solid rgba(0, 176, 255, 0.4);
-    color: var(--accent-blue);
-    letter-spacing: 1px;
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
 }
 
-.title-group p {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-top: 4px;
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
 }
 
-.mission-clock {
-    font-family: monospace;
-    font-size: 12px;
-    color: var(--text-muted);
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-primary);
 }
 
-.control-panel {
-    width: 100%;
-    max-width: 900px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 14px 18px;
-    margin-bottom: 16px;
+/* Master Workstation Frame: Viewport-aware shell filling available screen height */
+.workstation-shell {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-}
-
-.button-bar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-button {
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: 1px solid var(--border-highlight);
-    background: var(--bg-card);
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.15s ease;
-    display: inline-flex;
-    align-items: center;
+    height: calc(100vh - 16px);
+    height: calc(100dvh - 16px);
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+    min-height: 0;
+    width: 100%;
+    max-width: 1920px;
+    margin: 0 auto;
+    background-color: var(--surface-shell);
+    border: var(--border-panel);
+    border-radius: var(--radius-md);
+    overflow: hidden;
     gap: 6px;
+    padding: 6px;
+    box-sizing: border-box;
 }
 
-button:hover {
-    background: #202d45;
-    border-color: var(--accent-blue);
-    color: #fff;
+/* --------------------------------------------------------------------------
+   4. Structural Region 1: Brand Masthead (Compact natural height)
+   -------------------------------------------------------------------------- */
+
+.masthead {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 14px;
+    background-color: var(--surface-masthead);
+    border: var(--border-panel);
+    border-radius: var(--radius-sm);
+    gap: 12px;
 }
 
-button.primary {
-    background: #0066cc;
-    border-color: #0088ff;
+.masthead-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-button.primary:hover {
-    background: #0077ee;
+.brand-wordmark {
+    font-family: var(--font-sans);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+    line-height: 1;
 }
 
-.status-badge {
-    margin-left: auto;
-    font-size: 12px;
-    font-family: monospace;
-    padding: 6px 12px;
-    border-radius: 6px;
-    background: #111a29;
-    border: 1px solid var(--border-color);
+.brand-divider {
+    font-size: 16px;
+    color: var(--accent-primary);
+    font-weight: 300;
+    user-select: none;
+}
+
+.brand-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.brand-descriptor {
+    font-size: 12.5px;
+    font-weight: 500;
     color: var(--text-secondary);
+    line-height: 1.15;
+}
+
+.brand-context {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-dim);
+    line-height: 1.15;
+}
+
+/* Integrated Masthead Status Cluster */
+.masthead-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background-color: var(--surface-pod);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+}
+
+.status-indicator {
     display: flex;
     align-items: center;
     gap: 8px;
-    max-width: 100%;
+    min-width: 0;
 }
 
 .status-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #555;
+    background-color: var(--text-dim);
+    flex-shrink: 0;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .status-dot.success {
-    background: var(--accent-green);
-    box-shadow: 0 0 8px var(--accent-green);
+    background-color: var(--accent-entity);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
 }
 
 .status-dot.loading {
-    background: var(--accent-yellow);
-    box-shadow: 0 0 8px var(--accent-yellow);
+    background-color: var(--accent-query);
+    box-shadow: 0 0 6px rgba(234, 179, 8, 0.6);
+    animation: pulse-dot 1.2s infinite ease-in-out;
 }
 
 .status-dot.error {
-    background: var(--accent-red);
-    box-shadow: 0 0 8px var(--accent-red);
+    background-color: var(--accent-result);
+    box-shadow: 0 0 6px rgba(244, 63, 94, 0.6);
 }
 
-.layers-bar {
+@keyframes pulse-dot {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+.status-text {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 380px;
+}
+
+.status-separator {
+    width: 1px;
+    height: 14px;
+    background-color: rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+}
+
+.system-clock {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-primary);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   5. Structural Region 2: Command Workspace (Toolbar)
+   -------------------------------------------------------------------------- */
+
+.command-workspace {
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
-    gap: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    padding-top: 10px;
-    font-size: 12px;
-    color: var(--text-secondary);
+    justify-content: space-between;
+    padding: 5px 12px;
+    background-color: var(--surface-command);
+    border: var(--border-panel);
+    border-radius: var(--radius-sm);
+    gap: 12px;
     flex-wrap: wrap;
 }
 
-.layers-bar label {
+.cmd-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cmd-separator {
+    width: 1px;
+    height: 18px;
+    background-color: rgba(255, 255, 255, 0.10);
+    flex-shrink: 0;
+}
+
+/* Standard Buttons */
+.btn {
+    height: var(--control-height);
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    padding: 0 12px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
     cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ui-icon {
+    display: inline-block;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+/* Primary Action Button (Load state.json) */
+.btn-primary {
+    background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+    border: 1px solid #38bdf8;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
+    border-color: #7dd3fc;
+}
+
+.btn-primary:active {
+    background: #0369a1;
+    border-color: #0284c7;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Secondary Action Button (Upload JSON) */
+.btn-secondary {
+    background-color: var(--surface-control);
+    border: var(--border-control);
+    color: var(--text-secondary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.btn-secondary:hover {
+    background-color: var(--surface-control-hover);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: var(--text-primary);
+}
+
+.btn-secondary:active {
+    background-color: var(--surface-control-active);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.btn:disabled,
+.btn-nav:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+    box-shadow: none;
+}
+
+.btn-sm {
+    height: 26px;
+    padding: 0 10px;
+    font-size: 11.5px;
+    gap: 5px;
+}
+
+/* Segmented Viewport Navigation Control */
+.segmented-control {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--surface-pod);
+    border: var(--border-control);
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+}
+
+.btn-nav {
+    height: var(--control-height);
+    min-width: 30px;
+    padding: 0 10px;
+    background-color: transparent;
+    border: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-nav:last-child {
+    border-right: none;
+}
+
+.btn-nav:hover {
+    background-color: var(--surface-control-hover);
+    color: var(--text-primary);
+}
+
+.btn-nav:active {
+    background-color: var(--surface-control-active);
+}
+
+.btn-nav-labeled {
+    font-size: 11.5px;
+    padding: 0 10px;
+}
+
+/* Inline Keyboard Shortcut Badges */
+.kbd-hint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+    padding: 2px 4px;
+    margin-left: 2px;
+    user-select: none;
+    pointer-events: none;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-nav:hover .kbd-hint {
+    color: var(--text-secondary);
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Viewport Sensor Readout Pods */
+.cmd-sensors {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.sensor-pod {
+    display: inline-flex;
+    align-items: center;
+    height: var(--control-height);
+    background-color: var(--surface-pod);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+    padding: 0 10px;
+    gap: 8px;
+    font-variant-numeric: tabular-nums;
+}
+
+.sensor-label {
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
     user-select: none;
 }
 
-.legend-swatch {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
+.sensor-value {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.sensor-coords {
+    min-width: 195px;
+    width: 195px;
+    flex-shrink: 0;
+    justify-content: space-between;
+}
+
+.sensor-coords-val {
+    width: 135px;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    font-variant-numeric: tabular-nums;
+    font-family: var(--font-mono);
+}
+
+/* --------------------------------------------------------------------------
+   6. Workstation Body Layout (Flexible Remaining Height)
+   -------------------------------------------------------------------------- */
+
+.workstation-body {
+    display: flex;
+    flex: 1 1 0;
+    gap: 6px;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   7. Structural Region 3: Dominant Spatial Canvas Stage
+   -------------------------------------------------------------------------- */
+
+.canvas-stage {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    background-color: var(--surface-stage);
+    border: var(--border-panel);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    position: relative;
+}
+
+.canvas-viewport-frame {
+    flex: 1 1 0;
+    min-height: 0;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: var(--surface-canvas);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6), inset 0 0 1px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+}
+
+/* Precision Corner Reticles (Aperture Definition with Subtle Backdrop Filter) */
+.reticle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+    z-index: 10;
+    background: rgba(10, 14, 22, 0.35);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.reticle-tl {
+    top: 8px;
+    left: 8px;
+    border-top: 2px solid var(--accent-primary);
+    border-left: 2px solid var(--accent-primary);
+}
+
+.reticle-tr {
+    top: 8px;
+    right: 8px;
+    border-top: 2px solid var(--accent-primary);
+    border-right: 2px solid var(--accent-primary);
+}
+
+.reticle-bl {
+    bottom: 8px;
+    left: 8px;
+    border-bottom: 2px solid var(--accent-primary);
+    border-left: 2px solid var(--accent-primary);
+}
+
+.reticle-br {
+    bottom: 8px;
+    right: 8px;
+    border-bottom: 2px solid var(--accent-primary);
+    border-right: 2px solid var(--accent-primary);
+}
+
+#radar {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+    touch-action: none;
+}
+
+#radar.panning {
+    cursor: grabbing;
+}
+
+#radar.space-pan-active {
+    cursor: grab;
+}
+
+#radar.space-pan-active.panning {
+    cursor: grabbing;
+}
+
+/* Drag-and-Drop Ingest Surface Feedback */
+.canvas-viewport-frame.drag-over {
+    box-shadow: inset 0 0 0 2px var(--accent-primary), inset 0 2px 14px rgba(0, 200, 230, 0.35);
+}
+
+.canvas-viewport-frame.drag-over .empty-state-card {
+    border-color: var(--accent-primary);
+    box-shadow: 0 4px 24px rgba(0, 200, 230, 0.25);
+}
+
+.canvas-viewport-frame.drag-over .drop-zone-text {
+    color: var(--accent-primary);
+    font-weight: 500;
+}
+
+/* Viewport Navigation HUD Hints */
+.viewport-hud-hints {
+    position: absolute;
+    bottom: 8px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    background: rgba(9, 13, 22, 0.72);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    pointer-events: none;
+    z-index: 10;
+    user-select: none;
+}
+
+.hud-hint-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.hud-hint-sep {
+    color: rgba(255, 255, 255, 0.15);
+    font-size: 8px;
+}
+
+.kbd-hud {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+    padding: 0 3px;
+    line-height: 1.2;
+}
+
+/* Empty State & Technical Drop Target Overlay */
+.empty-state-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 20;
+    pointer-events: none;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.empty-state-overlay.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.empty-state-card {
+    background: rgba(13, 18, 30, 0.94);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    padding: 24px 28px;
+    max-width: 440px;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    pointer-events: auto;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.empty-target-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 200, 230, 0.08);
+    border: 1px solid rgba(0, 200, 230, 0.25);
+    border-radius: 20px;
+    padding: 4px 12px;
+    color: var(--accent-primary);
+}
+
+.empty-target-icon {
+    flex-shrink: 0;
+}
+
+.empty-badge-text {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.empty-state-title {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.25;
+}
+
+.empty-state-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.45;
+    margin: 0;
+}
+
+.empty-state-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.empty-drop-zone {
+    width: 100%;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px dashed rgba(255, 255, 255, 0.16);
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
+    margin-top: 2px;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.drop-zone-text {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    line-height: 1.3;
+}
+
+.drop-zone-text code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent-primary);
+    background: rgba(0, 200, 230, 0.1);
+    padding: 1px 4px;
     border-radius: 2px;
 }
 
-.legend-swatch.entity {
-    background: rgba(0, 230, 118, 0.6);
-    border: 1px solid var(--accent-green);
-}
-
-.legend-swatch.leaf {
-    background: transparent;
-    border: 1.5px solid var(--accent-magenta);
-}
-
-.legend-swatch.internal {
-    background: transparent;
-    border: 1.5px dashed #ffffff;
-}
-
-.legend-swatch.query {
-    background: rgba(255, 214, 0, 0.2);
-    border: 1.5px solid var(--accent-yellow);
-}
-
-.legend-swatch.result {
-    background: rgba(255, 23, 68, 0.85);
-    border: 1.5px solid var(--accent-red);
-}
-
-.canvas-container {
+.empty-state-feedback {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 11.5px;
     width: 100%;
-    max-width: 900px;
-    position: relative;
-    border-radius: 8px;
+    box-sizing: border-box;
+    text-align: left;
+    margin-top: 4px;
+}
+
+.empty-state-feedback.error {
+    background: rgba(244, 63, 94, 0.12);
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    color: #fda4af;
+}
+
+.empty-state-feedback.loading {
+    background: rgba(234, 179, 8, 0.12);
+    border: 1px solid rgba(234, 179, 8, 0.35);
+    color: #fde047;
+}
+
+.empty-state-feedback .feedback-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.empty-state-feedback.error .feedback-dot {
+    background-color: var(--accent-result);
+    box-shadow: 0 0 6px rgba(244, 63, 94, 0.6);
+}
+
+.empty-state-feedback.loading .feedback-dot {
+    background-color: var(--accent-query);
+    box-shadow: 0 0 6px rgba(234, 179, 8, 0.6);
+    animation: pulse-dot 1.2s infinite ease-in-out;
+}
+
+/* --------------------------------------------------------------------------
+   8. Structural Region 4 & 5: Workstation Sidebar
+   -------------------------------------------------------------------------- */
+
+.workstation-sidebar {
+    flex: 0 0 310px;
+    width: 310px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
     overflow: hidden;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-    background: #04070d;
 }
 
-canvas#radar {
-    display: block;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 4 / 3;
-    background: #04070d;
+/* Panel Header Component */
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: var(--border-subtle);
+    margin-bottom: 10px;
 }
 
-.telemetry-bar {
-    width: 100%;
-    max-width: 900px;
-    margin-top: 14px;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 10px;
-}
-
-.metric-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 10px 14px;
-}
-
-.metric-label {
+.panel-title {
     font-size: 11px;
-    text-transform: uppercase;
+    font-weight: 700;
     letter-spacing: 0.5px;
+    text-transform: uppercase;
     color: var(--text-muted);
 }
 
-.metric-value {
-    font-size: 16px;
-    font-family: monospace;
+.panel-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
     font-weight: 700;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+}
+
+/* --------------------------------------------------------------------------
+   8a. Structural Region 4: Layer Control Dock
+   -------------------------------------------------------------------------- */
+
+.layer-dock {
+    flex: 0 0 auto;
+    background-color: var(--surface-dock);
+    border: var(--border-panel);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.layer-channel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Engineering Channel Card */
+.channel-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    background-color: #0e1320;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.channel-card:hover {
+    background-color: #141b2b;
+    border-color: rgba(255, 255, 255, 0.16);
+}
+
+.channel-card input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+/* Active State (Checked) */
+.channel-card:has(input[type="checkbox"]:checked) {
+    background-color: #121929;
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Inactive State (Unchecked) */
+.channel-card:has(input[type="checkbox"]:not(:checked)) {
+    background-color: #080b12;
+    border-color: rgba(255, 255, 255, 0.04);
+    opacity: 0.6;
+}
+
+.channel-card:has(input[type="checkbox"]:not(:checked)) .channel-name {
+    color: var(--text-dim);
+}
+
+/* Semantic Channel Indicator Bar */
+.channel-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    transition: opacity 0.15s ease;
+}
+
+.channel-indicator.entity   { background-color: var(--accent-entity); }
+.channel-indicator.result   { background-color: var(--accent-result); }
+.channel-indicator.leaf     { background-color: var(--accent-leaf); }
+.channel-indicator.internal { background-color: var(--accent-internal); }
+.channel-indicator.query    { background-color: var(--accent-query); }
+
+.channel-card:has(input[type="checkbox"]:not(:checked)) .channel-indicator {
+    opacity: 0.35;
+}
+
+.channel-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    flex: 1 1 auto;
+}
+
+/* Minimalist Checked / Unchecked SVG Icon */
+.channel-toggle {
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.toggle-icon-on {
+    display: none;
+    color: var(--accent-primary);
+}
+
+.toggle-icon-off {
+    display: block;
+    color: var(--text-dim);
+}
+
+.channel-card:has(input[type="checkbox"]:checked) .toggle-icon-on {
+    display: block;
+}
+
+.channel-card:has(input[type="checkbox"]:checked) .toggle-icon-off {
+    display: none;
+}
+
+.channel-card:has(input[type="checkbox"]:not(:checked)) .toggle-icon-on {
+    display: none;
+}
+
+.channel-card:has(input[type="checkbox"]:not(:checked)) .toggle-icon-off {
+    display: block;
+}
+
+/* --------------------------------------------------------------------------
+   8b. Structural Region 5: Contextual Telemetry Region
+   -------------------------------------------------------------------------- */
+
+.telemetry-region {
+    flex: 1 1 0;
+    min-height: 0;
+    background-color: var(--surface-telemetry);
+    border: var(--border-panel);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.telemetry-region::-webkit-scrollbar {
+    width: 4px;
+}
+
+.telemetry-region::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.telemetry-region::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+}
+
+.telemetry-region::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-primary);
+}
+
+.telemetry-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.section-tag {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+}
+
+.section-tag.tag-query {
+    color: var(--accent-result);
+}
+
+.section-tag.tag-catalog {
+    color: var(--accent-entity);
+}
+
+.section-tag.tag-topology {
+    color: var(--accent-leaf);
+}
+
+/* Metric Pod Enclosures with subtle recessed treatment */
+.metric-pod {
+    background-color: var(--surface-pod);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.metric-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.metric-name {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.metric-digits-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.metric-number {
+    font-family: var(--font-mono);
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
     color: var(--text-primary);
-    margin-top: 4px;
+}
+
+.metric-crimson { color: var(--accent-result); }
+.metric-emerald { color: var(--accent-entity); }
+.metric-purple  { color: var(--accent-leaf); }
+.metric-slate   { color: var(--accent-internal); }
+
+.metric-unit {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+}
+
+.metric-description {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+/* Dual Topology Subchannels */
+.topology-subchannels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.subchannel {
+    background-color: var(--surface-pod);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    position: relative;
+}
+
+.subchannel-leaf {
+    border-left: 2px solid var(--accent-leaf);
+}
+
+.subchannel-internal {
+    border-left: 2px solid var(--accent-internal);
+}
+
+.subchannel-number {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Index System Specifications */
+.section-specs {
+    border-top: var(--border-subtle);
+    padding-top: 10px;
+    margin-top: 2px;
+}
+
+.specs-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.spec-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11.5px;
+    padding: 3px 0;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+
+.spec-entry:last-child {
+    border-bottom: none;
+}
+
+.spec-label {
+    color: var(--text-dim);
+}
+
+.spec-value {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* --------------------------------------------------------------------------
+   9. Focus Indicators & Interactive States
+   -------------------------------------------------------------------------- */
+
+:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 1px;
+}
+
+.channel-card:has(input[type="checkbox"]:focus-visible) {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 1px;
+}
+
+/* --------------------------------------------------------------------------
+   10. Responsive Adaptations
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 980px) {
+    body {
+        height: auto;
+        min-height: 100%;
+        overflow-y: auto;
+    }
+
+    .workstation-shell {
+        height: auto;
+        max-height: none;
+        min-height: calc(100vh - 12px);
+    }
+
+    .workstation-body {
+        flex-direction: column;
+        flex: 0 0 auto;
+        height: auto;
+        overflow: visible;
+    }
+
+    .canvas-stage {
+        flex: 0 0 460px;
+        height: 460px;
+    }
+
+    .workstation-sidebar {
+        flex: 0 0 auto;
+        width: 100%;
+        height: auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        overflow: visible;
+    }
+
+    .telemetry-region {
+        max-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 4px;
+        height: auto;
+        min-height: 100%;
+        overflow-y: auto;
+    }
+
+    .workstation-shell {
+        height: auto;
+        max-height: none;
+        min-height: calc(100vh - 8px);
+        padding: 4px;
+        gap: 4px;
+    }
+
+    .masthead {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 8px 10px;
+    }
+
+    .masthead-status {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .command-workspace {
+        gap: 6px;
+        padding: 6px 8px;
+    }
+
+    .cmd-sensors {
+        width: 100%;
+        margin-left: 0;
+        justify-content: space-between;
+    }
+
+    .canvas-stage {
+        flex: 0 0 380px;
+        height: 380px;
+    }
+
+    .viewport-hud-hints {
+        display: none;
+    }
+
+    .empty-state-card {
+        padding: 16px 20px;
+        gap: 10px;
+    }
+
+    .empty-state-title {
+        font-size: 14.5px;
+    }
+
+    .workstation-sidebar {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .brand-wordmark {
+        font-size: 18px;
+    }
+
+    .cmd-group.cmd-dataset {
+        width: 100%;
+    }
+
+    .cmd-group.cmd-dataset .btn {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+    .segmented-control {
+        width: 100%;
+        justify-content: space-around;
+    }
+
+    .btn-nav {
+        flex: 1 1 auto;
+    }
+
+    .sensor-coords {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

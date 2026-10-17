@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KESTREL — Viewport & Coordinate Transformation Tests</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0e17;
+            color: #f0f4fc;
+            padding: 30px;
+            margin: 0;
+        }
+        h1 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: #00b0ff;
+        }
+        p {
+            color: #9ab0d3;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .summary-card {
+            background: #121826;
+            border: 1px solid #24344d;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: inline-flex;
+            gap: 30px;
+        }
+        .stat {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #5e7399;
+        }
+        .stat-val {
+            font-size: 22px;
+            font-weight: 700;
+            font-family: monospace;
+        }
+        .stat-val.passed { color: #00e676; }
+        .stat-val.failed { color: #ff1744; }
+        table {
+            width: 100%;
+            max-width: 900px;
+            border-collapse: collapse;
+            background: #121826;
+            border: 1px solid #24344d;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 10px 16px;
+            text-align: left;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        th {
+            background: #182234;
+            color: #9ab0d3;
+            font-weight: 600;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 11px;
+            font-family: monospace;
+        }
+        .badge.pass {
+            background: rgba(0, 230, 118, 0.15);
+            color: #00e676;
+            border: 1px solid rgba(0, 230, 118, 0.4);
+        }
+        .badge.fail {
+            background: rgba(255, 23, 68, 0.15);
+            color: #ff1744;
+            border: 1px solid rgba(255, 23, 68, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <h1>KESTREL Mission Control — Viewport Test Suite</h1>
+    <p>Automated verification of coordinate transformations, cursor-anchored zoom, pan, and degenerate extent safety.</p>
+
+    <div class="summary-card">
+        <div class="stat">
+            <span class="stat-label">Total Tests</span>
+            <span class="stat-val" id="totalCount">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Passed</span>
+            <span class="stat-val passed" id="passCount">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Failed</span>
+            <span class="stat-val failed" id="failCount">0</span>
+        </div>
+    </div>
+
+    <!-- Hidden canvas element to satisfy app.js DOM requirements -->
+    <div style="display:none;">
+        <canvas id="radar" width="800" height="600"></canvas>
+        <span id="status"></span>
+        <span id="statusDot"></span>
+        <span id="missionClock"></span>
+        <button id="btnLoad"></button>
+        <button id="btnBrowse"></button>
+        <input type="file" id="fileInput">
+        <button id="btnZoomIn"></button>
+        <button id="btnZoomOut"></button>
+        <button id="btnFitAll"></button>
+        <button id="btnResetView"></button>
+        <span id="valZoom"></span>
+        <span id="valCoords"></span>
+        <input type="checkbox" id="layerEntities">
+        <input type="checkbox" id="layerResults">
+        <input type="checkbox" id="layerLeaf">
+        <input type="checkbox" id="layerInternal">
+        <input type="checkbox" id="layerQuery">
+        <span id="valEntities"></span>
+        <span id="valResults"></span>
+        <span id="valLeaf"></span>
+        <span id="valInternal"></span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50px;">#</th>
+                <th>Test Case Description</th>
+                <th style="width: 100px;">Status</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody id="testTableBody"></tbody>
+    </table>
+
+    <script src="app.js"></script>
+    <script>
+        const results = [];
+        let passed = 0;
+        let failed = 0;
+
+        function assert(desc, condition, details = '') {
+            const ok = Boolean(condition);
+            if (ok) passed++; else failed++;
+            results.push({ desc, ok, details });
+        }
+
+        function assertAlmostEqual(desc, a, b, eps = 1e-6) {
+            const diff = Math.abs(a - b);
+            assert(desc, diff <= eps, `Expected ${a} ≈ ${b} (diff: ${diff.toExponential(4)})`);
+        }
+
+        // --- Run Tests ---
+        // Test 1: worldToScreen and screenToWorld round-trip
+        viewport.scale = 2.5;
+        viewport.tx = 150.0;
+        viewport.ty = -80.0;
+        const testPoints = [
+            [0, 0],
+            [120, 350],
+            [-170.409, 55.804],
+            [822.895, 647.174],
+            [-500, -500]
+        ];
+        testPoints.forEach(([wx, wy], idx) => {
+            const s = worldToScreen(wx, wy);
+            const wBack = screenToWorld(s.x, s.y);
+            assertAlmostEqual(`Round-trip transform Point #${idx + 1} (${wx}, ${wy})`, wBack.x, wx);
+            assertAlmostEqual(`Round-trip transform Point #${idx + 1} Y-coord`, wBack.y, wy);
+        });
+
+        // Test 2: Cursor-centered zoom invariance
+        viewport.scale = 1.8;
+        viewport.tx = 100.0;
+        viewport.ty = 80.0;
+        const cursorX = 420.0;
+        const cursorY = 260.0;
+        const wCursorBefore = screenToWorld(cursorX, cursorY);
+        zoomAt(cursorX, cursorY, 1.35); // Zoom In
+        const wCursorAfterZoomIn = screenToWorld(cursorX, cursorY);
+        assertAlmostEqual('Cursor-anchored zoom in preserves world coordinate under pointer (X)', wCursorAfterZoomIn.x, wCursorBefore.x);
+        assertAlmostEqual('Cursor-anchored zoom in preserves world coordinate under pointer (Y)', wCursorAfterZoomIn.y, wCursorBefore.y);
+
+        zoomAt(cursorX, cursorY, 1 / 1.7); // Zoom Out
+        const wCursorAfterZoomOut = screenToWorld(cursorX, cursorY);
+        assertAlmostEqual('Cursor-anchored zoom out preserves world coordinate under pointer (X)', wCursorAfterZoomOut.x, wCursorBefore.x);
+        assertAlmostEqual('Cursor-anchored zoom out preserves world coordinate under pointer (Y)', wCursorAfterZoomOut.y, wCursorBefore.y);
+
+        // Test 3: ProjectBox degenerate, valid, and invalid bounds
+        const validBox = [10, 20, 30, 40];
+        const projValid = projectBox(validBox);
+        assert('projectBox transforms valid rectangle', projValid !== null && projValid.w > 0 && projValid.h > 0);
+
+        const degenBox = [100, 100, 100, 100];
+        const projDegen = projectBox(degenBox);
+        assert('projectBox handles degenerate point box without error', projDegen !== null && projDegen.w === 0 && projDegen.h === 0);
+
+        const nanBox = [NaN, 10, 20, 30];
+        assert('projectBox returns null for NaN coordinates', projectBox(nanBox) === null);
+
+        const malformedBox = [10, 20];
+        assert('projectBox returns null for short array (<4)', projectBox(malformedBox) === null);
+
+        // Test 4: computeFitTransform bounds and centering
+        const sampleState = {
+            entities: [
+                { id: 1, bounds: [55.8042, -170.409, 60.6148, -165.855] },
+                { id: 2, bounds: [821.597, 300.834, 822.895, 647.174] }
+            ]
+        };
+        const fit = computeFitTransform(sampleState, 800, 600);
+        assert('computeFitTransform returns finite positive scale', isFinite(fit.scale) && fit.scale > 0);
+        assert('computeFitTransform returns finite translations', isFinite(fit.tx) && isFinite(fit.ty));
+
+        // Test 5: Empty dataset fallback
+        const emptyFit = computeFitTransform({}, 800, 600);
+        assert('Empty dataset returns scale 1.0', emptyFit.scale === 1.0);
+        assert('Empty dataset centers at width/2', emptyFit.tx === 400.0);
+        assert('Empty dataset centers at height/2', emptyFit.ty === 300.0);
+
+        // Test 6: Large coordinates dataset (0 to 5,000,000)
+        const largeState = { entities: [{ id: 1, bounds: [0, 0, 5000000, 3000000] }] };
+        const largeFit = computeFitTransform(largeState, 800, 600);
+        assert('Large coordinates return finite positive scale', isFinite(largeFit.scale) && largeFit.scale > 0);
+        assert('Large coordinates center within canvas', isFinite(largeFit.tx) && isFinite(largeFit.ty));
+
+        // Test 7: Small coordinates dataset (0 to 0.005)
+        const smallState = { entities: [{ id: 1, bounds: [0, 0, 0.005, 0.002] }] };
+        const smallFit = computeFitTransform(smallState, 800, 600);
+        assert('Small coordinates return finite positive scale', isFinite(smallFit.scale) && smallFit.scale > 0);
+
+        // Test 8: Non-square extents (2000 x 50)
+        const nonSquareState = { entities: [{ id: 1, bounds: [0, 0, 2000, 50] }] };
+        const nsFit = computeFitTransform(nonSquareState, 800, 600);
+        assert('Non-square extents preserve aspect ratio', isFinite(nsFit.scale) && nsFit.scale > 0);
+
+        // Test 9: Negative quadrant coordinates ([-800, -600, -200, -100])
+        const negState = { entities: [{ id: 1, bounds: [-800, -600, -200, -100] }] };
+        const negFit = computeFitTransform(negState, 800, 600);
+        assert('Negative coordinates return finite positive scale', isFinite(negFit.scale) && negFit.scale > 0);
+
+        // Test 10: Single degenerate point entity ([100, 200, 100, 200])
+        const ptState = { entities: [{ id: 1, bounds: [100, 200, 100, 200] }] };
+        const ptFit = computeFitTransform(ptState, 800, 600);
+        assert('Single point entity centers cleanly', isFinite(ptFit.scale) && ptFit.scale > 0 && isFinite(ptFit.tx) && isFinite(ptFit.ty));
+
+        // Test 11: Safe screenToWorld with zero scale
+        viewport.scale = 0;
+        const zeroScaleW = screenToWorld(100, 100);
+        assert('screenToWorld returns NaN for zero scale', isNaN(zeroScaleW.x) && isNaN(zeroScaleW.y));
+
+        // Render Test Table
+        document.getElementById('totalCount').textContent = results.length;
+        document.getElementById('passCount').textContent = passed;
+        document.getElementById('failCount').textContent = failed;
+
+        const tbody = document.getElementById('testTableBody');
+        results.forEach((res, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td>${res.desc}</td>
+                <td><span class="badge ${res.ok ? 'pass' : 'fail'}">${res.ok ? 'PASS' : 'FAIL'}</span></td>
+                <td style="color: ${res.ok ? '#5e7399' : '#ff1744'}; font-family: monospace; font-size: 11px;">${res.details || 'OK'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        console.log(`[KESTREL TEST SUITE] Complete: ${passed} passed, ${failed} failed out of ${results.length}.`);
+
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('kestrel_test_results', JSON.stringify({ passed, failed, total: results.length, results }));
+            }
+        } catch (_) {}
+
+        if (typeof dump === 'function') {
+            dump('\n=== KESTREL BROWSER TEST RESULTS ===\n');
+            results.forEach((r, idx) => {
+                dump(`[${r.ok ? 'PASS' : 'FAIL'}] #${idx + 1} ${r.desc} - ${r.details || 'OK'}\n`);
+            });
+            dump(`=== TOTAL: ${results.length}, PASSED: ${passed}, FAILED: ${failed} ===\n\n`);
+        }
+    </script>
+</body>
+</html>

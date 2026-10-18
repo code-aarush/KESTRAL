@@ -13,6 +13,8 @@
     {"id": 14, "bounds": [303.81, 448.706, 311.299, 452.478]}
   ],
   "rtree": {
+    "height": 2,
+    "size": 11,
     "internal_mbrs": [
       [55.8042, -170.409, 822.895, 647.174]
     ],
@@ -21,7 +23,139 @@
       [486.484, 421.962, 566.401, 474.714],
       [273.933, 286.066, 822.895, 304.939],
       [55.8042, -170.409, 507.994, -41.328]
-    ]
+    ],
+    "root": {
+      "id": "node_0",
+      "parent_id": null,
+      "type": "root",
+      "is_root": true,
+      "is_leaf": false,
+      "depth": 0,
+      "bounds": [55.8042, -170.409, 822.895, 647.174],
+      "children": [
+        {
+          "id": "node_1",
+          "parent_id": "node_0",
+          "type": "leaf",
+          "is_root": false,
+          "is_leaf": true,
+          "depth": 1,
+          "bounds": [299.17, 402.606, 327.235, 647.174],
+          "children": [
+            {
+              "id": "entity_20",
+              "parent_id": "node_1",
+              "entity_id": 20,
+              "type": "entity",
+              "bounds": [299.17, 646.02, 301.748, 647.174]
+            },
+            {
+              "id": "entity_21",
+              "parent_id": "node_1",
+              "entity_id": 21,
+              "type": "entity",
+              "bounds": [323.1, 402.606, 327.235, 412.035]
+            },
+            {
+              "id": "entity_14",
+              "parent_id": "node_1",
+              "entity_id": 14,
+              "type": "entity",
+              "bounds": [303.81, 448.706, 311.299, 452.478]
+            }
+          ]
+        },
+        {
+          "id": "node_2",
+          "parent_id": "node_0",
+          "type": "leaf",
+          "is_root": false,
+          "is_leaf": true,
+          "depth": 1,
+          "bounds": [486.484, 421.962, 566.401, 474.714],
+          "children": [
+            {
+              "id": "entity_25",
+              "parent_id": "node_2",
+              "entity_id": 25,
+              "type": "entity",
+              "bounds": [486.484, 466.309, 494.389, 474.714]
+            },
+            {
+              "id": "entity_22",
+              "parent_id": "node_2",
+              "entity_id": 22,
+              "type": "entity",
+              "bounds": [549.025, 443.429, 552.169, 447.829]
+            },
+            {
+              "id": "entity_12",
+              "parent_id": "node_2",
+              "entity_id": 12,
+              "type": "entity",
+              "bounds": [563.344, 421.962, 566.401, 424.537]
+            }
+          ]
+        },
+        {
+          "id": "node_3",
+          "parent_id": "node_0",
+          "type": "leaf",
+          "is_root": false,
+          "is_leaf": true,
+          "depth": 1,
+          "bounds": [273.933, 286.066, 822.895, 304.939],
+          "children": [
+            {
+              "id": "entity_31",
+              "parent_id": "node_3",
+              "entity_id": 31,
+              "type": "entity",
+              "bounds": [295.344, 288.242, 304.001, 290.033]
+            },
+            {
+              "id": "entity_30",
+              "parent_id": "node_3",
+              "entity_id": 30,
+              "type": "entity",
+              "bounds": [273.933, 286.066, 278.129, 292.905]
+            },
+            {
+              "id": "entity_11",
+              "parent_id": "node_3",
+              "entity_id": 11,
+              "type": "entity",
+              "bounds": [821.597, 300.834, 822.895, 304.939]
+            }
+          ]
+        },
+        {
+          "id": "node_4",
+          "parent_id": "node_0",
+          "type": "leaf",
+          "is_root": false,
+          "is_leaf": true,
+          "depth": 1,
+          "bounds": [55.8042, -170.409, 507.994, -41.328],
+          "children": [
+            {
+              "id": "entity_19",
+              "parent_id": "node_4",
+              "entity_id": 19,
+              "type": "entity",
+              "bounds": [498.757, -46.3092, 507.994, -41.328]
+            },
+            {
+              "id": "entity_6",
+              "parent_id": "node_4",
+              "entity_id": 6,
+              "type": "entity",
+              "bounds": [55.8042, -170.409, 60.6148, -165.855]
+            }
+          ]
+        }
+      ]
+    }
   },
   "query": {
     "bounds": [200, 200, 600, 400],

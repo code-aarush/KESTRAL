@@ -106,10 +106,15 @@ html, body {
 }
 
 body {
-    padding: 8px;
+    padding: 6px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
     overflow-y: auto;
 }
@@ -142,14 +147,12 @@ body {
 .workstation-shell {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 16px);
-    height: calc(100dvh - 16px);
-    max-height: calc(100vh - 16px);
-    max-height: calc(100dvh - 16px);
+    flex: 1 1 0;
     min-height: 0;
+    height: 100%;
     width: 100%;
-    max-width: 1920px;
-    margin: 0 auto;
+    max-width: 100%;
+    margin: 0;
     background-color: var(--surface-shell);
     border: var(--border-panel);
     border-radius: var(--radius-md);
@@ -158,6 +161,7 @@ body {
     padding: 6px;
     box-sizing: border-box;
 }
+
 
 /* --------------------------------------------------------------------------
    4. Structural Region 1: Brand Masthead (Compact natural height)
@@ -272,7 +276,7 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 380px;
+    max-width: min(480px, 45vw);
 }
 
 .status-separator {
@@ -300,11 +304,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 5px 12px;
+    padding: 6px 12px;
     background-color: var(--surface-command);
     border: var(--border-panel);
     border-radius: var(--radius-sm);
-    gap: 12px;
+    gap: 8px 12px;
+    min-width: 0;
     flex-wrap: wrap;
 }
 
@@ -312,6 +317,14 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+/* Layer Visibility Toolbar Group */
+.cmd-layers {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
 }
 
 .cmd-separator {
@@ -473,6 +486,8 @@ body {
     align-items: center;
     gap: 8px;
     margin-left: auto;
+    flex-shrink: 0;
+    min-width: 0;
 }
 
 .sensor-pod {
@@ -506,17 +521,20 @@ body {
 }
 
 .sensor-coords {
-    min-width: 195px;
-    width: 195px;
-    flex-shrink: 0;
+    min-width: 140px;
+    max-width: 195px;
+    width: auto;
+    flex: 0 1 auto;
     justify-content: space-between;
 }
 
 .sensor-coords-val {
-    width: 135px;
+    min-width: 0;
+    max-width: 135px;
     text-align: right;
     white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
     font-variant-numeric: tabular-nums;
     font-family: var(--font-mono);
 }
@@ -703,6 +721,7 @@ body {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
+    display: none;
 }
 
 .empty-state-card {
@@ -842,8 +861,8 @@ body {
    -------------------------------------------------------------------------- */
 
 .workstation-sidebar {
-    flex: 0 0 310px;
-    width: 310px;
+    flex: 0 0 clamp(310px, 24vw, 400px);
+    width: clamp(310px, 24vw, 400px);
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -899,23 +918,31 @@ body {
     gap: 4px;
 }
 
-/* Engineering Channel Card */
+/* Engineering Channel Card (Toolbar & Compact Toggle) */
 .channel-card {
-    display: flex;
+    height: var(--control-height);
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 5px 8px;
-    background-color: #0e1320;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 6px;
+    padding: 0 8px;
+    background-color: var(--surface-pod);
+    border: var(--border-control);
     border-radius: var(--radius-sm);
     cursor: pointer;
     user-select: none;
-    transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+    white-space: nowrap;
 }
 
 .channel-card:hover {
-    background-color: #141b2b;
-    border-color: rgba(255, 255, 255, 0.16);
+    background-color: var(--surface-control-hover);
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
+.channel-card:focus-within {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 1px;
 }
 
 .channel-card input[type="checkbox"] {
@@ -935,8 +962,8 @@ body {
 /* Inactive State (Unchecked) */
 .channel-card:has(input[type="checkbox"]:not(:checked)) {
     background-color: #080b12;
-    border-color: rgba(255, 255, 255, 0.04);
-    opacity: 0.6;
+    border-color: rgba(255, 255, 255, 0.05);
+    opacity: 0.55;
 }
 
 .channel-card:has(input[type="checkbox"]:not(:checked)) .channel-name {
@@ -945,8 +972,8 @@ body {
 
 /* Semantic Channel Indicator Bar */
 .channel-indicator {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 2px;
     flex-shrink: 0;
     transition: opacity 0.15s ease;
@@ -963,20 +990,21 @@ body {
 }
 
 .channel-name {
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 500;
     color: var(--text-secondary);
-    flex: 1 1 auto;
+    white-space: nowrap;
 }
 
 /* Minimalist Checked / Unchecked SVG Icon */
 .channel-toggle {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    margin-left: 2px;
 }
 
 .toggle-icon-on {
@@ -998,12 +1026,484 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   8b. Structural Region 5: Contextual Telemetry Region
+   8b. Structural Region: R-Tree Hierarchy Dock
+   -------------------------------------------------------------------------- */
+
+.hierarchy-dock {
+    flex: 1.5 1 260px;
+    min-height: 180px;
+    max-height: min(650px, calc(100% - 130px));
+    background-color: var(--surface-dock);
+    border: var(--border-panel);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
+}
+
+.hierarchy-dock .panel-header {
+    flex: 0 0 auto;
+    margin-bottom: 4px;
+}
+
+/* Hierarchy Channel Legend */
+.hierarchy-legend {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 1px 2px 4px 2px;
+    user-select: none;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.legend-swatch {
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.legend-swatch.internal { background-color: var(--accent-internal); }
+.legend-swatch.leaf     { background-color: var(--accent-leaf); }
+.legend-swatch.entity   { background-color: var(--accent-entity); }
+
+.legend-text {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--text-dim);
+}
+
+/* Tree Scroll Container */
+.hierarchy-tree-container {
+    flex: 1 1 140px;
+    min-height: 60px;
+    background-color: var(--surface-pod);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 5px 6px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    overscroll-behavior-y: contain;
+    position: relative;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.hierarchy-tree-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.hierarchy-tree-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.hierarchy-tree-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 3px;
+}
+
+.hierarchy-tree-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 200, 230, 0.4);
+}
+
+.hierarchy-tree-container:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -1px;
+}
+
+/* Empty / Fallback State */
+.hierarchy-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 18px 10px;
+    gap: 6px;
+    height: 100%;
+    min-height: 80px;
+    box-sizing: border-box;
+}
+
+.hierarchy-empty-state.is-hidden {
+    display: none;
+}
+
+.hierarchy-empty-icon {
+    color: var(--text-dim);
+    opacity: 0.65;
+    margin-bottom: 2px;
+}
+
+.hierarchy-empty-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.hierarchy-empty-desc {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    line-height: 1.4;
+    max-width: 220px;
+}
+
+/* Hierarchical Tree Structure */
+.hierarchy-tree {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tree-item {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+}
+
+/* Node Row */
+.tree-node-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 6px;
+    min-height: 23px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid transparent;
+    border-left: 2px solid transparent;
+    background-color: transparent;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+    font-size: 11.5px;
+}
+
+.tree-node-row:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.tree-node-row:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -1px;
+}
+
+/* Selected State */
+.tree-node-row.selected,
+.tree-item[aria-selected="true"] > .tree-node-row {
+    background-color: rgba(0, 200, 230, 0.14);
+    border-color: rgba(0, 200, 230, 0.4);
+    border-left: 3px solid var(--accent-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.tree-node-row.selected:hover,
+.tree-item[aria-selected="true"] > .tree-node-row:hover {
+    background-color: rgba(0, 200, 230, 0.2);
+    border-color: rgba(0, 200, 230, 0.55);
+}
+
+.tree-node-row.selected .tree-node-id,
+.tree-item[aria-selected="true"] > .tree-node-row .tree-node-id {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+/* Tree Expander Toggle Button */
+.tree-toggle {
+    width: 15px;
+    height: 15px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 2px;
+    flex-shrink: 0;
+    transition: transform 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.tree-toggle:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.tree-toggle:focus-visible {
+    outline: 1.5px solid var(--border-focus);
+    outline-offset: 1px;
+}
+
+.tree-toggle-icon {
+    width: 9px;
+    height: 9px;
+    transition: transform 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tree-item.collapsed > .tree-node-row .tree-toggle-icon,
+.tree-item[aria-expanded="false"] > .tree-node-row .tree-toggle-icon {
+    transform: rotate(0deg);
+}
+
+.tree-item.expanded > .tree-node-row .tree-toggle-icon,
+.tree-item[aria-expanded="true"] > .tree-node-row .tree-toggle-icon {
+    transform: rotate(90deg);
+    color: var(--accent-primary);
+}
+
+.tree-item.collapsed > .tree-children,
+.tree-item[aria-expanded="false"] > .tree-children {
+    display: none;
+}
+
+.tree-toggle-spacer {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tree-leaf-bullet {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background-color: var(--accent-entity);
+    opacity: 0.6;
+}
+
+/* Node Type Badges */
+.tree-type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 2px;
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.tree-type-badge.root {
+    background-color: rgba(0, 200, 230, 0.16);
+    color: var(--accent-primary);
+    border: 1px solid rgba(0, 200, 230, 0.35);
+}
+
+.tree-type-badge.internal {
+    background-color: rgba(148, 163, 184, 0.14);
+    color: var(--accent-internal);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.tree-type-badge.leaf {
+    background-color: rgba(168, 85, 247, 0.16);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
+.tree-type-badge.entity {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #86efac;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* Node ID & Meta Readouts */
+.tree-node-id {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.tree-node-meta {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-left: auto;
+    padding-left: 6px;
+}
+
+/* Child Group & Subtle Indentation Connectors */
+.tree-children {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 10px;
+    margin-left: 7px;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    position: relative;
+}
+
+.tree-children > .tree-item::before {
+    content: "";
+    position: absolute;
+    top: 11px;
+    left: -10px;
+    width: 7px;
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Node Detail Inspector Card */
+.node-detail-card {
+    background-color: #0c101b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    padding: 5px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    flex: 0 1 auto;
+    min-height: 70px;
+    max-height: 135px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.node-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.detail-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.btn-clear-selection {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    color: var(--text-dim);
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 1px 6px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-clear-selection:hover:not(:disabled) {
+    background-color: var(--surface-control-hover);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.btn-clear-selection:active:not(:disabled) {
+    background-color: var(--surface-control-active);
+}
+
+.btn-clear-selection:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 1px;
+}
+
+.btn-clear-selection:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    border-color: transparent;
+}
+
+.node-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px 8px;
+}
+
+.detail-entry {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.detail-entry-full {
+    grid-column: 1 / -1;
+}
+
+.detail-key {
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+.detail-val {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.detail-val-mono {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--accent-primary);
+    max-height: 38px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    word-break: break-all;
+    white-space: normal;
+    line-height: 1.35;
+    min-width: 0;
+}
+
+/* --------------------------------------------------------------------------
+   8c. Structural Region 5: Contextual Telemetry Region
    -------------------------------------------------------------------------- */
 
 .telemetry-region {
-    flex: 1 1 0;
-    min-height: 0;
+    flex: 1 1 180px;
+    min-height: 115px;
     background-color: var(--surface-telemetry);
     border: var(--border-panel);
     border-radius: var(--radius-sm);
@@ -1013,6 +1513,8 @@ body {
     gap: 8px;
     overflow-y: auto;
     overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
 .telemetry-section {
@@ -1202,17 +1704,45 @@ body {
    10. Responsive Adaptations
    -------------------------------------------------------------------------- */
 
-@media (max-width: 980px) {
+/* Medium Displays / Laptops (860px to 1100px): Maintain side-by-side workstation */
+@media (max-width: 1100px) {
+    .masthead-brand .brand-context {
+        display: none;
+    }
+
+    .status-text {
+        max-width: 280px;
+    }
+
+    .workstation-sidebar {
+        flex: 0 0 clamp(290px, 30vw, 330px);
+        width: clamp(290px, 30vw, 330px);
+    }
+
+    .sensor-coords {
+        min-width: 130px;
+        max-width: 170px;
+    }
+}
+
+/* Tablet & Narrow Viewport (< 860px): Stacked layout with responsive fluid canvas */
+@media (max-width: 860px) {
     body {
         height: auto;
-        min-height: 100%;
+        min-height: 100vh;
+        min-height: 100dvh;
         overflow-y: auto;
+        padding: 4px;
     }
 
     .workstation-shell {
         height: auto;
         max-height: none;
-        min-height: calc(100vh - 12px);
+        min-height: calc(100vh - 8px);
+        min-height: calc(100dvh - 8px);
+        overflow: visible;
+        padding: 4px;
+        gap: 6px;
     }
 
     .workstation-body {
@@ -1220,11 +1750,14 @@ body {
         flex: 0 0 auto;
         height: auto;
         overflow: visible;
+        gap: 6px;
     }
 
     .canvas-stage {
-        flex: 0 0 460px;
-        height: 460px;
+        flex: 0 0 auto;
+        width: 100%;
+        height: clamp(340px, 50vh, 520px);
+        min-height: 320px;
     }
 
     .workstation-sidebar {
@@ -1232,32 +1765,52 @@ body {
         width: 100%;
         height: auto;
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+        gap: 6px;
         overflow: visible;
     }
 
-    .telemetry-region {
-        max-height: 400px;
-    }
-}
-
-@media (max-width: 768px) {
-    body {
-        padding: 4px;
+    .hierarchy-dock {
         height: auto;
-        min-height: 100%;
+        min-height: 280px;
+        max-height: 480px;
+    }
+
+    .hierarchy-tree-container {
+        min-height: 120px;
+        max-height: 260px;
+    }
+
+    .telemetry-region {
+        height: auto;
+        max-height: 480px;
         overflow-y: auto;
     }
 
-    .workstation-shell {
-        height: auto;
-        max-height: none;
-        min-height: calc(100vh - 8px);
-        padding: 4px;
-        gap: 4px;
+    .command-workspace {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 6px 10px;
     }
 
+    .cmd-layers {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .cmd-sensors {
+        width: 100%;
+        margin-left: 0;
+        justify-content: space-between;
+    }
+
+    .cmd-separator {
+        display: none;
+    }
+}
+
+/* Compact Mobile (< 640px) */
+@media (max-width: 640px) {
     .masthead {
         flex-direction: column;
         align-items: flex-start;
@@ -1270,43 +1823,13 @@ body {
         justify-content: space-between;
     }
 
-    .command-workspace {
-        gap: 6px;
-        padding: 6px 8px;
-    }
-
-    .cmd-sensors {
-        width: 100%;
-        margin-left: 0;
-        justify-content: space-between;
-    }
-
     .canvas-stage {
-        flex: 0 0 380px;
-        height: 380px;
-    }
-
-    .viewport-hud-hints {
-        display: none;
-    }
-
-    .empty-state-card {
-        padding: 16px 20px;
-        gap: 10px;
-    }
-
-    .empty-state-title {
-        font-size: 14.5px;
+        height: clamp(280px, 45vh, 420px);
+        min-height: 280px;
     }
 
     .workstation-sidebar {
         grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 480px) {
-    .brand-wordmark {
-        font-size: 18px;
     }
 
     .cmd-group.cmd-dataset {
@@ -1327,9 +1850,39 @@ body {
         flex: 1 1 auto;
     }
 
+    .cmd-layers {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 4px;
+        width: 100%;
+    }
+
+    .cmd-layers .channel-card {
+        justify-content: space-between;
+    }
+
     .sensor-coords {
         min-width: 0;
         flex: 1 1 auto;
+    }
+
+    .viewport-hud-hints {
+        display: none;
+    }
+
+    .empty-state-card {
+        padding: 16px 20px;
+        gap: 10px;
+    }
+
+    .empty-state-title {
+        font-size: 14.5px;
+    }
+}
+
+@media (max-width: 480px) {
+    .brand-wordmark {
+        font-size: 18px;
     }
 }
 

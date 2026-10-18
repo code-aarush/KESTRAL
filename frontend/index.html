@@ -70,6 +70,57 @@
 
             <div class="cmd-separator" aria-hidden="true"></div>
 
+            <!-- Layer Visibility Controls (Relocated to Toolbar) -->
+            <div class="cmd-group cmd-layers" role="group" aria-label="Layer Visibility Channels">
+                <label class="channel-card" title="Toggle active spatial entities">
+                    <input type="checkbox" id="layerEntities" checked>
+                    <span class="channel-indicator entity" aria-hidden="true"></span>
+                    <span class="channel-name">Active Entities</span>
+                    <span class="channel-toggle" aria-hidden="true">
+                        <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
+                        <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
+                    </span>
+                </label>
+                <label class="channel-card" title="Toggle highlighted query match results">
+                    <input type="checkbox" id="layerResults" checked>
+                    <span class="channel-indicator result" aria-hidden="true"></span>
+                    <span class="channel-name">Query Hits</span>
+                    <span class="channel-toggle" aria-hidden="true">
+                        <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
+                        <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
+                    </span>
+                </label>
+                <label class="channel-card" title="Toggle R-tree leaf level MBRs">
+                    <input type="checkbox" id="layerLeaf" checked>
+                    <span class="channel-indicator leaf" aria-hidden="true"></span>
+                    <span class="channel-name">Leaf MBRs</span>
+                    <span class="channel-toggle" aria-hidden="true">
+                        <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
+                        <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
+                    </span>
+                </label>
+                <label class="channel-card" title="Toggle R-tree internal directory MBRs">
+                    <input type="checkbox" id="layerInternal" checked>
+                    <span class="channel-indicator internal" aria-hidden="true"></span>
+                    <span class="channel-name">Internal MBRs</span>
+                    <span class="channel-toggle" aria-hidden="true">
+                        <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
+                        <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
+                    </span>
+                </label>
+                <label class="channel-card" title="Toggle active spatial query region">
+                    <input type="checkbox" id="layerQuery" checked>
+                    <span class="channel-indicator query" aria-hidden="true"></span>
+                    <span class="channel-name">Query Region</span>
+                    <span class="channel-toggle" aria-hidden="true">
+                        <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
+                        <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
+                    </span>
+                </label>
+            </div>
+
+            <div class="cmd-separator" aria-hidden="true"></div>
+
             <!-- Viewport Telemetry Sensors Sub-Panel -->
             <div class="cmd-group cmd-sensors" role="group" aria-label="Viewport Sensor Readouts">
                 <div class="sensor-pod" title="Current Viewport Zoom Scale">
@@ -143,60 +194,84 @@
                 </div>
             </main>
 
-            <!-- 3b. Workstation Sidebar: Layer Dock & Telemetry Region -->
+            <!-- 3b. Workstation Sidebar: Hierarchy Dock & Telemetry Region -->
             <aside class="workstation-sidebar" aria-label="Workstation Sidebar">
-                <!-- Structural Region: Layer Control Dock -->
-                <section class="layer-dock" aria-label="Spatial Layer Visibility Dock">
+                <!-- Structural Region: R-Tree Hierarchy Panel -->
+                <section class="hierarchy-dock" id="hierarchyDock" aria-label="R-Tree Hierarchy Dock">
                     <div class="panel-header">
-                        <span class="panel-title">Layer Visibility</span>
-                        <span class="panel-badge">5 CHANNELS</span>
+                        <span class="panel-title">R-Tree Hierarchy</span>
+                        <span class="panel-badge" id="hierarchyBadge">STANDBY</span>
                     </div>
-                    <div class="layer-channel-list" role="group" aria-label="Layer Visibility Channels">
-                        <label class="channel-card" title="Toggle active spatial entities">
-                            <input type="checkbox" id="layerEntities" checked>
-                            <span class="channel-indicator entity" aria-hidden="true"></span>
-                            <span class="channel-name">Active Entities</span>
-                            <span class="channel-toggle" aria-hidden="true">
-                                <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
-                                <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
-                            </span>
-                        </label>
-                        <label class="channel-card" title="Toggle highlighted query match results">
-                            <input type="checkbox" id="layerResults" checked>
-                            <span class="channel-indicator result" aria-hidden="true"></span>
-                            <span class="channel-name">Query Hits</span>
-                            <span class="channel-toggle" aria-hidden="true">
-                                <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
-                                <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
-                            </span>
-                        </label>
-                        <label class="channel-card" title="Toggle R-tree leaf level MBRs">
-                            <input type="checkbox" id="layerLeaf" checked>
-                            <span class="channel-indicator leaf" aria-hidden="true"></span>
-                            <span class="channel-name">Leaf MBRs</span>
-                            <span class="channel-toggle" aria-hidden="true">
-                                <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
-                                <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
-                            </span>
-                        </label>
-                        <label class="channel-card" title="Toggle R-tree internal directory MBRs">
-                            <input type="checkbox" id="layerInternal" checked>
-                            <span class="channel-indicator internal" aria-hidden="true"></span>
-                            <span class="channel-name">Internal MBRs</span>
-                            <span class="channel-toggle" aria-hidden="true">
-                                <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
-                                <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
-                            </span>
-                        </label>
-                        <label class="channel-card" title="Toggle active spatial query region">
-                            <input type="checkbox" id="layerQuery" checked>
-                            <span class="channel-indicator query" aria-hidden="true"></span>
-                            <span class="channel-name">Query Region</span>
-                            <span class="channel-toggle" aria-hidden="true">
-                                <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
-                                <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
-                            </span>
-                        </label>
+
+                    <!-- Hierarchy Legend -->
+                    <div class="hierarchy-legend" aria-label="Hierarchy Node Legend">
+                        <span class="legend-item" title="Internal Directory Node">
+                            <span class="legend-swatch internal" aria-hidden="true"></span>
+                            <span class="legend-text">Internal</span>
+                        </span>
+                        <span class="legend-item" title="Leaf Node">
+                            <span class="legend-swatch leaf" aria-hidden="true"></span>
+                            <span class="legend-text">Leaf</span>
+                        </span>
+                        <span class="legend-item" title="Spatial Entity Reference">
+                            <span class="legend-swatch entity" aria-hidden="true"></span>
+                            <span class="legend-text">Entity</span>
+                        </span>
+                    </div>
+
+                    <!-- Tree Container -->
+                    <div class="hierarchy-tree-container" id="hierarchyTreeContainer" role="region" aria-label="R-Tree Hierarchy Explorer" tabindex="0">
+                        <!-- Empty / Unavailable State (Displayed when no hierarchy is active) -->
+                        <div class="hierarchy-empty-state" id="hierarchyEmptyState" role="status" aria-live="polite">
+                            <svg class="hierarchy-empty-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="5" r="2"/>
+                                <circle cx="6" cy="19" r="2"/>
+                                <circle cx="18" cy="19" r="2"/>
+                                <path d="M12 7v5M12 12l-6 5M12 12l6 5"/>
+                            </svg>
+                            <span class="hierarchy-empty-title" id="hierarchyEmptyTitle">Hierarchy Awaiting Ingest</span>
+                            <p class="hierarchy-empty-desc" id="hierarchyEmptyDesc">Load a dataset containing R-tree hierarchy data to inspect node topology and parent-child linkages.</p>
+                        </div>
+
+                        <!-- Tree List (Populated dynamically by app logic) -->
+                        <ul class="hierarchy-tree" id="hierarchyTree" role="tree" aria-label="R-Tree Node Tree" aria-hidden="true"></ul>
+                    </div>
+
+                    <!-- Node Inspector / Detail Area -->
+                    <div class="node-detail-card" id="nodeDetailCard" aria-label="Selected Node Details">
+                        <div class="node-detail-header">
+                            <span class="detail-label">NODE INSPECTOR</span>
+                            <button type="button" id="btnClearSelection" class="btn-clear-selection" title="Clear node selection" aria-label="Clear node selection" disabled>
+                                <svg class="ui-icon" viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13"/></svg>
+                                <span>Clear</span>
+                            </button>
+                        </div>
+                        <div class="node-detail-grid">
+                            <div class="detail-entry">
+                                <span class="detail-key">ID</span>
+                                <span class="detail-val" id="nodeDetailId">—</span>
+                            </div>
+                            <div class="detail-entry">
+                                <span class="detail-key">TYPE</span>
+                                <span class="detail-val" id="nodeDetailType">—</span>
+                            </div>
+                            <div class="detail-entry">
+                                <span class="detail-key">DEPTH</span>
+                                <span class="detail-val" id="nodeDetailDepth">—</span>
+                            </div>
+                            <div class="detail-entry">
+                                <span class="detail-key">ENTRIES</span>
+                                <span class="detail-val" id="nodeDetailEntries">—</span>
+                            </div>
+                            <div class="detail-entry detail-entry-full">
+                                <span class="detail-key">MBR BOUNDS</span>
+                                <span class="detail-val detail-val-mono" id="nodeDetailBounds">—</span>
+                            </div>
+                            <div class="detail-entry detail-entry-full">
+                                <span class="detail-key">ENTITY REFS</span>
+                                <span class="detail-val detail-val-mono" id="nodeDetailEntities">—</span>
+                            </div>
+                        </div>
                     </div>
                 </section>
 

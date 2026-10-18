@@ -261,6 +261,337 @@
         const zeroScaleW = screenToWorld(100, 100);
         assert('screenToWorld returns NaN for zero scale', isNaN(zeroScaleW.x) && isNaN(zeroScaleW.y));
 
+        // --- Viewport State & Reset View Tests ---
+        // Setup state for tests 12-16
+        handleLoadedState(sampleState, 'test suite');
+        resizeCanvas(800, 600);
+
+        // Test 12: Reset View before resize
+        const tInitial800 = { ...viewport.initialTransform };
+        assert('Initial transform established on state load', viewport.initialTransform !== null && viewport.initialTransform.scale > 0);
+        assertAlmostEqual('Initial transform scale matches computeFitTransform', viewport.scale, tInitial800.scale);
+        assertAlmostEqual('Initial transform tx matches computeFitTransform', viewport.tx, tInitial800.tx);
+        assertAlmostEqual('Initial transform ty matches computeFitTransform', viewport.ty, tInitial800.ty);
+
+        // Pan and zoom away
+        viewport.tx += 140.0;
+        viewport.ty -= 85.0;
+        zoomAt(400, 300, 1.6);
+        assert('Viewport modified by pan and zoom',
+            Math.abs(viewport.scale - tInitial800.scale) > 0.01 &&
+            Math.abs(viewport.tx - tInitial800.tx) > 1.0
+        );
+
+        // Reset View before resize restores initial framing
+        resetView();
+        assertAlmostEqual('Reset View before resize restores scale', viewport.scale, tInitial800.scale);
+        assertAlmostEqual('Reset View before resize restores tx', viewport.tx, tInitial800.tx);
+        assertAlmostEqual('Reset View before resize restores ty', viewport.ty, tInitial800.ty);
+
+        // Test 13: Reset View after canvas resize
+        // User pans and zooms
+        viewport.tx += 60.0;
+        viewport.ty -= 30.0;
+        zoomAt(400, 300, 2.0);
+        const userZoomBeforeResize = viewport.scale;
+
+        // Resize canvas to 1200 x 800
+        resizeCanvas(1200, 800);
+        assert('Canvas cssWidth updated to 1200', cssWidth === 1200);
+        assert('Canvas cssHeight updated to 800', cssHeight === 800);
+        assertAlmostEqual('Pan/zoom scale preserved during canvas resize', viewport.scale, userZoomBeforeResize);
+
+        // Saved initialTransform must reflect the new 1200x800 framing
+        const expectedFit1200 = computeFitTransform(sampleState, 1200, 800);
+        assertAlmostEqual('initialTransform scale recomputed for 1200x800', viewport.initialTransform.scale, expectedFit1200.scale);
+        assertAlmostEqual('initialTransform tx recomputed for 1200x800', viewport.initialTransform.tx, expectedFit1200.tx);
+        assertAlmostEqual('initialTransform ty recomputed for 1200x800', viewport.initialTransform.ty, expectedFit1200.ty);
+
+        // Invoking resetView() restores the 1200x800 initial framing
+        resetView();
+        assertAlmostEqual('Reset View after resize restores 1200x800 scale', viewport.scale, expectedFit1200.scale);
+        assertAlmostEqual('Reset View after resize restores 1200x800 tx', viewport.tx, expectedFit1200.tx);
+        assertAlmostEqual('Reset View after resize restores 1200x800 ty', viewport.ty, expectedFit1200.ty);
+
+        // Test 14: Repeated resize -> Reset View cycles do not accumulate drift
+        const cycleDimensions = [
+            [1200, 800],
+            [600, 400],
+            [1024, 768],
+            [500, 500],
+            [1440, 900],
+            [800, 600]
+        ];
+        cycleDimensions.forEach(([w, h], idx) => {
+            resizeCanvas(w, h);
+            // Simulate user interaction in resized viewport
+            zoomAt(w / 2, h / 2, 1.25);
+            viewport.tx += 30;
+            viewport.ty -= 20;
+
+            // Reset view
+            resetView();
+            const fitWH = computeFitTransform(sampleState, w, h);
+            assertAlmostEqual(`Cycle #${idx + 1} (${w}x${h}) Reset scale matches fit`, viewport.scale, fitWH.scale, 1e-6);
+            assertAlmostEqual(`Cycle #${idx + 1} (${w}x${h}) Reset tx matches fit`, viewport.tx, fitWH.tx, 1e-4);
+            assertAlmostEqual(`Cycle #${idx + 1} (${w}x${h}) Reset ty matches fit`, viewport.ty, fitWH.ty, 1e-4);
+        });
+
+        // After returning to 800x600, verify zero drift compared to original tInitial800
+        assertAlmostEqual('Zero drift in scale after repeated resize/reset cycles', viewport.scale, tInitial800.scale, 1e-6);
+        assertAlmostEqual('Zero drift in tx after repeated resize/reset cycles', viewport.tx, tInitial800.tx, 1e-4);
+        assertAlmostEqual('Zero drift in ty after repeated resize/reset cycles', viewport.ty, tInitial800.ty, 1e-4);
+
+        // Test 15: Fit All frames all entities correctly and maintains distinction from Reset View
+        // Pan away and change zoom
+        viewport.scale = 4.0;
+        viewport.tx = -500;
+        viewport.ty = -300;
+        fitAll(false);
+
+        // All entities must be visible within [0, cssWidth] x [0, cssHeight]
+        sampleState.entities.forEach((entity, eIdx) => {
+            const pb = projectBox(entity.bounds);
+            assert(`Fit All frames entity #${eIdx + 1} within width`, pb !== null && pb.x >= 0 && (pb.x + pb.w) <= cssWidth);
+            assert(`Fit All frames entity #${eIdx + 1} within height`, pb !== null && pb.y >= 0 && (pb.y + pb.h) <= cssHeight);
+        });
+
+        // Test 16: Pan and zoom preservation across resize
+        resizeCanvas(800, 600);
+        viewport.scale = 2.5;
+        const testWorldPt = [100.0, 150.0];
+        // Center testWorldPt on screen center (400, 300)
+        viewport.tx = 400.0 - testWorldPt[0] * 2.5;
+        viewport.ty = 300.0 - testWorldPt[1] * 2.5;
+        const screenCenterBefore = screenToWorld(400, 300);
+
+        resizeCanvas(1200, 800);
+        assertAlmostEqual('Scale preserved across resize when panned/zoomed', viewport.scale, 2.5);
+        const screenCenterAfter = screenToWorld(600, 400);
+        assertAlmostEqual('Screen center world coordinate pinned across resize (X)', screenCenterAfter.x, screenCenterBefore.x, 1e-4);
+        assertAlmostEqual('Screen center world coordinate pinned across resize (Y)', screenCenterAfter.y, screenCenterBefore.y, 1e-4);
+
+        // ZoomAt after resize continues to pin coordinate under pointer
+        const ptrX = 650, ptrY = 420;
+        const wPtrBefore = screenToWorld(ptrX, ptrY);
+        zoomAt(ptrX, ptrY, 1.3);
+        const wPtrAfter = screenToWorld(ptrX, ptrY);
+        assertAlmostEqual('zoomAt preserves pinned coordinate after resize (X)', wPtrAfter.x, wPtrBefore.x, 1e-5);
+        assertAlmostEqual('zoomAt preserves pinned coordinate after resize (Y)', wPtrAfter.y, wPtrBefore.y, 1e-5);
+
+        // --- HiDPI & DPR Background Grid Tests (Tests 17-21) ---
+        const testCanvas = document.getElementById('radar');
+        const testCtx = testCanvas ? testCanvas.getContext('2d') : null;
+
+        // Test 17: HiDPI DPR 1 backing buffer and transform
+        window.devicePixelRatio = 1;
+        resizeCanvas(800, 600);
+        assert('DPR 1 canvas backing width matches 800', testCanvas.width === 800);
+        assert('DPR 1 canvas backing height matches 600', testCanvas.height === 600);
+        assert('DPR 1 cssWidth matches 800', cssWidth === 800);
+        assert('DPR 1 cssHeight matches 600', cssHeight === 600);
+        const m1 = testCtx.getTransform();
+        assertAlmostEqual('DPR 1 transform scale X is 1.0', m1.a, 1.0);
+        assertAlmostEqual('DPR 1 transform scale Y is 1.0', m1.d, 1.0);
+        assertAlmostEqual('DPR 1 transform translateX is 0.0', m1.e, 0.0);
+        assertAlmostEqual('DPR 1 transform translateY is 0.0', m1.f, 0.0);
+
+        drawBackgroundGrid();
+        const m1_after = testCtx.getTransform();
+        assertAlmostEqual('DPR 1 transform scale X preserved after drawBackgroundGrid', m1_after.a, 1.0);
+        assertAlmostEqual('DPR 1 transform scale Y preserved after drawBackgroundGrid', m1_after.d, 1.0);
+
+        // Test 18: HiDPI DPR 2 backing buffer and transform
+        window.devicePixelRatio = 2;
+        resizeCanvas(800, 600);
+        assert('DPR 2 canvas backing width is 1600 (w * 2)', testCanvas.width === 1600);
+        assert('DPR 2 canvas backing height is 1200 (h * 2)', testCanvas.height === 1200);
+        assert('DPR 2 cssWidth remains 800 in CSS space', cssWidth === 800);
+        assert('DPR 2 cssHeight remains 600 in CSS space', cssHeight === 600);
+        const m2 = testCtx.getTransform();
+        assertAlmostEqual('DPR 2 transform scale X is 2.0', m2.a, 2.0);
+        assertAlmostEqual('DPR 2 transform scale Y is 2.0', m2.d, 2.0);
+        assertAlmostEqual('DPR 2 transform translateX is 0.0', m2.e, 0.0);
+        assertAlmostEqual('DPR 2 transform translateY is 0.0', m2.f, 0.0);
+
+        drawBackgroundGrid();
+        const m2_afterGrid = testCtx.getTransform();
+        assertAlmostEqual('DPR 2 transform scale X preserved after drawBackgroundGrid', m2_afterGrid.a, 2.0);
+        assertAlmostEqual('DPR 2 transform scale Y preserved after drawBackgroundGrid', m2_afterGrid.d, 2.0);
+
+        // Test 19: Full-buffer pixel coverage at DPR 2
+        // Sampling pixels from top-left, center, and bottom-right of the 1600x1200 backing buffer
+        const pxTopLeft = testCtx.getImageData(10, 10, 1, 1).data;
+        const pxCenter = testCtx.getImageData(800, 600, 1, 1).data;
+        const pxBottomRight = testCtx.getImageData(1590, 1190, 1, 1).data;
+        assert('DPR 2 pixel (10, 10) is fully opaque background', pxTopLeft[3] === 255);
+        assert('DPR 2 pixel (800, 600) is fully opaque background', pxCenter[3] === 255);
+        assert('DPR 2 pixel (1590, 1190) in bottom-right quadrant is fully opaque background', pxBottomRight[3] === 255);
+
+        // Test 20: Non-cumulative scaling (idempotence)
+        for (let i = 0; i < 5; i++) {
+            drawBackgroundGrid();
+        }
+        const m2_afterLoop = testCtx.getTransform();
+        assertAlmostEqual('Non-cumulative scale X remains 2.0 after 5 grid draws', m2_afterLoop.a, 2.0);
+        assertAlmostEqual('Non-cumulative scale Y remains 2.0 after 5 grid draws', m2_afterLoop.d, 2.0);
+
+        drawState(sampleState);
+        const m2_afterDrawState = testCtx.getTransform();
+        assertAlmostEqual('Transform scale X remains 2.0 after drawState', m2_afterDrawState.a, 2.0);
+        assertAlmostEqual('Transform scale Y remains 2.0 after drawState', m2_afterDrawState.d, 2.0);
+
+        drawState(null);
+        const m2_afterNullState = testCtx.getTransform();
+        assertAlmostEqual('Transform scale X remains 2.0 after drawState(null)', m2_afterNullState.a, 2.0);
+        assertAlmostEqual('Transform scale Y remains 2.0 after drawState(null)', m2_afterNullState.d, 2.0);
+
+        // Test 21: Grid and spatial entity alignment across pan/zoom at DPR 2
+        viewport.scale = 1.75;
+        viewport.tx = 85.0;
+        viewport.ty = -45.0;
+        const origScreenPt = worldToScreen(0, 0);
+        assertAlmostEqual('worldToScreen X aligns at DPR 2', origScreenPt.x, 85.0);
+        assertAlmostEqual('worldToScreen Y aligns at DPR 2', origScreenPt.y, -45.0);
+
+        drawBackgroundGrid();
+        drawState(sampleState);
+        const m2_final = testCtx.getTransform();
+        assertAlmostEqual('Transform scale remains 2.0 after pan/zoom render', m2_final.a, 2.0);
+
+        // Test 21b: HiDPI DPR 1.25 (125% zoom) and DPR 1.5 (150% zoom) scaling
+        window.devicePixelRatio = 1.25;
+        resizeCanvas(800, 600);
+        assert('DPR 1.25 canvas backing width is 1000', testCanvas.width === 1000);
+        assert('DPR 1.25 canvas backing height is 750', testCanvas.height === 750);
+        assertAlmostEqual('DPR 1.25 transform scale is 1.25', testCtx.getTransform().a, 1.25);
+
+        window.devicePixelRatio = 1.5;
+        resizeCanvas(800, 600);
+        assert('DPR 1.5 canvas backing width is 1200', testCanvas.width === 1200);
+        assert('DPR 1.5 canvas backing height is 900', testCanvas.height === 900);
+        assertAlmostEqual('DPR 1.5 transform scale is 1.5', testCtx.getTransform().a, 1.5);
+
+        // Test 21c: Parent container measurement when target dimensions are omitted
+        const mockParent = {
+            getBoundingClientRect: () => ({ width: 940, height: 580, top: 0, left: 0, right: 940, bottom: 580 })
+        };
+        const origParent = Object.getOwnPropertyDescriptor(testCanvas, 'parentElement');
+        Object.defineProperty(testCanvas, 'parentElement', { value: mockParent, configurable: true });
+        window.devicePixelRatio = 1;
+        resizeCanvas();
+        assert('Container measurement sets cssWidth to 940', cssWidth === 940);
+        assert('Container measurement sets cssHeight to 580', cssHeight === 580);
+        assert('Container measurement sets backing buffer width to 940', testCanvas.width === 940);
+        if (origParent) {
+            Object.defineProperty(testCanvas, 'parentElement', origParent);
+        } else {
+            delete testCanvas.parentElement;
+        }
+
+        // Restore environment to DPR 1
+        window.devicePixelRatio = 1;
+        resizeCanvas(800, 600);
+        assert('Cleanly restored to DPR 1 canvas buffer', testCanvas.width === 800 && testCanvas.height === 600);
+        assertAlmostEqual('Cleanly restored to DPR 1 transform', testCtx.getTransform().a, 1.0);
+
+        // --- Pan State Lifecycle Tests (Tests 22-30) ---
+        let capturedPointerId = null;
+        const origSetCapture = testCanvas.setPointerCapture;
+        const origHasCapture = testCanvas.hasPointerCapture;
+        const origReleaseCapture = testCanvas.releasePointerCapture;
+
+        // Mock pointer capture for deterministic lifecycle verification
+        testCanvas.setPointerCapture = function(id) { capturedPointerId = id; };
+        testCanvas.hasPointerCapture = function(id) { return capturedPointerId === id; };
+        testCanvas.releasePointerCapture = function(id) { if (capturedPointerId === id) capturedPointerId = null; };
+
+        // Test 22: Pointer release inside canvas terminates active pan
+        viewport.isPanning = false;
+        testCanvas.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 200, clientY: 200, pointerId: 10, bubbles: true }));
+        assert('pointerdown starts panning', viewport.isPanning === true);
+        assert('panning class added to canvas', testCanvas.classList.contains('panning'));
+        assert('pointerId captured', capturedPointerId === 10);
+
+        testCanvas.dispatchEvent(new PointerEvent('pointermove', { clientX: 240, clientY: 220, pointerId: 10, buttons: 1, bubbles: true }));
+        testCanvas.dispatchEvent(new PointerEvent('pointerup', { button: 0, clientX: 240, clientY: 220, pointerId: 10, bubbles: true }));
+        assert('pointerup inside canvas terminates panning', viewport.isPanning === false);
+        assert('panning class removed after pointerup', !testCanvas.classList.contains('panning'));
+        assert('pointer capture released after pointerup', capturedPointerId === null);
+
+        // Test 23: Pointer release outside canvas terminates active pan
+        testCanvas.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 200, clientY: 200, pointerId: 11, bubbles: true }));
+        assert('drag 2 starts panning', viewport.isPanning === true);
+        window.dispatchEvent(new PointerEvent('pointerup', { button: 0, clientX: 950, clientY: 750, pointerId: 11, bubbles: true }));
+        assert('pointerup outside canvas (on window) terminates panning', viewport.isPanning === false);
+        assert('panning class removed after window pointerup', !testCanvas.classList.contains('panning'));
+        assert('pointer capture released after window pointerup', capturedPointerId === null);
+
+        // Test 24: Pointer cancellation terminates active pan
+        testCanvas.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 200, clientY: 200, pointerId: 12, bubbles: true }));
+        assert('drag 3 starts panning', viewport.isPanning === true);
+        testCanvas.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 12, bubbles: true }));
+        assert('pointercancel terminates panning', viewport.isPanning === false);
+        assert('panning class removed after pointercancel', !testCanvas.classList.contains('panning'));
+
+        // Test 25: Pointer-capture failure fallback terminates pan on pointerleave
+        testCanvas.setPointerCapture = function(id) { throw new DOMException('Failed to capture', 'InvalidPointerId'); };
+        testCanvas.hasPointerCapture = function(id) { return false; };
+        testCanvas.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 200, clientY: 200, pointerId: 13, bubbles: true }));
+        assert('pan starts even when setPointerCapture fails', viewport.isPanning === true);
+        testCanvas.dispatchEvent(new PointerEvent('pointerleave', { clientX: -10, clientY: 200, bubbles: true }));
+        assert('pointerleave terminates pan when capture is not active', viewport.isPanning === false);
+        assert('panning class removed after pointerleave fallback', !testCanvas.classList.contains('panning'));
+
+        // Restore mock capture
+        testCanvas.setPointerCapture = function(id) { capturedPointerId = id; };
+        testCanvas.hasPointerCapture = function(id) { return capturedPointerId === id; };
+
+        // Test 26: Lost pointer capture event terminates active pan
+        testCanvas.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 200, clientY: 200, pointerId: 14, bubbles: true }));
+        assert('drag 4 starts panning', viewport.isPanning === true);
+        testCanvas.dispatchEvent(new PointerEvent('lostpointercapture', { pointerId: 14, bubbles: true }));
+        assert('lostpointercapture terminates active pan', viewport.isPanning === false);
+        assert('panning class removed after lostpointercapture', !testCanvas.classList.contains('panning'));
+
+        // Test 27: Subsequent drag starts normally after termination
+        const txBeforeNewDrag = viewport.tx;
+        const tyBeforeNewDrag = viewport.ty;
+        testCanvas.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 100, clientY: 100, pointerId: 15, bubbles: true }));
+        assert('subsequent drag starts normally', viewport.isPanning === true);
+        testCanvas.dispatchEvent(new PointerEvent('pointermove', { clientX: 150, clientY: 130, pointerId: 15, buttons: 1, bubbles: true }));
+        assertAlmostEqual('viewport tx translated by +50 in new drag', viewport.tx, txBeforeNewDrag + 50);
+        assertAlmostEqual('viewport ty translated by +30 in new drag', viewport.ty, tyBeforeNewDrag + 30);
+        testCanvas.dispatchEvent(new PointerEvent('pointerup', { button: 0, clientX: 150, clientY: 130, pointerId: 15, bubbles: true }));
+        assert('subsequent drag finishes cleanly', viewport.isPanning === false);
+
+        // Test 28: Mouse button released off-window terminates pan on next pointermove
+        testCanvas.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 100, clientY: 100, pointerId: 16, bubbles: true }));
+        assert('drag starts before off-window release', viewport.isPanning === true);
+        testCanvas.dispatchEvent(new PointerEvent('pointermove', { clientX: 110, clientY: 105, pointerId: 16, buttons: 0, bubbles: true }));
+        assert('buttons: 0 on pointermove terminates stuck pan', viewport.isPanning === false);
+
+        // Test 29: Window blur terminates active pan
+        testCanvas.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 100, clientY: 100, pointerId: 17, bubbles: true }));
+        assert('pan active before window blur', viewport.isPanning === true);
+        window.dispatchEvent(new Event('blur'));
+        assert('window blur terminates active pan', viewport.isPanning === false);
+        assert('canvas panning class removed after blur', !testCanvas.classList.contains('panning'));
+
+        // Test 30: Ordinary clicks do not alter viewport position or leave stuck pan
+        const txBeforeClick = viewport.tx;
+        const tyBeforeClick = viewport.ty;
+        testCanvas.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 300, clientY: 250, pointerId: 18, bubbles: true }));
+        testCanvas.dispatchEvent(new PointerEvent('pointerup', { button: 0, clientX: 300, clientY: 250, pointerId: 18, bubbles: true }));
+        assert('ordinary click leaves isPanning false', viewport.isPanning === false);
+        assertAlmostEqual('ordinary click leaves viewport tx unchanged', viewport.tx, txBeforeClick);
+        assertAlmostEqual('ordinary click leaves viewport ty unchanged', viewport.ty, tyBeforeClick);
+
+        // Restore original methods
+        testCanvas.setPointerCapture = origSetCapture;
+        testCanvas.hasPointerCapture = origHasCapture;
+        testCanvas.releasePointerCapture = origReleaseCapture;
+
         // Render Test Table
         document.getElementById('totalCount').textContent = results.length;
         document.getElementById('passCount').textContent = passed;

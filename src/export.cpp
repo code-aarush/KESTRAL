@@ -39,7 +39,9 @@ int main(int argc, char* argv[]) {
     // Set up a query
     MissionControl mission(rtree, store);
     BoundingBox query_box{200.0, 200.0, 600.0, 400.0};
-    auto results = mission.region_scan(query_box);
+    RTree::QueryMetrics qm;
+    std::vector<RTreeTraceEvent> trace;
+    auto results = rtree.search(query_box, qm, &trace);
 
     // Export to JSON
     std::ofstream out(out_path);
@@ -94,7 +96,28 @@ int main(int argc, char* argv[]) {
         if (i > 0) out << ", ";
         out << results[i];
     }
-    out << "]\n  }\n";
+    out << "]\n  },\n";
+
+    // Traversal trace
+    out << "  \"trace\": {\n";
+    out << "    \"query_id\": 1,\n";
+    out << "    \"scene_id\": 1,\n";
+    out << "    \"total_events\": " << trace.size() << ",\n";
+    out << "    \"events\": [\n";
+    for (size_t i = 0; i < trace.size(); ++i) {
+        const auto& ev = trace[i];
+        if (i > 0) out << ",\n";
+        out << "      {\n";
+        out << "        \"type\": \"" << ev.type << "\",\n";
+        out << "        \"node_id\": " << ev.node_id << ",\n";
+        out << "        \"entity_id\": " << ev.entity_id << ",\n";
+        out << "        \"mbr\": [" << ev.mbr.min_x << ", " << ev.mbr.min_y << ", " << ev.mbr.max_x << ", " << ev.mbr.max_y << "],\n";
+        out << "        \"intersects\": " << (ev.intersects ? "true" : "false") << ",\n";
+        out << "        \"explanation\": \"" << ev.explanation << "\"\n";
+        out << "      }";
+    }
+    out << "\n    ]\n";
+    out << "  }\n";
     
     out << "}\n";
     out.close();

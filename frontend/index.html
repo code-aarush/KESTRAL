@@ -81,6 +81,40 @@
                     <span class="sensor-value sensor-coords-val" id="valCoords">—</span>
                 </div>
             </div>
+
+            <div class="cmd-separator" aria-hidden="true"></div>
+
+            <!-- Traversal Step-Through Controls Sub-Panel -->
+            <div class="cmd-group cmd-traversal" role="group" aria-label="Traversal Step-Through Controls">
+                <div class="segmented-control" role="group" aria-label="Traversal Controls">
+                    <button id="btnTraversalReset" class="btn-nav btn-nav-labeled" title="Start / Reset traversal" aria-label="Start / Reset">
+                        <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 4v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4M12 9H8M12 5H8"/><path d="M8 5L5 8l3 3"/></svg>
+                        <span>Reset</span>
+                        <kbd class="kbd-hint" aria-hidden="true">0</kbd>
+                    </button>
+                    <button id="btnTraversalPrev" class="btn-nav" title="Previous step (Left arrow)" aria-label="Previous Step" disabled>
+                        <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 8l-5-5 5-5"/></svg>
+                    </button>
+                    <button id="btnTraversalPlay" class="btn-nav btn-nav-labeled" title="Play / Pause traversal (Space)" aria-label="Play / Pause">
+                        <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21"/></svg>
+                        <span id="traversalPlayLabel">Play</span>
+                        <kbd class="kbd-hint" aria-hidden="true">Space</kbd>
+                    </button>
+                    <button id="btnTraversalNext" class="btn-nav" title="Next step (Right arrow)" aria-label="Next Step" disabled>
+                        <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 8l5-5 5 5"/></svg>
+                    </button>
+                    <button id="btnTraversalRestart" class="btn-nav btn-nav-labeled" title="Restart traversal" aria-label="Restart">
+                        <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4M12 9H8M12 5H8"/><path d="M8 5L5 8l3 3"/></svg>
+                        <span>Restart</span>
+                    </button>
+                </div>
+                <div class="traversal-step-readout" role="group" aria-label="Traversal Step Progress">
+                    <span class="traversal-step-label">STEP</span>
+                    <span class="traversal-step-current" id="valTraversalStep">—</span>
+                    <span class="traversal-step-sep">/</span>
+                    <span class="traversal-step-total" id="valTraversalTotal">—</span>
+                </div>
+            </div>
         </section>
 
         <!-- 3. Workstation Body: Dominant Canvas Stage & Workstation Sidebar -->
@@ -149,7 +183,7 @@
                 <section class="layer-dock" aria-label="Spatial Layer Visibility Dock">
                     <div class="panel-header">
                         <span class="panel-title">Layer Visibility</span>
-                        <span class="panel-badge">5 CHANNELS</span>
+                        <span class="panel-badge">7 CHANNELS</span>
                     </div>
                     <div class="layer-channel-list" role="group" aria-label="Layer Visibility Channels">
                         <label class="channel-card" title="Toggle active spatial entities">
@@ -192,6 +226,24 @@
                             <input type="checkbox" id="layerQuery" checked>
                             <span class="channel-indicator query" aria-hidden="true"></span>
                             <span class="channel-name">Query Region</span>
+                            <span class="channel-toggle" aria-hidden="true">
+                                <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
+                                <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
+                            </span>
+                        </label>
+                        <label class="channel-card" title="Toggle traversal visited node highlights">
+                            <input type="checkbox" id="layerTraceVisited" checked>
+                            <span class="channel-indicator trace-visited" aria-hidden="true"></span>
+                            <span class="channel-name">Visited Nodes</span>
+                            <span class="channel-toggle" aria-hidden="true">
+                                <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
+                                <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
+                            </span>
+                        </label>
+                        <label class="channel-card" title="Toggle traversal pruned branch highlights">
+                            <input type="checkbox" id="layerTracePruned" checked>
+                            <span class="channel-indicator trace-pruned" aria-hidden="true"></span>
+                            <span class="channel-name">Pruned Branches</span>
                             <span class="channel-toggle" aria-hidden="true">
                                 <svg class="toggle-icon-on" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2l2.8 2.8 5.2-6"/></svg>
                                 <svg class="toggle-icon-off" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 6h7"/></svg>
@@ -273,7 +325,7 @@
                     </div>
 
                     <!-- Index System Specifications -->
-                    <div class="telemetry-section section-specs">
+                    <div class="section-specs">
                         <div class="section-header">
                             <span class="section-title">Specifications</span>
                             <span class="section-tag">CONFIG</span>
@@ -290,6 +342,19 @@
                             <div class="spec-entry">
                                 <span class="spec-label">Scale Model</span>
                                 <span class="spec-value">Pointer-Anchored Uniform</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Traversal Explanation Panel -->
+                    <div class="telemetry-section section-trace">
+                        <div class="section-header">
+                            <span class="section-title">Traversal Explanation</span>
+                            <span class="section-tag tag-trace">TRACE</span>
+                        </div>
+                        <div class="metric-pod">
+                            <div class="trace-explanation" id="valTraversalExplanation">
+                                No traversal trace loaded. Load a state.json with a trace to step through the R-tree range query.
                             </div>
                         </div>
                     </div>

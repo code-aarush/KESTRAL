@@ -6,14 +6,14 @@
 
 namespace kestrel {
 
-RTree::RTree(std::size_t M, std::size_t m) : M_(M), m_(m), next_node_id_(1) {
+RTree::RTree(std::size_t M, std::size_t m) : M_(M), m_(m) {
     if (M_ < 2) {
         throw std::invalid_argument("M must be at least 2");
     }
     if (m_ > M_ / 2) {
         throw std::invalid_argument("m must be <= floor(M/2)");
     }
-    root_ = std::make_unique<RTreeNode>(true, nullptr, assign_node_id());
+    root_ = std::make_unique<RTreeNode>(true, nullptr);
 }
 
 void RTree::insert(BoundingBox bounds, int entity_id) {
@@ -133,88 +133,31 @@ bool RTree::update(const BoundingBox& old_bounds, const BoundingBox& new_bounds,
     return false;
 }
 
-std::vector<int> RTree::search(const BoundingBox& query, QueryMetrics& metrics, std::vector<RTreeTraceEvent>* trace) const {
+std::vector<int> RTree::search(const BoundingBox& query, QueryMetrics& metrics) const {
     std::vector<int> result;
     if (!root_) return result;
-
-    // Max trace size to avoid unbounded memory growth on large traversals.
-    static constexpr std::size_t kMaxTraceEvents = 10000;
-    bool trace_active = (trace != nullptr);
-    bool trace_full = false;
-
-    auto record_event = [&](const std::string& type, std::size_t node_id, int entity_id,
-                            const BoundingBox& mbr, bool intersects, const std::string& explanation) {
-        if (!trace_active || trace_full) return;
-        if (trace->size() >= kMaxTraceEvents) {
-            trace_full = true;
-            return;
-        }
-        trace->push_back(RTreeTraceEvent{type, node_id, entity_id, mbr, intersects, explanation});
-    };
-
+    
     std::vector<const RTreeNode*> stack;
     stack.push_back(root_.get());
-
+    
     while (!stack.empty()) {
         const RTreeNode* current = stack.back();
         stack.pop_back();
-
+        
         metrics.nodes_visited++;
-
-        BoundingBox current_mbr = current->compute_mbr();
-        record_event("node_visited", current->id, -1, current_mbr,
-                     intersects(query, current_mbr),
-                     "Visiting node " + std::to_string(current->id) + " (MBR: [" +
-                     std::to_string(current_mbr.min_x) + ", " + std::to_string(current_mbr.min_y) + ", " +
-                     std::to_string(current_mbr.max_x) + ", " + std::to_string(current_mbr.max_y) + "]).");
-
+        
         for (const auto& entry : current->entries) {
-            bool hits = intersects(query, entry.mbr);
-
-            if (current->is_leaf) {
-                record_event("mbr_tested", current->id, entry.entity_id, entry.mbr, hits,
-                             "Testing leaf entry entity #" + std::to_string(entry.entity_id) +
-                             " MBR [" + std::to_string(entry.mbr.min_x) + ", " +
-                             std::to_string(entry.mbr.min_y) + ", " +
-                             std::to_string(entry.mbr.max_x) + ", " +
-                             std::to_string(entry.mbr.max_y) + "] against query.");
-            } else {
-                record_event("mbr_tested", current->id, -1, entry.mbr, hits,
-                             "Testing branch MBR [" + std::to_string(entry.mbr.min_x) + ", " +
-                             std::to_string(entry.mbr.min_y) + ", " +
-                             std::to_string(entry.mbr.max_x) + ", " +
-                             std::to_string(entry.mbr.max_y) + "] against query.");
-            }
-
-            if (!hits) {
-                record_event("branch_pruned", current->id,
-                             current->is_leaf ? entry.entity_id : -1, entry.mbr, false,
-                             "The MBR does not intersect the query; this branch is pruned.");
-                continue;
-            }
-
-            if (current->is_leaf) {
-                record_event("leaf_entry_examined", current->id, entry.entity_id, entry.mbr, true,
-                             "This leaf entry matches the query.");
-                record_event("entity_accepted", current->id, entry.entity_id, entry.mbr, true,
-                             "Entity #" + std::to_string(entry.entity_id) + " accepted as a query result.");
-                result.push_back(entry.entity_id);
-            } else {
-                record_event("child_entered", current->id, -1, entry.mbr, true,
-                             "The MBR intersects the query; traversal continues into its children.");
-                stack.push_back(entry.child.get());
+            if (intersects(query, entry.mbr)) {
+                if (current->is_leaf) {
+                    result.push_back(entry.entity_id);
+                } else {
+                    stack.push_back(entry.child.get());
+                }
             }
         }
     }
-
-    record_event("traversal_completed", 0, -1, BoundingBox{0, 0, 0, 0}, false,
-                 "Traversal completed.");
-
+    
     return result;
-}
-
-std::vector<int> RTree::search(const BoundingBox& query, QueryMetrics& metrics) const {
-    return search(query, metrics, nullptr);
 }
 
 RTreeNode* RTree::choose_leaf(const BoundingBox& bounds) const {
@@ -280,7 +223,7 @@ std::unique_ptr<RTreeNode> RTree::split_node(RTreeNode* node, RTreeEntry&& new_e
         }
     }
 
-    auto new_node = std::make_unique<RTreeNode>(node->is_leaf, node->parent, assign_node_id());
+    auto new_node = std::make_unique<RTreeNode>(node->is_leaf, node->parent);
     
     node->entries.push_back(std::move(all_entries[seed1]));
     if (!node->is_leaf) node->entries.back().child->parent = node;
@@ -404,7 +347,7 @@ void RTree::adjust_tree(RTreeNode* node, std::unique_ptr<RTreeNode> split_node) 
     }
 
     if (NN) {
-        auto new_root = std::make_unique<RTreeNode>(false, nullptr, assign_node_id());
+        auto new_root = std::make_unique<RTreeNode>(false, nullptr);
         
         BoundingBox mbr1 = root_->compute_mbr();
         BoundingBox mbr2 = NN->compute_mbr();

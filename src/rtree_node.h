@@ -29,10 +29,9 @@ struct RTreeNode {
     bool is_leaf;
     RTreeNode* parent;
     std::vector<RTreeEntry> entries;
-    std::size_t id; // Unique node identifier for traceability
 
-    explicit RTreeNode(bool leaf, RTreeNode* p = nullptr, std::size_t node_id = 0) 
-        : is_leaf(leaf), parent(p), id(node_id) {}
+    explicit RTreeNode(bool leaf, RTreeNode* p = nullptr) 
+        : is_leaf(leaf), parent(p) {}
     
     // Computes the MBR of this node based on its entries
     BoundingBox compute_mbr() const;

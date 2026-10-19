@@ -23,11 +23,6 @@ target_link_libraries(test_rtree_query PRIVATE kestrel_rtree kestrel_geometry)
 
 add_test(NAME test_rtree_query COMMAND test_rtree_query)
 
-add_executable(test_rtree_trace test_rtree_trace.cpp)
-target_link_libraries(test_rtree_trace PRIVATE kestrel_rtree kestrel_geometry)
-
-add_test(NAME test_rtree_trace COMMAND test_rtree_trace)
-
 add_executable(test_rtree_delete test_rtree_delete.cpp)
 target_link_libraries(test_rtree_delete PRIVATE kestrel_rtree kestrel_geometry)
 

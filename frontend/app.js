@@ -29,33 +29,11 @@ const layerLeaf = document.getElementById('layerLeaf');
 const layerInternal = document.getElementById('layerInternal');
 const layerQuery = document.getElementById('layerQuery');
 
-// Trace layer checkboxes
-const layerTraceVisited = document.getElementById('layerTraceVisited');
-const layerTracePruned = document.getElementById('layerTracePruned');
-
 // Metric cards
 const valEntities = document.getElementById('valEntities');
 const valResults = document.getElementById('valResults');
 const valLeaf = document.getElementById('valLeaf');
 const valInternal = document.getElementById('valInternal');
-
-// Traversal controls
-const btnTraversalReset = document.getElementById('btnTraversalReset');
-const btnTraversalPrev = document.getElementById('btnTraversalPrev');
-const btnTraversalPlay = document.getElementById('btnTraversalPlay');
-const btnTraversalNext = document.getElementById('btnTraversalNext');
-const btnTraversalRestart = document.getElementById('btnTraversalRestart');
-const traversalPlayLabel = document.getElementById('traversalPlayLabel');
-const valTraversalStep = document.getElementById('valTraversalStep');
-const valTraversalTotal = document.getElementById('valTraversalTotal');
-const valTraversalExplanation = document.getElementById('valTraversalExplanation');
-
-// Traversal playback state
-let traceEvents = [];
-let traceStepIndex = -1;
-let traceIsPlaying = false;
-let tracePlayInterval = null;
-const TRACE_PLAY_DELAY_MS = 800;
 
 // Empty state & frame elements
 const viewportFrame = document.getElementById('viewportFrame') || (typeof document !== 'undefined' ? document.querySelector('.canvas-viewport-frame') : null);
@@ -492,222 +470,6 @@ function calcOverlapArea(a, b) {
     return xOverlap * yOverlap;
 }
 
-/* ------------------------------------------------------------------
-   Traversal Trace Playback
-   ------------------------------------------------------------------ */
-
-/**
- * Installs a new trace, replacing any previously active trace.
- * Called on every state load so a new query/scene cannot reuse a stale trace.
- */
-function installTrace(trace) {
-    stopTracePlayback();
-    traceEvents = [];
-    traceStepIndex = -1;
-
-    if (trace && Array.isArray(trace.events)) {
-        traceEvents = trace.events.filter(ev => ev && typeof ev.type === 'string');
-    }
-
-    updateTraversalUI();
-}
-
-/**
- * Stops any ongoing trace playback animation.
- */
-function stopTracePlayback() {
-    traceIsPlaying = false;
-    if (tracePlayInterval) {
-        clearInterval(tracePlayInterval);
-        tracePlayInterval = null;
-    }
-    if (traversalPlayLabel) traversalPlayLabel.textContent = 'Play';
-}
-
-/**
- * Advances to the next trace event. Returns true if a step was taken.
- */
-function traceNext() {
-    if (traceEvents.length === 0) return false;
-    if (traceStepIndex < traceEvents.length - 1) {
-        traceStepIndex++;
-        renderTraceStep(traceStepIndex);
-        updateTraversalUI();
-        return true;
-    }
-    return false;
-}
-
-/**
- * Steps back one trace event. Returns true if a step was taken.
- */
-function tracePrev() {
-    if (traceEvents.length === 0) return false;
-    if (traceStepIndex > 0) {
-        traceStepIndex--;
-        renderTraceStep(traceStepIndex);
-        updateTraversalUI();
-        return true;
-    }
-    return false;
-}
-
-/**
- * Resets the trace to the beginning (before step 1).
- */
-function traceReset() {
-    stopTracePlayback();
-    traceStepIndex = -1;
-    renderTraceStep(-1);
-    updateTraversalUI();
-}
-
-/**
- * Restarts the trace from step 1.
- */
-function traceRestart() {
-    stopTracePlayback();
-    if (traceEvents.length === 0) {
-        traceStepIndex = -1;
-        renderTraceStep(-1);
-        updateTraversalUI();
-        return;
-    }
-    traceStepIndex = 0;
-    renderTraceStep(0);
-    updateTraversalUI();
-}
-
-/**
- * Toggles play/pause of trace playback.
- */
-function traceTogglePlay() {
-    if (traceEvents.length === 0) return;
-    if (traceIsPlaying) {
-        stopTracePlayback();
-    } else {
-        traceIsPlaying = true;
-        if (traversalPlayLabel) traversalPlayLabel.textContent = 'Pause';
-        // If at end, restart from beginning
-        if (traceStepIndex >= traceEvents.length - 1) {
-            traceStepIndex = 0;
-            renderTraceStep(0);
-            updateTraversalUI();
-        }
-        tracePlayInterval = setInterval(() => {
-            if (!traceNext()) {
-                stopTracePlayback();
-            }
-        }, TRACE_PLAY_DELAY_MS);
-    }
-    updateTraversalUI();
-}
-
-/**
- * Renders the canvas and UI for the given trace step index.
- * -1 means "before first step" (no highlight, just query region).
- */
-function renderTraceStep(stepIndex) {
-    traceStepIndex = stepIndex;
-    drawState(currentState);
-
-    if (valTraversalExplanation) {
-        if (stepIndex < 0 || stepIndex >= traceEvents.length) {
-            valTraversalExplanation.textContent = traceEvents.length === 0
-                ? 'No traversal trace available for this query.'
-                : 'Ready to begin traversal. Press Next or Play to step through.';
-        } else {
-            valTraversalExplanation.textContent = traceEvents[stepIndex].explanation || '';
-        }
-    }
-}
-
-/**
- * Updates the traversal control button states and step readout.
- */
-function updateTraversalUI() {
-    const hasTrace = traceEvents.length > 0;
-    const atStart = traceStepIndex < 0;
-    const atEnd = traceStepIndex >= traceEvents.length - 1;
-
-    if (btnTraversalPrev) btnTraversalPrev.disabled = !hasTrace || atStart;
-    if (btnTraversalNext) btnTraversalNext.disabled = !hasTrace || atEnd;
-    if (btnTraversalPlay) btnTraversalPlay.disabled = !hasTrace;
-    if (btnTraversalRestart) btnTraversalRestart.disabled = !hasTrace;
-    if (btnTraversalReset) btnTraversalReset.disabled = !hasTrace;
-
-    if (traversalPlayLabel) {
-        traversalPlayLabel.textContent = traceIsPlaying ? 'Pause' : 'Play';
-    }
-
-    if (valTraversalStep) {
-        valTraversalStep.textContent = atStart ? '—' : (traceStepIndex + 1);
-    }
-    if (valTraversalTotal) {
-        valTraversalTotal.textContent = hasTrace ? traceEvents.length : '—';
-    }
-}
-
-/**
- * Returns the set of highlight instructions for the current trace step.
- * Each instruction: { kind: 'node_visited'|'branch_pruned'|'child_entered'|'leaf_entry_examined'|'entity_accepted',
- *                     nodeId, entityId, mbr }
- */
-function getCurrentTraceHighlights() {
-    const highlights = [];
-    if (traceStepIndex < 0 || traceStepIndex >= traceEvents.length) return highlights;
-
-    const ev = traceEvents[traceStepIndex];
-    switch (ev.type) {
-        case 'node_visited':
-            highlights.push({ kind: 'node_visited', nodeId: ev.node_id, entityId: ev.entity_id, mbr: ev.mbr });
-            break;
-        case 'branch_pruned':
-            highlights.push({ kind: 'branch_pruned', nodeId: ev.node_id, entityId: ev.entity_id, mbr: ev.mbr });
-            break;
-        case 'child_entered':
-            highlights.push({ kind: 'child_entered', nodeId: ev.node_id, entityId: ev.entity_id, mbr: ev.mbr });
-            break;
-        case 'leaf_entry_examined':
-            highlights.push({ kind: 'leaf_entry_examined', nodeId: ev.node_id, entityId: ev.entity_id, mbr: ev.mbr });
-            break;
-        case 'entity_accepted':
-            highlights.push({ kind: 'entity_accepted', nodeId: ev.node_id, entityId: ev.entity_id, mbr: ev.mbr });
-            break;
-    }
-    return highlights;
-}
-
-/**
- * Collects all MBRs ever visited (node_visited events) for persistent highlighting.
- */
-function getVisitedNodeMBRs() {
-    const mbrs = [];
-    const seen = new Set();
-    for (const ev of traceEvents) {
-        if (ev.type === 'node_visited' && ev.node_id && !seen.has(ev.node_id)) {
-            seen.add(ev.node_id);
-            mbrs.push(ev.mbr);
-        }
-    }
-    return mbrs;
-}
-
-/**
- * Collects all MBRs ever pruned (branch_pruned events) for persistent highlighting.
- */
-function getPrunedBranchMBRs() {
-    const mbrs = [];
-    const seen = new Set();
-    for (const ev of traceEvents) {
-        if (ev.type === 'branch_pruned' && ev.node_id && !seen.has(ev.node_id + ':' + JSON.stringify(ev.mbr))) {
-            seen.add(ev.node_id + ':' + JSON.stringify(ev.mbr));
-            mbrs.push(ev.mbr);
-        }
-    }
-    return mbrs;
-}
-
 function drawState(state) {
     if (!ctx) return;
 
@@ -795,68 +557,6 @@ function drawState(state) {
             // Register query region label banner as an obstacle to avoid label overlap
             occupiedBoxes.push({ id: -1, x: qx - 3, y: qy - 2, w: qw + 6, h: 15 });
         }
-    }
-
-    // 5. Traversal Trace Highlights
-    const traceHighlights = getCurrentTraceHighlights();
-    const visitedMBRs = layerTraceVisited && layerTraceVisited.checked ? getVisitedNodeMBRs() : [];
-    const prunedMBRs = layerTracePruned && layerTracePruned.checked ? getPrunedBranchMBRs() : [];
-
-    // 5a. Persistent: visited node MBRs (subtle cyan outline)
-    if (visitedMBRs.length > 0) {
-        ctx.strokeStyle = 'rgba(0, 200, 230, 0.45)';
-        ctx.setLineDash([3, 3]);
-        ctx.lineWidth = 1.5;
-        visitedMBRs.forEach(b => {
-            const r = projectBox(b);
-            if (r) ctx.strokeRect(r.x, r.y, r.w, r.h);
-        });
-        ctx.setLineDash([]);
-    }
-
-    // 5b. Persistent: pruned branch MBRs (dashed gray outline)
-    if (prunedMBRs.length > 0) {
-        ctx.strokeStyle = 'rgba(156, 163, 175, 0.5)';
-        ctx.setLineDash([6, 4]);
-        ctx.lineWidth = 1.5;
-        prunedMBRs.forEach(b => {
-            const r = projectBox(b);
-            if (r) ctx.strokeRect(r.x, r.y, r.w, r.h);
-        });
-        ctx.setLineDash([]);
-    }
-
-    // 5c. Current step highlight (active event MBR)
-    if (traceHighlights.length > 0) {
-        traceHighlights.forEach(hl => {
-            const r = projectBox(hl.mbr);
-            if (!r) return;
-            switch (hl.kind) {
-                case 'branch_pruned':
-                    ctx.fillStyle = 'rgba(156, 163, 175, 0.25)';
-                    ctx.strokeStyle = '#9ca3af';
-                    ctx.lineWidth = 2;
-                    ctx.setLineDash([8, 4]);
-                    break;
-                case 'node_visited':
-                case 'child_entered':
-                    ctx.fillStyle = 'rgba(0, 200, 230, 0.2)';
-                    ctx.strokeStyle = '#00c8e6';
-                    ctx.lineWidth = 2;
-                    ctx.setLineDash([4, 4]);
-                    break;
-                case 'leaf_entry_examined':
-                case 'entity_accepted':
-                    ctx.fillStyle = 'rgba(244, 63, 94, 0.3)';
-                    ctx.strokeStyle = '#f43f5e';
-                    ctx.lineWidth = 2.5;
-                    ctx.setLineDash([]);
-                    break;
-            }
-            ctx.fillRect(r.x, r.y, r.w, r.h);
-            ctx.strokeRect(r.x, r.y, r.w, r.h);
-            ctx.setLineDash([]);
-        });
     }
 
     // 4. Active Entities (Deterministic Ordering & Collision Avoidance)
@@ -1117,9 +817,6 @@ function handleLoadedState(state, source = 'file') {
     setStatus(`Loaded ${entityCount} entities (${matchCount} matched query) from ${source}`, 'success');
     if (missionClock) missionClock.textContent = `SYNC: OK (${entityCount} ENTITIES)`;
 
-    // Parse and install traversal trace; invalidate any previous trace.
-    installTrace(state.trace);
-
     fitAll(true);
     drawState(currentState);
 }
@@ -1353,51 +1050,11 @@ if (typeof document !== 'undefined') {
     });
 
     // Layer toggle handlers — preserves existing viewport
-    [layerEntities, layerResults, layerLeaf, layerInternal, layerQuery, layerTraceVisited, layerTracePruned].forEach(cb => {
+    [layerEntities, layerResults, layerLeaf, layerInternal, layerQuery].forEach(cb => {
         if (cb) {
             cb.addEventListener('change', () => {
                 if (currentState) requestRender();
             });
-        }
-    });
-
-    // Traversal control handlers
-    if (btnTraversalReset) {
-        btnTraversalReset.addEventListener('click', () => {
-            traceReset();
-        });
-    }
-    if (btnTraversalPrev) {
-        btnTraversalPrev.addEventListener('click', () => {
-            tracePrev();
-        });
-    }
-    if (btnTraversalPlay) {
-        btnTraversalPlay.addEventListener('click', () => {
-            traceTogglePlay();
-        });
-    }
-    if (btnTraversalNext) {
-        btnTraversalNext.addEventListener('click', () => {
-            traceNext();
-        });
-    }
-    if (btnTraversalRestart) {
-        btnTraversalRestart.addEventListener('click', () => {
-            traceRestart();
-        });
-    }
-
-    // Keyboard shortcuts for traversal
-    window.addEventListener('keydown', (e) => {
-        if (isEditable(e.target) || isEditable(document.activeElement)) return;
-        if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-        if (e.code === 'Space' || e.key === ' ') {
-            if (traceEvents.length > 0) {
-                e.preventDefault();
-                traceTogglePlay();
-            }
         }
     });
 

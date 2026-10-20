@@ -850,7 +850,10 @@ body {
     min-width: 0;
     min-height: 0;
     height: 100%;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
 /* Panel Header Component */
@@ -998,12 +1001,285 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   8b. Structural Region 5: Contextual Telemetry Region
+   8b-1. Structural Region 4b: Traversal Replay (Step-Through Debugger)
+   -------------------------------------------------------------------------- */
+
+.traversal-region {
+    flex: 0 0 auto;
+    background-color: var(--surface-dock);
+    border: var(--border-panel);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+}
+
+.trace-status {
+    font-size: 10.5px;
+    line-height: 1.3;
+    color: var(--text-dim);
+    background-color: var(--surface-pod);
+    border: var(--border-subtle);
+    border-left: 2px solid var(--accent-primary);
+    border-radius: var(--radius-sm);
+    padding: 4px 7px;
+}
+
+.trace-status.is-empty {
+    border-left-color: var(--text-dim);
+}
+
+.trace-transport {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3px;
+    background-color: var(--surface-pod);
+    border: var(--border-control);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+}
+
+.trace-btn {
+    height: 25px;
+    border: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 10px;
+    gap: 3px;
+    padding: 0 2px;
+}
+
+.trace-btn-wide {
+    grid-column: span 2;
+}
+
+.trace-transport .trace-btn:nth-child(4n),
+.trace-transport .trace-btn-wide {
+    border-right: none;
+}
+
+.trace-progress {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.trace-progress-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    color: var(--text-dim);
+}
+
+.trace-progress-value {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent-primary);
+    white-space: nowrap;
+}
+
+.trace-progress-track {
+    flex: 1 1 auto;
+    height: 4px;
+    min-width: 20px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.trace-progress-fill {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #0891b2, var(--accent-primary));
+    transition: width 0.12s linear;
+}
+
+.trace-explanation {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    background-color: var(--surface-pod);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    padding: 7px 8px;
+    min-height: 46px;
+}
+
+.trace-event-tag {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 2px;
+    padding: 2px 4px;
+    margin-top: 1px;
+}
+
+.trace-event-text {
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+.trace-tag-node_visited { color: #00c8e6; border-color: rgba(0, 200, 230, 0.55); }
+.trace-tag-mbr_tested { color: #cbd5e1; border-color: rgba(203, 213, 225, 0.4); }
+.trace-tag-branch_pruned { color: #f43f5e; border-color: rgba(244, 63, 94, 0.55); }
+.trace-tag-child_entered { color: #eab308; border-color: rgba(234, 179, 8, 0.55); }
+.trace-tag-leaf_entry_examined { color: #a855f7; border-color: rgba(168, 85, 247, 0.55); }
+.trace-tag-entity_accepted { color: #22d3ee; border-color: rgba(34, 211, 238, 0.55); }
+.trace-tag-traversal_completed { color: #10b981; border-color: rgba(16, 185, 129, 0.55); }
+
+/* Legend — swatch shape and glyph accompany every colour so the event kind is
+   never communicated by colour alone. */
+.trace-legend {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 6px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+
+.legend-swatch {
+    width: 16px;
+    height: 12px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    font-size: 8px;
+    line-height: 1;
+}
+
+.legend-glyph {
+    font-family: var(--font-mono);
+    font-weight: 700;
+}
+
+.legend-swatch-visited {
+    border: 2px solid #00c8e6;
+    color: #00c8e6;
+}
+
+.legend-swatch-descend {
+    border: 2px dotted #eab308;
+    color: #eab308;
+}
+
+.legend-swatch-pruned {
+    border: 2px dashed #f43f5e;
+    color: #f43f5e;
+}
+
+.legend-swatch-accepted {
+    border: 2px solid #22d3ee;
+    color: #22d3ee;
+}
+
+.legend-swatch-active {
+    border: 2px dashed #ffffff;
+    color: #ffffff;
+}
+
+.legend-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Recorded Event Log */
+.trace-log {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    position: relative;
+    max-height: 132px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: var(--surface-pod);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.trace-log-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 3px 7px;
+    font-size: 10.5px;
+    line-height: 1.35;
+    color: var(--text-dim);
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.trace-log-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+}
+
+.trace-log-item.is-current {
+    background-color: rgba(0, 200, 230, 0.12);
+    border-left-color: var(--accent-primary);
+    color: var(--text-primary);
+}
+
+.trace-log-index {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--text-dim);
+    min-width: 20px;
+    text-align: right;
+}
+
+.trace-log-glyph {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.35;
+}
+
+.trace-log-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.trace-log-node_visited .trace-log-glyph { color: #00c8e6; }
+.trace-log-mbr_tested .trace-log-glyph { color: #cbd5e1; }
+.trace-log-branch_pruned .trace-log-glyph { color: #f43f5e; }
+.trace-log-child_entered .trace-log-glyph { color: #eab308; }
+.trace-log-leaf_entry_examined .trace-log-glyph { color: #a855f7; }
+.trace-log-entity_accepted .trace-log-glyph { color: #22d3ee; }
+.trace-log-traversal_completed .trace-log-glyph { color: #10b981; }
+
+/* --------------------------------------------------------------------------
+   8c. Structural Region 5: Contextual Telemetry Region
    -------------------------------------------------------------------------- */
 
 .telemetry-region {
-    flex: 1 1 0;
-    min-height: 0;
+    flex: 1 1 auto;
+    min-height: 120px;
     background-color: var(--surface-telemetry);
     border: var(--border-panel);
     border-radius: var(--radius-sm);

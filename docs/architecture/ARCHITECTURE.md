@@ -196,6 +196,22 @@ An interactive 2D display of the simulation state and query results.
 - R-tree node MBRs (internal and leaf levels).
 - Query regions and query results.
 - Trajectory corridors and hazard candidates.
+- A step-through replay of the recorded R-tree range-query traversal (Traversal Replay).
+
+**Scene contract (`state.json`):**
+
+| Key | Meaning |
+|-----|---------|
+| `scene_id` | Content fingerprint of the scene and its query; changes whenever either changes. |
+| `entities[]` | Active entities with their bounding boxes. |
+| `rtree.internal_mbrs[]`, `rtree.leaf_mbrs[]` | Legacy flat MBR arrays (kept for existing consumers). |
+| `rtree.nodes[]` | Node table: `id`, `parent_id`, `level`, `is_leaf`, `entry_count`, `mbr`. |
+| `query` | `query_id`, `bounds`, `results` (the returned entity IDs). |
+| `trace` | `scene_id`, `query_id`, `query_bounds`, `truncated`, `total_events`, `events[]`. |
+
+The frontend only replays a trace when its `scene_id`, `query_id` and query bounds match the loaded
+scene, and when the recorded results agree with `query.results`. Loading a new scene always clears
+the previous replay, so a trace can never be reused for a different scene or query.
 
 **Constraints:**
 - Technology stack must be selected and approved by the owner at Gate 10.
@@ -285,6 +301,48 @@ namespace kestrel {
     };
 }
 ```
+
+### Traversal Trace (Traversal Replay feature)
+
+`RTree::search` has an optional tracing overload. The trace is produced inside the search loop at
+the exact decision points; it is never reconstructed from the result set. The untraced overload
+delegates to the traced one with a `nullptr` trace, so both share one implementation and therefore
+one result set.
+
+```cpp
+namespace kestrel {
+    enum class RTreeTraceEventType {
+        NodeVisited, MbrTested, BranchPruned, ChildEntered,
+        LeafEntryExamined, EntityAccepted, TraversalCompleted
+    };
+
+    struct RTreeTraceEvent {
+        RTreeTraceEventType type;
+        std::size_t node_id;       // node whose entries were examined
+        std::size_t child_node_id; // child referenced by the tested entry (0 = none)
+        int entity_id;             // entity referenced by the tested entry (-1 = none)
+        BoundingBox mbr;           // bounding box that was tested
+        bool intersects;            // outcome of the intersection test
+    };
+
+    struct RTreeTrace {
+        std::vector<RTreeTraceEvent> events;
+        std::size_t max_events = 20000;  // bound: the trace is flagged truncated beyond it
+        bool truncated = false;
+    };
+
+    std::vector<int> search(const BoundingBox& query, QueryMetrics& metrics, RTreeTrace* trace) const;
+}
+```
+
+`MissionControl::region_scan(region, metrics, trace)` forwards the trace so the recorded traversal
+belongs to the query that was actually executed.
+
+**Invariants:**
+- The traced and untraced searches return the same entity IDs in the same order.
+- A `branch_pruned` event always refers to an MBR that does not intersect the query region.
+- A `child_entered` event always refers to an MBR that does intersect the query region.
+- The last recorded event is always `traversal_completed`, including for truncated traces.
 
 ---
 

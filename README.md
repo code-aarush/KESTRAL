@@ -5,7 +5,7 @@
 ### **K**epler **E**xploration — **S**patial **T**ree for **R**isk **E**valuation and **L**ocalization
 
 [![Language: C++17](https://img.shields.io/badge/Language-C%2B%2B17-blue.svg)](https://en.cppreference.com/w/cpp/17)
-[![Tests: 9/9 Passing](https://img.shields.io/badge/Tests-9%2F9%20Passing-brightgreen.svg)](tests/)
+[![Tests: 10/10 Passing](https://img.shields.io/badge/Tests-10%2F10%20Passing-brightgreen.svg)](tests/)
 [![Status: MVP Complete](https://img.shields.io/badge/Status-MVP%20Complete-success.svg)](PROJECT_SSOT.md)
 
 An academic C++17 project investigating a custom, dynamically updated two-dimensional R-tree for spatial indexing and hazard assessment in a simulated deep-space environment.
@@ -34,6 +34,7 @@ The simulation models fictional Kepler Belt entities (asteroids, probes, navigat
 - ✅ **Rigorous Verification:** 9 automated CTest regression suites (100% pass rate) covering geometry, node structure, insertions, splits, deletions, stress loads, and full pipeline integration.
 - 📊 **Empirical Benchmarking Engine:** Scalability evaluation comparing R-tree queries against linear brute-force baseline across entity scales ($N = 100$ to $100{,}000$).
 - 🖥️ **Mission Control Frontend:** A decoupled HTML5 Canvas visualizer rendering radar grids, entity markers, dynamic leaf/internal MBR hierarchies, query windows, and glowing hazard alerts.
+- 🔬 **Traversal Replay (Step-Through Debugger):** Mission Control can step through the *actual* recorded C++ R-tree range-query traversal — node visits, MBR tests, pruning decisions, leaf matches and accepted results — with synchronised map highlighting and per-event explanations.
 - 🚀 **Single-Command Demo Orchestrator (`run_demo.py`):** An end-to-end Python launcher that verifies the toolchain, builds stale targets, runs the simulation, exports the R-tree state to JSON, hosts a local server, and launches Mission Control in the browser.
 
 
@@ -162,7 +163,7 @@ cmake --build build
 cd build && ctest --output-on-failure
 ```
 
-*Expected output: `100% tests passed, 0 tests failed out of 9`.*
+*Expected output: `100% tests passed, 0 tests failed out of 10`.*
 
 ### 3. Run Scaling Benchmarks
 
@@ -208,6 +209,7 @@ KESTREL/
 |   |-- test_rtree.cpp            # Structural R-tree invariant tests
 |   |-- test_rtree_insert.cpp     # Insertion correctness and quadratic split validation
 |   |-- test_rtree_query.cpp      # Spatial range queries and pruning verification
+|   +-- test_rtree_trace.cpp      # Recorded traversal trace: ordering, pruning, result parity
 |   |-- test_rtree_delete.cpp     # Deletion, node underflow, and re-insertion tests
 |   |-- test_simulator.cpp        # Deterministic simulation physics and reproducibility
 |   |-- test_mission.cpp          # Region, nearby, and corridor hazard assessment
@@ -244,6 +246,10 @@ Static Terminal Benchmarks    ─────────────>  Real-Tim
 Hardcoded Simulation Seed     ─────────────>  Configurable / Live Simulation Control
 ```
 
+> **Delivered since this roadmap was written:** *Interactive Dynamic Spatial Map* (pan / zoom / fit)
+> and *Interactive Traversal & Pruning Step-Through* are now implemented. The traversal debugger is
+> described in [Traversal Replay](#traversal-replay-step-through-debugger) below.
+
 ### 1. Interactive Spatial Map
 - **Smooth Pan & Zoom:** Canvas navigation with mouse-drag panning, pinch-to-zoom, and mini-map navigation.
 - **Entity Inspection Tooltips:** Hover over and click asteroids, probes, or debris to inspect real-time position, velocity vectors, entity IDs, and bounding coordinates.
@@ -275,6 +281,87 @@ Hardcoded Simulation Seed     ─────────────>  Configur
 
 ---
 
+## Traversal Replay (Step-Through Debugger)
+
+Mission Control can replay the **real** range-query traversal that the C++ R-tree performed. The
+animation is not reconstructed from the result set — every step is recorded inside `RTree::search()`
+at the exact point where the search makes a decision.
+
+### Recorded events
+
+| Event | Recorded when |
+|-------|---------------|
+| `node_visited` | A node is dequeued and its entries are about to be examined. |
+| `mbr_tested` | An entry MBR (a child node MBR or a leaf entry MBR) is tested against the query region. |
+| `branch_pruned` | The tested MBR does not intersect the query, so the subtree is abandoned. |
+| `child_entered` | The tested MBR intersects the query, so the traversal descends into the child. |
+| `leaf_entry_examined` | A leaf entry matched the query region. |
+| `entity_accepted` | The entity was added to the result set. |
+| `traversal_completed` | The traversal finished. |
+
+Each event carries the identifiers involved (`node_id`, `child_node_id`, `entity_id`), the MBR that
+was tested, and the outcome of the intersection test.
+
+### Backend API
+
+```cpp
+RTreeTrace trace;
+RTree::QueryMetrics metrics;
+std::vector<int> hits = tree.search(query, metrics, &trace);   // traced
+std::vector<int> hits2 = tree.search(query, metrics);           // identical, untraced
+```
+
+`MissionControl::region_scan(region, metrics, &trace)` exposes the same trace through the mission
+query interface. Passing `nullptr` (or omitting the argument) keeps the previous behaviour exactly:
+the search algorithm, the visited-node count and the returned entity IDs are unchanged.
+
+The recorder is bounded (`RTreeTrace::max_events`, 20 000 by default). When the bound is reached the
+trace is flagged `truncated` and the terminal `traversal_completed` marker is still written.
+
+### Exported scene format
+
+`kestrel_export` writes the scene, the query and the trace into `state.json`:
+
+```jsonc
+{
+  "scene_id": 4978692356078348,        // content fingerprint of scene + query
+  "entities": [ /* ... */ ],
+  "rtree": {
+    "internal_mbrs": [ /* ... */ ],    // legacy arrays (kept for existing consumers)
+    "leaf_mbrs": [ /* ... */ ],
+    "nodes": [                         // node table: id, parent, level, MBR
+      { "id": 100, "parent_id": 0, "level": 0, "is_leaf": false, "entry_count": 4, "mbr": [/* ... */] }
+    ]
+  },
+  "query": { "query_id": 1, "bounds": [/* ... */], "results": [31, 30] },
+  "trace": {
+    "scene_id": 4978692356078348,
+    "query_id": 1,
+    "query_bounds": [/* ... */],
+    "truncated": false,
+    "total_events": 19,
+    "events": [ { "type": "node_visited", "node_id": 100, "child_node_id": 0,
+                  "entity_id": -1, "mbr": [/* ... */], "intersects": true } ]
+  }
+}
+```
+
+### Frontend behaviour
+
+- **Controls:** Start, Previous step, Next step, Play, Pause, Restart, Clear Trace.
+  Keyboard: `N` next, `B` back, `P` play/pause, `Shift+R` restart.
+- **Step readout:** `STEP 7 / 19` plus a progress bar; the recorded event log is clickable.
+- **Map highlighting:** visited nodes (solid outline, `●`), entered branches (dotted outline, `▼`),
+  pruned branches (dashed outline, `✕`), accepted results (ringed box, `✓`) and the current event
+  (highlighted outline, `◆`). Line style and glyph accompany every colour so the event kind is never
+  communicated by colour alone.
+- **Explanations:** every displayed sentence is derived from the event that is currently shown.
+- **Trace lifecycle:** the replay only ever uses the trace of the scene and query that are loaded.
+  A trace whose `scene_id`, `query_id`, query bounds or recorded results disagree with the loaded
+  scene is discarded, and loading a new scene always clears the previous replay.
+
+---
+
 ## Gate Progression & Verification Status
 
 KESTREL follows strict **Gate Discipline**, where each stage must meet defined formal acceptance criteria before progression.
@@ -294,7 +381,7 @@ KESTREL follows strict **Gate Discipline**, where each stage must meet defined f
 | **GATE-10** | Mission-Control Visualization | Decoupled HTML5 Canvas radar frontend & exporter | **PASS** |
 | **GATE-11** | Final Verification & Academic Defence | End-to-end integration, audit report, defence slides | **IN REVIEW** |
 
-*Note: GATE-00 through GATE-10 are formally verified and closed. GATE-11 technical verification is complete (9/9 CTests passing, benchmark reports published, defence notes finalized) and submitted for Project Owner sign-off.*
+*Note: GATE-00 through GATE-10 are formally verified and closed. GATE-11 technical verification is complete (10/10 CTests passing, benchmark reports published, defence notes finalized) and submitted for Project Owner sign-off.*
 
 ---
 

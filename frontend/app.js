@@ -43,6 +43,22 @@ const emptyFeedbackText = document.getElementById('emptyFeedbackText');
 const btnEmptyLoad = document.getElementById('btnEmptyLoad');
 const btnEmptyBrowse = document.getElementById('btnEmptyBrowse');
 
+// Traversal replay elements
+const traceBadge = document.getElementById('traceBadge');
+const traceStatus = document.getElementById('traceStatus');
+const traceStepLabel = document.getElementById('traceStep');
+const traceProgressFill = document.getElementById('traceProgressFill');
+const traceEventTag = document.getElementById('traceEventTag');
+const traceEventText = document.getElementById('traceEventText');
+const traceLog = document.getElementById('traceLog');
+const btnTraceStart = document.getElementById('btnTraceStart');
+const btnTracePrev = document.getElementById('btnTracePrev');
+const btnTraceNext = document.getElementById('btnTraceNext');
+const btnTracePlay = document.getElementById('btnTracePlay');
+const btnTracePause = document.getElementById('btnTracePause');
+const btnTraceRestart = document.getElementById('btnTraceRestart');
+const btnTraceClear = document.getElementById('btnTraceClear');
+
 let currentState = null;
 let dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
 let cssWidth = 800;
@@ -470,6 +486,518 @@ function calcOverlapArea(a, b) {
     return xOverlap * yOverlap;
 }
 
+/* ===========================================================================
+   Traversal Replay — step-through of the recorded R-tree range query.
+   The replay always uses the trace that belongs to the scene and query that
+   are currently loaded; a trace that does not match is discarded.
+   =========================================================================== */
+
+// Display metadata for each recorded event kind.
+const TRACE_EVENT_META = {
+    node_visited:        { tag: 'VISITED',  glyph: '●' },
+    mbr_tested:          { tag: 'TEST',     glyph: '◇' },
+    branch_pruned:       { tag: 'PRUNED',   glyph: '✕' },
+    child_entered:       { tag: 'ENTERED',  glyph: '▼' },
+    leaf_entry_examined: { tag: 'LEAF',     glyph: '○' },
+    entity_accepted:     { tag: 'ACCEPTED', glyph: '✓' },
+    traversal_completed: { tag: 'COMPLETE', glyph: '■' }
+};
+
+// Number of log entries kept in the DOM around the current step.
+const TRACE_LOG_WINDOW = 120;
+
+const replay = {
+    trace: null,          // { sceneId, queryId, queryBounds, events, totalEvents, truncated }
+    index: -1,            // index of the displayed event, -1 when nothing is displayed
+    playing: false,
+    timer: null,
+    intervalMs: 700,
+    visited: [],          // node MBRs visited so far
+    entered: [],          // branch MBRs entered but not yet visited
+    pruned: [],           // branch MBRs pruned so far
+    accepted: []          // accepted entity records so far
+};
+
+function replayIsActive() {
+    return !!(replay.trace && replay.index >= 0);
+}
+
+/**
+ * Compares two world-space bounding boxes for equality.
+ */
+function boundsEqual(a, b) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        const x = Number(a[i]);
+        const y = Number(b[i]);
+        if (!isFinite(x) || !isFinite(y)) return false;
+        if (Math.abs(x - y) > 1e-9) return false;
+    }
+    return true;
+}
+
+/**
+ * Entity ids accepted by the recorded traversal, in recorded order.
+ */
+function traceAcceptedIds(events) {
+    const ids = [];
+    for (const ev of events) {
+        if (ev && ev.type === 'entity_accepted') ids.push(Number(ev.entity_id));
+    }
+    return ids;
+}
+
+/**
+ * Extracts the traversal trace that belongs to the given state.
+ * Returns null when the state carries no trace, or when the trace does not
+ * belong to the loaded scene / query (stale trace protection).
+ */
+function extractTrace(state) {
+    if (!state || typeof state !== 'object') return null;
+
+    const raw = state.trace;
+    if (!raw || typeof raw !== 'object' || !Array.isArray(raw.events) || raw.events.length === 0) {
+        return null;
+    }
+
+    const sceneId = state.scene_id;
+    const queryId = state.query ? state.query.query_id : undefined;
+
+    // The trace must belong to the scene that is currently loaded.
+    if (sceneId === undefined || raw.scene_id !== sceneId) return null;
+
+    // ...and to the query that is currently loaded.
+    if (queryId !== undefined && raw.query_id !== queryId) return null;
+    if (!boundsEqual(raw.query_bounds, state.query ? state.query.bounds : null)) return null;
+
+    // The recorded results must agree with the reported query results.
+    if (!raw.truncated) {
+        const recorded = traceAcceptedIds(raw.events);
+        const reported = (state.query && Array.isArray(state.query.results))
+            ? state.query.results.map(Number)
+            : [];
+        if (recorded.length !== reported.length) return null;
+        const a = recorded.slice().sort((x, y) => x - y);
+        const b = reported.slice().sort((x, y) => x - y);
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return null;
+        }
+    }
+
+    return {
+        sceneId: sceneId,
+        queryId: queryId,
+        queryBounds: raw.query_bounds,
+        events: raw.events,
+        totalEvents: raw.events.length,
+        truncated: !!raw.truncated
+    };
+}
+
+/**
+ * Produces the short explanation for a recorded event.
+ * The text is derived from the event that is actually displayed.
+ */
+function describeTraceEvent(ev) {
+    if (!ev) return 'No traversal event selected.';
+
+    switch (ev.type) {
+        case 'node_visited':
+            if (ev.intersects === false) {
+                return `Visiting node #${ev.node_id}. Its MBR does not intersect the query region, so all of its child branches will be pruned.`;
+            }
+            return `Visiting node #${ev.node_id}.`;
+        case 'mbr_tested':
+            if (ev.child_node_id) {
+                return ev.intersects
+                    ? `Testing node #${ev.child_node_id}'s MBR against the query region.`
+                    : `Testing node #${ev.child_node_id}'s MBR against the query region. It does not intersect.`;
+            }
+            return ev.intersects
+                ? `Testing leaf entry #${ev.entity_id}'s MBR against the query region.`
+                : `Testing leaf entry #${ev.entity_id}'s MBR against the query region. It does not intersect, so the entity is excluded.`;
+        case 'branch_pruned':
+            return 'The MBR does not intersect the query; this branch is pruned.';
+        case 'child_entered':
+            return 'The MBR intersects the query; traversal continues into its children.';
+        case 'leaf_entry_examined':
+            return 'This leaf entry matches the query.';
+        case 'entity_accepted':
+            return `Entity #${ev.entity_id} accepted as a query result.`;
+        case 'traversal_completed':
+            return 'Traversal completed.';
+        default:
+            return 'Unknown traversal event.';
+    }
+}
+
+/**
+ * Rebuilds the accumulated highlights for the current step.
+ */
+function recomputeReplayAccumulation() {
+    replay.visited = [];
+    replay.entered = [];
+    replay.pruned = [];
+    replay.accepted = [];
+
+    if (!replay.trace) return;
+
+    const events = replay.trace.events;
+    for (let i = 0; i <= replay.index && i < events.length; i++) {
+        const ev = events[i];
+        if (!ev) continue;
+        if (ev.type === 'node_visited') {
+            replay.visited.push({ nodeId: ev.node_id, mbr: ev.mbr });
+        } else if (ev.type === 'child_entered') {
+            replay.entered.push({ nodeId: ev.child_node_id, mbr: ev.mbr });
+        } else if (ev.type === 'branch_pruned') {
+            replay.pruned.push({ nodeId: ev.child_node_id, mbr: ev.mbr });
+        } else if (ev.type === 'entity_accepted') {
+            replay.accepted.push({ entityId: ev.entity_id, mbr: ev.mbr });
+        }
+    }
+
+    // A branch that has already been visited is drawn as a visited node.
+    const visitedIds = new Set(replay.visited.map(v => v.nodeId));
+    replay.entered = replay.entered.filter(e => !visitedIds.has(e.nodeId));
+}
+
+/**
+ * Moves the replay to a specific recorded event.
+ */
+function setReplayIndex(index) {
+    if (!replay.trace) {
+        replay.index = -1;
+        updateReplayUi();
+        requestRender();
+        return;
+    }
+
+    const max = replay.trace.totalEvents - 1;
+    replay.index = Math.max(0, Math.min(index, max));
+    recomputeReplayAccumulation();
+    updateReplayUi();
+    requestRender();
+}
+
+function stopReplayTimer() {
+    if (replay.timer !== null) {
+        clearInterval(replay.timer);
+        replay.timer = null;
+    }
+    replay.playing = false;
+}
+
+/**
+ * Starts auto-advancing through the recorded events.
+ */
+function startReplayPlayback() {
+    if (!replay.trace) return;
+    if (replay.index >= replay.trace.totalEvents - 1) {
+        setReplayIndex(0);
+    }
+
+    stopReplayTimer();
+    replay.playing = true;
+    replay.timer = setInterval(() => {
+        if (!replay.trace) {
+            stopReplayTimer();
+            updateReplayUi();
+            return;
+        }
+        if (replay.index >= replay.trace.totalEvents - 1) {
+            stopReplayTimer();
+            updateReplayUi();
+            requestRender();
+            return;
+        }
+        setReplayIndex(replay.index + 1);
+    }, replay.intervalMs);
+
+    updateReplayUi();
+}
+
+/**
+ * Installs the trace of a freshly loaded scene. Any previously held trace is
+ * discarded first so a new scene or query can never reuse a stale trace.
+ */
+function installTraceForState(state) {
+    stopReplayTimer();
+    replay.trace = null;
+    replay.index = -1;
+    recomputeReplayAccumulation();
+
+    const extracted = extractTrace(state);
+    if (extracted) {
+        replay.trace = extracted;
+        setReplayIndex(0);
+    } else {
+        updateReplayUi();
+        requestRender();
+    }
+}
+
+/**
+ * Discards the active trace and stops the replay.
+ */
+function clearReplayTrace() {
+    stopReplayTimer();
+    replay.trace = null;
+    replay.index = -1;
+    recomputeReplayAccumulation();
+    updateReplayUi();
+    requestRender();
+}
+
+/**
+ * Renders the recorded event log around the current step.
+ */
+function renderTraceLog() {
+    if (!traceLog) return;
+    traceLog.textContent = '';
+
+    if (!replay.trace) return;
+
+    const events = replay.trace.events;
+    const total = events.length;
+    let end = Math.min(total, replay.index + 1 + Math.floor(TRACE_LOG_WINDOW / 2));
+    let start = Math.max(0, end - TRACE_LOG_WINDOW);
+    end = Math.min(total, start + TRACE_LOG_WINDOW);
+
+    for (let i = start; i < end; i++) {
+        const ev = events[i];
+        const meta = TRACE_EVENT_META[ev && ev.type] || { tag: 'EVENT', glyph: '·' };
+
+        const item = document.createElement('li');
+        item.className = `trace-log-item trace-log-${ev && ev.type ? ev.type : 'unknown'}`;
+        if (i === replay.index) item.classList.add('is-current');
+
+        const indexSpan = document.createElement('span');
+        indexSpan.className = 'trace-log-index';
+        indexSpan.textContent = String(i + 1);
+
+        const glyphSpan = document.createElement('span');
+        glyphSpan.className = 'trace-log-glyph';
+        glyphSpan.textContent = meta.glyph;
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'trace-log-text';
+        textSpan.textContent = describeTraceEvent(ev);
+
+        item.appendChild(indexSpan);
+        item.appendChild(glyphSpan);
+        item.appendChild(textSpan);
+        item.addEventListener('click', () => {
+            stopReplayTimer();
+            setReplayIndex(i);
+        });
+
+        traceLog.appendChild(item);
+    }
+
+    // Keep the current entry visible without scrolling any ancestor page.
+    const current = traceLog.querySelector('.trace-log-item.is-current');
+    if (current && typeof traceLog.scrollTop === 'number') {
+        const itemTop = current.offsetTop;
+        const itemBottom = itemTop + current.offsetHeight;
+        if (itemTop < traceLog.scrollTop) {
+            traceLog.scrollTop = itemTop;
+        } else if (itemBottom > traceLog.scrollTop + traceLog.clientHeight) {
+            traceLog.scrollTop = itemBottom - traceLog.clientHeight;
+        }
+    }
+}
+
+/**
+ * Refreshes the traversal panel from the current replay state.
+ */
+function updateReplayUi() {
+    const hasTrace = !!replay.trace;
+    const total = hasTrace ? replay.trace.totalEvents : 0;
+    const step = hasTrace ? replay.index + 1 : 0;
+
+    if (traceBadge) {
+        traceBadge.textContent = hasTrace ? `${total} EVENTS` : 'NO TRACE';
+        traceBadge.classList.toggle('is-active', hasTrace);
+    }
+
+    if (traceStatus) {
+        if (hasTrace) {
+            const truncated = replay.trace.truncated ? ' (trace truncated)' : '';
+            traceStatus.textContent = `Recorded traversal of the current query region${truncated}.`;
+            traceStatus.classList.remove('is-empty');
+        } else {
+            traceStatus.textContent = 'No recorded traversal for this scene.';
+            traceStatus.classList.add('is-empty');
+        }
+    }
+
+    if (traceStepLabel) {
+        traceStepLabel.textContent = hasTrace ? `${step} / ${total}` : '— / —';
+    }
+
+    if (traceProgressFill) {
+        const ratio = hasTrace && total > 0 ? (step / total) : 0;
+        traceProgressFill.style.width = `${Math.round(ratio * 100)}%`;
+    }
+
+    const currentEvent = hasTrace ? replay.trace.events[replay.index] : null;
+    const meta = TRACE_EVENT_META[currentEvent && currentEvent.type] || { tag: 'IDLE', glyph: '·' };
+
+    if (traceEventTag) {
+        traceEventTag.textContent = currentEvent ? meta.tag : 'IDLE';
+        traceEventTag.className = `trace-event-tag trace-tag-${currentEvent && currentEvent.type ? currentEvent.type : 'idle'}`;
+    }
+    if (traceEventText) {
+        traceEventText.textContent = currentEvent
+            ? describeTraceEvent(currentEvent)
+            : 'No traversal event selected.';
+    }
+
+    const atStart = hasTrace && replay.index <= 0;
+    const atEnd = hasTrace && replay.index >= total - 1;
+    if (btnTraceStart) btnTraceStart.disabled = !hasTrace;
+    if (btnTracePrev) btnTracePrev.disabled = !hasTrace || atStart;
+    if (btnTraceNext) btnTraceNext.disabled = !hasTrace || atEnd;
+    if (btnTracePlay) btnTracePlay.disabled = !hasTrace || (atEnd && !replay.playing);
+    if (btnTracePause) btnTracePause.disabled = !replay.playing;
+    if (btnTraceRestart) btnTraceRestart.disabled = !hasTrace;
+    if (btnTraceClear) btnTraceClear.disabled = !hasTrace;
+
+    renderTraceLog();
+}
+
+/**
+ * Draws a decorative glyph badge anchored at the top-left corner of a box.
+ */
+function drawTraceGlyph(x, y, glyph, color) {
+    ctx.save();
+    ctx.font = 'bold 10px "JetBrains Mono", Menlo, Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const w = ctx.measureText(glyph).width + 6;
+    const h = 12;
+    const bx = Math.max(0, x - w / 2);
+    const by = Math.max(0, y - h / 2);
+
+    ctx.fillStyle = 'rgba(6, 9, 16, 0.9)';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(bx, by, w, h, 2);
+        ctx.fill();
+        ctx.stroke();
+    } else {
+        ctx.fillRect(bx, by, w, h);
+        ctx.strokeRect(bx, by, w, h);
+    }
+
+    ctx.fillStyle = color;
+    ctx.fillText(glyph, bx + w / 2, by + h / 2 + 0.5);
+    ctx.restore();
+}
+
+/**
+ * Draws a highlighted rectangle using a distinct line style so the event kind
+ * is never communicated by colour alone.
+ */
+function drawTraceBox(bounds, options) {
+    const r = projectBox(bounds);
+    if (!r) return null;
+
+    const opts = options || {};
+    ctx.save();
+    ctx.setLineDash(opts.dash || []);
+    ctx.lineWidth = opts.width || 1.5;
+    ctx.strokeStyle = opts.color || '#00c8e6';
+
+    if (opts.fill) {
+        ctx.fillStyle = opts.fill;
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+    }
+
+    if (opts.glow) {
+        ctx.shadowColor = opts.color || '#00c8e6';
+        ctx.shadowBlur = opts.glow;
+    }
+
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    ctx.restore();
+
+    return r;
+}
+
+/**
+ * Renders the traversal highlights for the event that is currently displayed.
+ */
+function drawTraceOverlay() {
+    if (!replayIsActive()) return;
+
+    // Pruned branches: dashed crimson outline with a cross marker.
+    for (const item of replay.pruned) {
+        const r = drawTraceBox(item.mbr, {
+            color: 'rgba(244, 63, 94, 0.9)',
+            dash: [7, 5],
+            width: 1.6,
+            fill: 'rgba(244, 63, 94, 0.06)'
+        });
+        if (r) drawTraceGlyph(r.x, r.y, '✕', '#f43f5e');
+    }
+
+    // Branches that were entered but not visited yet: dotted amber outline.
+    for (const item of replay.entered) {
+        const r = drawTraceBox(item.mbr, {
+            color: 'rgba(234, 179, 8, 0.95)',
+            dash: [2, 4],
+            width: 1.6
+        });
+        if (r) drawTraceGlyph(r.x, r.y, '▼', '#eab308');
+    }
+
+    // Visited nodes: solid cyan outline with a filled dot marker.
+    for (const item of replay.visited) {
+        const r = drawTraceBox(item.mbr, {
+            color: 'rgba(0, 200, 230, 0.95)',
+            width: 1.8
+        });
+        if (r) drawTraceGlyph(r.x, r.y, '●', '#00c8e6');
+    }
+
+    // Accepted results: ringed entity box with a check marker.
+    for (const item of replay.accepted) {
+        const r = projectBox(item.mbr);
+        if (!r) continue;
+        const bw = Math.max(r.w, 7);
+        const bh = Math.max(r.h, 7);
+        ctx.save();
+        ctx.strokeStyle = '#22d3ee';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+        ctx.strokeRect(r.x - 2, r.y - 2, bw + 4, bh + 4);
+        ctx.restore();
+        drawTraceGlyph(r.x + bw, r.y, '✓', '#22d3ee');
+    }
+
+    // The event that is currently displayed gets the strongest treatment.
+    // The completion marker carries no geometry, so nothing is highlighted.
+    const current = replay.trace.events[replay.index];
+    if (current && current.type !== 'traversal_completed' && Array.isArray(current.mbr)) {
+        const r = drawTraceBox(current.mbr, {
+            color: '#ffffff',
+            dash: [10, 4, 2, 4],
+            width: 2.4,
+            glow: 12
+        });
+        if (r) {
+            const label = current.entity_id >= 0 && current.entity_id !== null
+                ? `#${current.entity_id}`
+                : (current.child_node_id ? `N${current.child_node_id}` : `N${current.node_id}`);
+            drawTraceGlyph(r.x + r.w, r.y + r.h, label, '#ffffff');
+        }
+    }
+}
+
 function drawState(state) {
     if (!ctx) return;
 
@@ -516,8 +1044,10 @@ function drawState(state) {
     }
 
     // 3. Query Region & Obstacle Registration
+    // The active query region stays visible while a traversal is replayed.
     const occupiedBoxes = [];
-    if (layerQuery && layerQuery.checked && state.query && state.query.bounds) {
+    const showQueryRegion = (layerQuery && layerQuery.checked) || replayIsActive();
+    if (showQueryRegion && state.query && state.query.bounds) {
         const r = projectBox(state.query.bounds);
         if (r) {
             ctx.fillStyle = 'rgba(245, 158, 11, 0.09)';
@@ -752,6 +1282,12 @@ function drawState(state) {
 
     ctx.restore();
 
+    // 5. Traversal Replay Highlights (visited nodes, pruned branches, results)
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawTraceOverlay();
+    ctx.restore();
+
     // Update telemetry bar
     if (valEntities) valEntities.textContent = (state.entities ? state.entities.length : 0);
     if (valResults) valResults.textContent = (state.query && state.query.results ? state.query.results.length : 0);
@@ -810,6 +1346,10 @@ function handleLoadedState(state, source = 'file') {
     currentState = state;
     if (emptyStateOverlay) emptyStateOverlay.classList.add('is-hidden');
     if (emptyFeedback) emptyFeedback.style.display = 'none';
+
+    // Any trace held for the previous scene is discarded before the trace of
+    // the new scene is installed, so a stale trace can never be replayed.
+    installTraceForState(state);
 
     const entityCount = state.entities ? state.entities.length : 0;
     const matchCount = (state.query && state.query.results) ? state.query.results.length : 0;
@@ -984,6 +1524,50 @@ if (typeof document !== 'undefined') {
     if (btnFitAll) btnFitAll.addEventListener('click', () => fitAll(false));
     if (btnResetView) btnResetView.addEventListener('click', resetView);
 
+    // Traversal Replay Transport Controls
+    if (btnTraceStart) {
+        btnTraceStart.addEventListener('click', () => {
+            if (!replay.trace) return;
+            stopReplayTimer();
+            setReplayIndex(0);
+            startReplayPlayback();
+        });
+    }
+    if (btnTracePrev) {
+        btnTracePrev.addEventListener('click', () => {
+            stopReplayTimer();
+            setReplayIndex(replay.index - 1);
+        });
+    }
+    if (btnTraceNext) {
+        btnTraceNext.addEventListener('click', () => {
+            stopReplayTimer();
+            setReplayIndex(replay.index + 1);
+        });
+    }
+    if (btnTracePlay) {
+        btnTracePlay.addEventListener('click', () => {
+            startReplayPlayback();
+        });
+    }
+    if (btnTracePause) {
+        btnTracePause.addEventListener('click', () => {
+            stopReplayTimer();
+            updateReplayUi();
+        });
+    }
+    if (btnTraceRestart) {
+        btnTraceRestart.addEventListener('click', () => {
+            stopReplayTimer();
+            setReplayIndex(0);
+        });
+    }
+    if (btnTraceClear) {
+        btnTraceClear.addEventListener('click', () => {
+            clearReplayTrace();
+        });
+    }
+
     // Reliable Keyboard Shortcuts (F, R, +, -, Space pan mode, Arrow Keys)
     function isEditable(el) {
         if (!el) return false;
@@ -1009,9 +1593,38 @@ if (typeof document !== 'undefined') {
         if (e.key === 'f' || e.key === 'F') {
             e.preventDefault();
             fitAll(false);
-        } else if (e.key === 'r' || e.key === 'R' || e.key === '0') {
+        } else if (e.key === 'r' || e.key === '0') {
             e.preventDefault();
             resetView();
+        } else if (e.key === 'R') {
+            // Shift+R restarts the traversal replay.
+            e.preventDefault();
+            if (replay.trace) {
+                stopReplayTimer();
+                setReplayIndex(0);
+            }
+        } else if (e.key === 'n' || e.key === 'N') {
+            // Next recorded traversal event.
+            if (!replay.trace) return;
+            e.preventDefault();
+            stopReplayTimer();
+            setReplayIndex(replay.index + 1);
+        } else if (e.key === 'b' || e.key === 'B') {
+            // Previous recorded traversal event.
+            if (!replay.trace) return;
+            e.preventDefault();
+            stopReplayTimer();
+            setReplayIndex(replay.index - 1);
+        } else if (e.key === 'p' || e.key === 'P') {
+            // Toggle auto-advance of the traversal replay.
+            if (!replay.trace) return;
+            e.preventDefault();
+            if (replay.playing) {
+                stopReplayTimer();
+                updateReplayUi();
+            } else {
+                startReplayPlayback();
+            }
         } else if (e.key === '+' || e.key === '=') {
             e.preventDefault();
             zoomIn();
@@ -1070,6 +1683,7 @@ if (typeof document !== 'undefined') {
     // Initial startup
     const startApp = () => {
         resizeCanvas();
+        updateReplayUi();
         fetchState();
     };
 
@@ -1091,6 +1705,17 @@ if (typeof module !== 'undefined' && module.exports) {
         zoomAt,
         fitAll,
         resetView,
-        calcOverlapArea
+        calcOverlapArea,
+        replay,
+        boundsEqual,
+        traceAcceptedIds,
+        extractTrace,
+        describeTraceEvent,
+        recomputeReplayAccumulation,
+        setReplayIndex,
+        stopReplayTimer,
+        startReplayPlayback,
+        installTraceForState,
+        clearReplayTrace
     };
 }

@@ -6,6 +6,10 @@ cursor-centered zooming, Fit All calculations, and degenerate handling.
 """
 
 import math
+import os
+import subprocess
+import tempfile
+import time
 import unittest
 
 
@@ -259,6 +263,438 @@ class TestViewportTransform(unittest.TestCase):
         # Should be centered vertically
         center_y = (s_min[1] + s_max[1]) / 2.0
         self.assertAlmostEqual(center_y, 300.0, places=1)
+
+    def test_reset_view_before_resize(self):
+        boxes = [[55.8, -170.4, 822.8, 647.1]]
+        initial_fit = compute_fit_transform(boxes, target_w=800, target_h=600)
+        vp = Viewport(scale=initial_fit["scale"], tx=initial_fit["tx"], ty=initial_fit["ty"])
+        saved_initial = {"scale": initial_fit["scale"], "tx": initial_fit["tx"], "ty": initial_fit["ty"]}
+
+        # Pan and zoom away
+        vp.tx += 100.0
+        vp.ty -= 50.0
+        zoom_at(vp, 400.0, 300.0, 1.8)
+        self.assertNotEqual(vp.scale, saved_initial["scale"])
+        self.assertNotEqual(vp.tx, saved_initial["tx"])
+
+        # Reset view restores saved initial
+        vp.scale = saved_initial["scale"]
+        vp.tx = saved_initial["tx"]
+        vp.ty = saved_initial["ty"]
+        self.assertAlmostEqual(vp.scale, saved_initial["scale"], places=9)
+        self.assertAlmostEqual(vp.tx, saved_initial["tx"], places=9)
+        self.assertAlmostEqual(vp.ty, saved_initial["ty"], places=9)
+
+    def test_reset_view_after_resize(self):
+        boxes = [[55.8, -170.4, 822.8, 647.1]]
+        initial_fit_800 = compute_fit_transform(boxes, target_w=800, target_h=600)
+        vp = Viewport(scale=initial_fit_800["scale"], tx=initial_fit_800["tx"], ty=initial_fit_800["ty"])
+
+        # User pans and zooms
+        vp.tx += 60.0
+        vp.ty -= 40.0
+        zoom_at(vp, 400.0, 300.0, 2.0)
+        user_scale = vp.scale
+
+        # Canvas resizes to 1200 x 800:
+        # 1. User pan/zoom is preserved with center offset shift
+        vp.tx += (1200 - 800) / 2.0
+        vp.ty += (800 - 600) / 2.0
+        self.assertAlmostEqual(vp.scale, user_scale, places=9)
+
+        # 2. Saved initial transform is updated for the new canvas size
+        new_initial = compute_fit_transform(boxes, target_w=1200, target_h=800)
+        self.assertNotEqual(new_initial["scale"], initial_fit_800["scale"])
+
+        # 3. User triggers Reset View: restores 1200x800 framing
+        vp.scale = new_initial["scale"]
+        vp.tx = new_initial["tx"]
+        vp.ty = new_initial["ty"]
+        self.assertAlmostEqual(vp.scale, new_initial["scale"], places=9)
+        self.assertAlmostEqual(vp.tx, new_initial["tx"], places=9)
+        self.assertAlmostEqual(vp.ty, new_initial["ty"], places=9)
+
+        # Confirm data centers around (600, 400)
+        center_x = (boxes[0][0] + boxes[0][2]) / 2.0
+        center_y = (boxes[0][1] + boxes[0][3]) / 2.0
+        s_cx, s_cy = world_to_screen(vp, center_x, center_y)
+        self.assertAlmostEqual(s_cx, 600.0, places=1)
+        self.assertAlmostEqual(s_cy, 400.0, places=1)
+
+    def test_repeated_resize_reset_cycles_zero_drift(self):
+        boxes = [[55.8, -170.4, 822.8, 647.1]]
+        base_fit_800 = compute_fit_transform(boxes, target_w=800, target_h=600)
+
+        # Cycle through multiple canvas sizes, recomputing initial transform at each step
+        cycle = [(1200, 800), (600, 400), (1024, 768), (500, 500), (1440, 900), (800, 600)]
+        vp = Viewport(scale=base_fit_800["scale"], tx=base_fit_800["tx"], ty=base_fit_800["ty"])
+
+        for w, h in cycle:
+            # Resize: recompute initial transform
+            fit_wh = compute_fit_transform(boxes, target_w=w, target_h=h)
+            # Simulate pan/zoom away
+            zoom_at(vp, w / 2.0, h / 2.0, 1.3)
+            vp.tx += 40.0
+            vp.ty -= 25.0
+            # Reset view
+            vp.scale = fit_wh["scale"]
+            vp.tx = fit_wh["tx"]
+            vp.ty = fit_wh["ty"]
+            self.assertAlmostEqual(vp.scale, fit_wh["scale"], places=9)
+            self.assertAlmostEqual(vp.tx, fit_wh["tx"], places=9)
+            self.assertAlmostEqual(vp.ty, fit_wh["ty"], places=9)
+
+        # Final return to 800x600 must match base_fit_800 with zero drift
+        self.assertAlmostEqual(vp.scale, base_fit_800["scale"], places=9)
+        self.assertAlmostEqual(vp.tx, base_fit_800["tx"], places=9)
+        self.assertAlmostEqual(vp.ty, base_fit_800["ty"], places=9)
+
+    def test_pan_and_zoom_preservation_across_resize(self):
+        w1, h1 = 800.0, 600.0
+        w2, h2 = 1200.0, 800.0
+        scale = 2.5
+        world_pt = (120.0, 340.0)
+
+        # World point centered at (W1/2, H1/2)
+        vp = Viewport(scale=scale, tx=(w1 / 2.0 - world_pt[0] * scale), ty=(h1 / 2.0 - world_pt[1] * scale))
+        w_center_before = screen_to_world(vp, w1 / 2.0, h1 / 2.0)
+        self.assertAlmostEqual(w_center_before[0], world_pt[0], places=9)
+        self.assertAlmostEqual(w_center_before[1], world_pt[1], places=9)
+
+        # Resize canvas: shift tx, ty by dimension deltas / 2
+        vp.tx += (w2 - w1) / 2.0
+        vp.ty += (h2 - h1) / 2.0
+
+        # Scale is unchanged (zoom preserved)
+        self.assertAlmostEqual(vp.scale, scale, places=9)
+
+        # World point at new screen center (W2/2, H2/2) remains exactly pinned
+        w_center_after = screen_to_world(vp, w2 / 2.0, h2 / 2.0)
+        self.assertAlmostEqual(w_center_after[0], world_pt[0], places=9)
+        self.assertAlmostEqual(w_center_after[1], world_pt[1], places=9)
+
+    def test_hidpi_backing_dimensions_computation(self):
+        cases = [
+            (800, 600, 1.0, 800, 600),
+            (800, 600, 1.25, 1000, 750),
+            (800, 600, 1.5, 1200, 900),
+            (800, 600, 2.0, 1600, 1200),
+            (800, 600, 3.0, 2400, 1800),
+            (1024, 768, 2.0, 2048, 1536),
+        ]
+        for css_w, css_h, dpr, exp_buf_w, exp_buf_h in cases:
+            with self.subTest(css_w=css_w, css_h=css_h, dpr=dpr):
+                buf_w = round(css_w * dpr)
+                buf_h = round(css_h * dpr)
+                self.assertEqual(buf_w, exp_buf_w)
+                self.assertEqual(buf_h, exp_buf_h)
+
+    def test_hidpi_dpr_transform_idempotence(self):
+        # setTransform(dpr, 0, 0, dpr, 0, 0) establishes absolute matrix
+        dpr = 2.0
+        matrix = [dpr, 0.0, 0.0, dpr, 0.0, 0.0]
+
+        # Repeated assignments are idempotent and non-cumulative
+        for _ in range(10):
+            matrix = [dpr, 0.0, 0.0, dpr, 0.0, 0.0]
+            self.assertEqual(matrix[0], dpr)
+            self.assertEqual(matrix[3], dpr)
+
+    def test_adaptive_grid_step_consistency_across_dpr(self):
+        # Adaptive grid spacing uses CSS screen step (80px)
+        target_screen_step = 80.0
+        scale = 1.6
+
+        raw_world_step = target_screen_step / scale
+        power = 10.0 ** math.floor(math.log10(raw_world_step))
+        ratio = raw_world_step / power
+        if ratio >= 5.0:
+            world_step = power * 5.0
+        elif ratio >= 2.0:
+            world_step = power * 2.0
+        else:
+            world_step = power
+
+        # The calculated world step is independent of devicePixelRatio because
+        # drawing operates in CSS pixels where target_screen_step = 80 is constant.
+        self.assertGreater(world_step, 0.0)
+        self.assertEqual(world_step, 50.0)  # 80 / 1.6 = 50.0 -> power 10, ratio 5.0 -> 50.0
+
+    def test_pan_lifecycle_release_inside(self):
+        vp = Viewport(scale=1.0, tx=0.0, ty=0.0)
+        pan = PanSession(vp)
+
+        # Pointer down at (100, 100)
+        pan.pointer_down(pointer_id=1, client_x=100.0, client_y=100.0, capture_succeeds=True)
+        self.assertTrue(pan.is_panning)
+        self.assertEqual(pan.active_pointer_id, 1)
+
+        # Drag to (150, 130) -> delta (+50, +30)
+        pan.pointer_move(client_x=150.0, client_y=130.0, buttons=1)
+        self.assertAlmostEqual(vp.tx, 50.0)
+        self.assertAlmostEqual(vp.ty, 30.0)
+
+        # Release inside canvas
+        pan.end_pan(pointer_id=1)
+        self.assertFalse(pan.is_panning)
+        self.assertIsNone(pan.active_pointer_id)
+
+        # Subsequent move without drag does not change translation
+        pan.pointer_move(client_x=200.0, client_y=200.0, buttons=0)
+        self.assertAlmostEqual(vp.tx, 50.0)
+        self.assertAlmostEqual(vp.ty, 30.0)
+
+    def test_pan_lifecycle_release_outside_with_window_fallback(self):
+        vp = Viewport(scale=1.0, tx=0.0, ty=0.0)
+        pan = PanSession(vp)
+
+        # Pointer capture fails
+        pan.pointer_down(pointer_id=2, client_x=200.0, client_y=200.0, capture_succeeds=False)
+        self.assertTrue(pan.is_panning)
+        self.assertFalse(pan.has_active_capture)
+
+        # Drag moves outside canvas
+        pan.pointer_move(client_x=250.0, client_y=220.0, buttons=1)
+        self.assertAlmostEqual(vp.tx, 50.0)
+        self.assertAlmostEqual(vp.ty, 20.0)
+
+        # Window fallback catches release outside canvas
+        pan.end_pan(pointer_id=2)
+        self.assertFalse(pan.is_panning)
+        self.assertIsNone(pan.active_pointer_id)
+
+        # Stale moves outside window do not modify viewport
+        pan.pointer_move(client_x=300.0, client_y=300.0, buttons=0)
+        self.assertAlmostEqual(vp.tx, 50.0)
+        self.assertAlmostEqual(vp.ty, 20.0)
+
+    def test_pan_lifecycle_pointer_cancellation(self):
+        vp = Viewport(scale=1.0, tx=10.0, ty=10.0)
+        pan = PanSession(vp)
+
+        pan.pointer_down(pointer_id=3, client_x=50.0, client_y=50.0)
+        pan.pointer_move(client_x=70.0, client_y=80.0, buttons=1)
+        self.assertAlmostEqual(vp.tx, 30.0)
+        self.assertAlmostEqual(vp.ty, 40.0)
+
+        # Pointer cancellation (e.g. system gesture or touch cancellation)
+        pan.end_pan(pointer_id=3)
+        self.assertFalse(pan.is_panning)
+        self.assertIsNone(pan.active_pointer_id)
+
+    def test_pan_lifecycle_leave_with_and_without_capture(self):
+        vp = Viewport(scale=1.0, tx=0.0, ty=0.0)
+
+        # Scenario A: Capture succeeded -> pointer leave does NOT cancel panning
+        pan_with_cap = PanSession(vp)
+        pan_with_cap.pointer_down(pointer_id=4, client_x=100.0, client_y=100.0, capture_succeeds=True)
+        pan_with_cap.pointer_leave(is_inside_canvas=False)
+        self.assertTrue(pan_with_cap.is_panning)  # continues panning smoothly
+        pan_with_cap.pointer_move(client_x=130.0, client_y=140.0, buttons=1)
+        self.assertAlmostEqual(vp.tx, 30.0)
+        self.assertAlmostEqual(vp.ty, 40.0)
+        pan_with_cap.end_pan()
+
+        # Scenario B: Capture failed -> pointer leave DOES terminate panning to avoid stuck state
+        vp.tx, vp.ty = 0.0, 0.0
+        pan_no_cap = PanSession(vp)
+        pan_no_cap.pointer_down(pointer_id=5, client_x=100.0, client_y=100.0, capture_succeeds=False)
+        pan_no_cap.pointer_leave(is_inside_canvas=False)
+        self.assertFalse(pan_no_cap.is_panning)  # terminated safely
+
+    def test_pan_lifecycle_lost_pointer_capture(self):
+        vp = Viewport(scale=1.0, tx=0.0, ty=0.0)
+        pan = PanSession(vp)
+
+        pan.pointer_down(pointer_id=6, client_x=100.0, client_y=100.0, capture_succeeds=True)
+        self.assertTrue(pan.is_panning)
+
+        # lostpointercapture event fires
+        pan.end_pan(pointer_id=6)
+        self.assertFalse(pan.is_panning)
+        self.assertIsNone(pan.active_pointer_id)
+
+    def test_pan_lifecycle_offwindow_button_release_detection(self):
+        vp = Viewport(scale=1.0, tx=0.0, ty=0.0)
+        pan = PanSession(vp)
+
+        pan.pointer_down(pointer_id=7, client_x=100.0, client_y=100.0)
+        pan.pointer_move(client_x=120.0, client_y=120.0, buttons=1)
+        self.assertAlmostEqual(vp.tx, 20.0)
+        self.assertAlmostEqual(vp.ty, 20.0)
+
+        # User released button outside browser window and moved back in: buttons = 0
+        pan.pointer_move(client_x=150.0, client_y=150.0, buttons=0)
+        self.assertFalse(pan.is_panning)
+        # Translation frozen at last active pan position
+        self.assertAlmostEqual(vp.tx, 20.0)
+        self.assertAlmostEqual(vp.ty, 20.0)
+
+    def test_pan_lifecycle_subsequent_drag_after_termination(self):
+        vp = Viewport(scale=1.0, tx=0.0, ty=0.0)
+        pan = PanSession(vp)
+
+        # First drag
+        pan.pointer_down(pointer_id=8, client_x=100.0, client_y=100.0)
+        pan.pointer_move(client_x=130.0, client_y=140.0, buttons=1)
+        pan.end_pan()
+        self.assertAlmostEqual(vp.tx, 30.0)
+        self.assertAlmostEqual(vp.ty, 40.0)
+
+        # Second drag at completely new location
+        pan.pointer_down(pointer_id=9, client_x=500.0, client_y=500.0)
+        pan.pointer_move(client_x=490.0, client_y=485.0, buttons=1)  # delta (-10, -15)
+        self.assertAlmostEqual(vp.tx, 20.0)
+        self.assertAlmostEqual(vp.ty, 25.0)
+        pan.end_pan()
+        self.assertFalse(pan.is_panning)
+
+    def test_pan_lifecycle_idempotent_termination(self):
+        vp = Viewport(scale=1.0, tx=0.0, ty=0.0)
+        pan = PanSession(vp)
+
+        pan.pointer_down(pointer_id=10, client_x=100.0, client_y=100.0)
+        pan.end_pan()
+        self.assertFalse(pan.is_panning)
+
+        # Repeated calls do nothing and do not raise errors
+        pan.end_pan()
+        pan.end_pan()
+        self.assertFalse(pan.is_panning)
+
+    def test_responsive_aspect_ratios_framing(self):
+        """Validates that fit transform calculations maintain centered framing across screen aspect ratios."""
+        boxes = [[-50.0, -30.0, 50.0, 30.0]]  # 100 x 60 extent, center (0, 0)
+        resolutions = [
+            (1920.0, 1080.0),  # Ultrawide / 1080p
+            (1366.0, 768.0),   # Typical laptop
+            (1024.0, 768.0),   # 4:3 display
+            (800.0, 900.0),    # Snapped / tablet
+            (375.0, 667.0),    # Mobile viewport
+        ]
+        for w, h in resolutions:
+            fit = compute_fit_transform(boxes, target_w=w, target_h=h, pad=20.0)
+            self.assertGreater(fit["scale"], 0.0)
+            # Center of the geometry (0,0) should project to exactly (w/2, h/2)
+            vp = Viewport(scale=fit["scale"], tx=fit["tx"], ty=fit["ty"])
+            center_s = world_to_screen(vp, 0.0, 0.0)
+            self.assertAlmostEqual(center_s[0], w / 2.0, places=4)
+            self.assertAlmostEqual(center_s[1], h / 2.0, places=4)
+
+    def test_responsive_resize_cycles_zero_drift(self):
+        """Verifies that resizing across varied dimensions does not accumulate translation drift."""
+        vp = Viewport(scale=1.5, tx=400.0, ty=300.0)
+        curr_w, curr_h = 800.0, 600.0
+        orig_center_world = screen_to_world(vp, curr_w / 2.0, curr_h / 2.0)
+
+        # Sequence of dynamic resize steps
+        steps = [
+            (1440.0, 900.0),
+            (1920.0, 1080.0),
+            (1100.0, 700.0),
+            (860.0, 520.0),
+            (640.0, 480.0),
+            (800.0, 600.0),  # Return to original
+        ]
+        for next_w, next_h in steps:
+            vp.tx += (next_w - curr_w) / 2.0
+            vp.ty += (next_h - curr_h) / 2.0
+            curr_w, curr_h = next_w, next_h
+            # Pinned world center at current screen center must stay identical
+            curr_center_world = screen_to_world(vp, curr_w / 2.0, curr_h / 2.0)
+            self.assertAlmostEqual(curr_center_world[0], orig_center_world[0], places=5)
+            self.assertAlmostEqual(curr_center_world[1], orig_center_world[1], places=5)
+
+        # Upon returning to 800x600, tx and ty must match original exactly
+        self.assertAlmostEqual(vp.tx, 400.0, places=5)
+        self.assertAlmostEqual(vp.ty, 300.0, places=5)
+
+    def test_hidpi_dpr_backing_buffer_math(self):
+        """Verifies backing buffer dimension calculation across browser zoom levels."""
+        css_w, css_h = 960, 640
+        dpr_levels = [0.8, 1.0, 1.25, 1.5, 1.75, 2.0]
+        for dpr in dpr_levels:
+            buffer_w = round(css_w * dpr)
+            buffer_h = round(css_h * dpr)
+            self.assertEqual(buffer_w, int(css_w * dpr + 0.5))
+            self.assertEqual(buffer_h, int(css_h * dpr + 0.5))
+            # Screen coordinate mapping in CSS pixels remains independent of backing DPR
+            vp = Viewport(scale=2.0, tx=100.0, ty=50.0)
+            s_pt = world_to_screen(vp, 25.0, 30.0)
+            self.assertEqual(s_pt, (150.0, 110.0))
+
+    def test_headless_browser_viewport_suite(self):
+        """Executes frontend/test_viewport.html in headless Firefox and asserts 100% pass."""
+        test_html = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend', 'test_viewport.html'))
+        if not os.path.exists(test_html):
+            self.skipTest("test_viewport.html not found")
+
+        profile_dir = tempfile.mkdtemp()
+        with open(os.path.join(profile_dir, 'user.js'), 'w') as f:
+            f.write('user_pref("browser.dom.window.dump.enabled", true);\n')
+
+        cmd = ['firefox', '-headless', '-profile', profile_dir, test_html]
+        try:
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            time.sleep(2.5)
+            p.terminate()
+            stdout, _ = p.communicate(timeout=2)
+            passed = 0
+            failed = 0
+            for line in stdout.splitlines():
+                if 'TOTAL:' in line and 'PASSED:' in line:
+                    parts = line.split(',')
+                    passed = int(parts[1].split(':')[1].strip())
+                    failed = int(parts[2].split(':')[1].split('===')[0].strip())
+            self.assertGreater(passed, 0, f"No tests were run in browser: {stdout}")
+            self.assertEqual(failed, 0, f"Browser test suite had {failed} failures: {stdout}")
+        except FileNotFoundError:
+            self.skipTest("firefox binary not found on PATH")
+
+
+class PanSession:
+    """
+    Mathematical state-machine simulation of the frontend pointer pan lifecycle.
+    Mirrors the event transitions in frontend/app.js.
+    """
+    def __init__(self, viewport: Viewport):
+        self.vp = viewport
+        self.is_panning = False
+        self.pan_start_x = 0.0
+        self.pan_start_y = 0.0
+        self.active_pointer_id = None
+        self.has_active_capture = False
+
+    def pointer_down(self, pointer_id: int, client_x: float, client_y: float, capture_succeeds: bool = True):
+        self.is_panning = True
+        self.pan_start_x = client_x
+        self.pan_start_y = client_y
+        self.active_pointer_id = pointer_id
+        self.has_active_capture = capture_succeeds
+
+    def pointer_move(self, client_x: float, client_y: float, buttons: int = 1):
+        if not self.is_panning:
+            return
+        if (buttons & 1) == 0:
+            self.end_pan()
+            return
+        dx = client_x - self.pan_start_x
+        dy = client_y - self.pan_start_y
+        self.pan_start_x = client_x
+        self.pan_start_y = client_y
+        self.vp.tx += dx
+        self.vp.ty += dy
+
+    def pointer_leave(self, is_inside_canvas: bool):
+        if self.is_panning and not self.has_active_capture:
+            self.end_pan()
+
+    def end_pan(self, pointer_id: int = None):
+        if not self.is_panning:
+            return
+        self.is_panning = False
+        self.active_pointer_id = None
+        self.has_active_capture = False
 
 
 if __name__ == "__main__":

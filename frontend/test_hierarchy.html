@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KESTREL — R-tree Hierarchy Validation & Normalization Tests</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0e17;
+            color: #f0f4fc;
+            padding: 30px;
+            margin: 0;
+        }
+        h1 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: #00b0ff;
+        }
+        p {
+            color: #9ab0d3;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .summary-card {
+            background: #121826;
+            border: 1px solid #24344d;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: inline-flex;
+            gap: 30px;
+        }
+        .stat {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #5e7399;
+        }
+        .stat-val {
+            font-size: 22px;
+            font-weight: 700;
+            font-family: monospace;
+        }
+        .stat-val.passed { color: #00e676; }
+        .stat-val.failed { color: #ff1744; }
+        table {
+            width: 100%;
+            max-width: 960px;
+            border-collapse: collapse;
+            background: #121826;
+            border: 1px solid #24344d;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid #1a2538;
+            font-size: 12px;
+        }
+        th {
+            background: #182235;
+            color: #7b94ba;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 10px;
+            font-family: monospace;
+            text-transform: uppercase;
+        }
+        .badge.pass {
+            background: rgba(0, 230, 118, 0.15);
+            color: #00e676;
+            border: 1px solid rgba(0, 230, 118, 0.4);
+        }
+        .badge.fail {
+            background: rgba(255, 23, 68, 0.15);
+            color: #ff1744;
+            border: 1px solid rgba(255, 23, 68, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <h1>KESTREL Mission Control — R-tree Hierarchy Normalization & Validation Suite</h1>
+    <p>Automated verification of hierarchy schema ingestion, cycle detection, duplicate ID detection, legacy fallback, and map stability.</p>
+
+    <div class="summary-card">
+        <div class="stat">
+            <span class="stat-label">Total Tests</span>
+            <span class="stat-val" id="totalCount">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Passed</span>
+            <span class="stat-val passed" id="passCount">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Failed</span>
+            <span class="stat-val failed" id="failCount">0</span>
+        </div>
+    </div>
+
+    <!-- DOM harness elements for app.js canvas and hierarchy tests -->
+    <div style="position: absolute; left: 0; top: 0; width: 340px; height: 600px; opacity: 0; pointer-events: none; z-index: -1;" id="harnessRoot">
+        <canvas id="radar" width="800" height="600"></canvas>
+        <div id="viewportFrame"></div>
+        <span id="status"></span>
+        <span id="statusDot"></span>
+        <span id="missionClock"></span>
+        <button id="btnLoad"></button>
+        <button id="btnBrowse"></button>
+        <input type="file" id="fileInput">
+        <button id="btnZoomIn"></button>
+        <button id="btnZoomOut"></button>
+        <button id="btnFitAll"></button>
+        <button id="btnResetView"></button>
+        <span id="valZoom"></span>
+        <span id="valCoords"></span>
+        <!-- Toolbar Layer Visibility Harness -->
+        <div class="cmd-group cmd-layers" id="testCmdLayers">
+            <label class="channel-card"><input type="checkbox" id="layerEntities" checked><span class="channel-indicator entity"></span><span class="channel-name">Active Entities</span></label>
+            <label class="channel-card"><input type="checkbox" id="layerResults" checked><span class="channel-indicator result"></span><span class="channel-name">Query Hits</span></label>
+            <label class="channel-card"><input type="checkbox" id="layerLeaf" checked><span class="channel-indicator leaf"></span><span class="channel-name">Leaf MBRs</span></label>
+            <label class="channel-card"><input type="checkbox" id="layerInternal" checked><span class="channel-indicator internal"></span><span class="channel-name">Internal MBRs</span></label>
+            <label class="channel-card"><input type="checkbox" id="layerQuery" checked><span class="channel-indicator query"></span><span class="channel-name">Query Region</span></label>
+        </div>
+        <span id="valEntities"></span>
+        <span id="valResults"></span>
+        <span id="valLeaf"></span>
+        <span id="valInternal"></span>
+
+        <!-- Structural Region: Workstation Sidebar Harness -->
+        <aside class="workstation-sidebar" id="testSidebar" style="height: 580px; width: 330px;">
+            <!-- Structural Region: R-Tree Hierarchy Dock -->
+            <section class="hierarchy-dock" id="hierarchyDock">
+                <div class="panel-header" id="testHierarchyHeader">
+                    <span class="panel-title">R-Tree Hierarchy</span>
+                    <span class="panel-badge" id="hierarchyBadge">STANDBY</span>
+                </div>
+                <div class="hierarchy-legend" id="testHierarchyLegend">
+                    <span class="legend-item"><span class="legend-swatch internal"></span>Internal</span>
+                    <span class="legend-item"><span class="legend-swatch leaf"></span>Leaf</span>
+                    <span class="legend-item"><span class="legend-swatch entity"></span>Entity</span>
+                </div>
+                <div class="hierarchy-tree-container" id="hierarchyTreeContainer">
+                    <div class="hierarchy-empty-state" id="hierarchyEmptyState">
+                        <span class="hierarchy-empty-title" id="hierarchyEmptyTitle"></span>
+                        <p class="hierarchy-empty-desc" id="hierarchyEmptyDesc"></p>
+                    </div>
+                    <ul class="hierarchy-tree" id="hierarchyTree"></ul>
+                </div>
+                <div class="node-detail-card" id="nodeDetailCard">
+                    <div class="node-detail-header">
+                        <span class="detail-label">NODE INSPECTOR</span>
+                        <button type="button" id="btnClearSelection" class="btn-clear-selection" disabled>Clear</button>
+                    </div>
+                    <div class="node-detail-grid">
+                        <div class="detail-entry"><span class="detail-key">ID</span><span class="detail-val" id="nodeDetailId">—</span></div>
+                        <div class="detail-entry"><span class="detail-key">TYPE</span><span class="detail-val" id="nodeDetailType">—</span></div>
+                        <div class="detail-entry"><span class="detail-key">DEPTH</span><span class="detail-val" id="nodeDetailDepth">—</span></div>
+                        <div class="detail-entry"><span class="detail-key">ENTRIES</span><span class="detail-val" id="nodeDetailEntries">—</span></div>
+                        <div class="detail-entry detail-entry-full"><span class="detail-key">MBR BOUNDS</span><span class="detail-val detail-val-mono" id="nodeDetailBounds">—</span></div>
+                        <div class="detail-entry detail-entry-full"><span class="detail-key">ENTITY REFS</span><span class="detail-val detail-val-mono" id="nodeDetailEntities">—</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Structural Region: Telemetry Region -->
+            <section class="telemetry-region" id="testTelemetryRegion">
+                <div class="telemetry-section" id="testQueryPerf">
+                    <div class="section-header">
+                        <span class="section-title">Query Performance</span>
+                        <span class="section-tag tag-query">ANALYTICS</span>
+                    </div>
+                    <div class="metric-pod">
+                        <span class="metric-name">Matched Entities</span>
+                        <span class="metric-number metric-crimson" id="testValResults">2</span>
+                    </div>
+                </div>
+                <div class="telemetry-section" id="testCatalog">
+                    <div class="section-header"><span class="section-title">Spatial Catalog</span></div>
+                </div>
+                <div class="telemetry-section" id="testTopology">
+                    <div class="section-header"><span class="section-title">R-Tree Topology</span></div>
+                </div>
+                <div class="telemetry-section" id="testSpecs">
+                    <div class="section-header"><span class="section-title">Specifications</span></div>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50px;">#</th>
+                <th>Test Case Description</th>
+                <th style="width: 100px;">Status</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody id="testTableBody"></tbody>
+    </table>
+
+    <script src="app.js"></script>
+    <script>
+        const results = [];
+        let passed = 0;
+        let failed = 0;
+
+        function assert(desc, condition, details = '') {
+            const ok = Boolean(condition);
+            if (ok) passed++; else failed++;
+            results.push({ desc, ok, details });
+        }
+
+        function assertAlmostEqual(desc, a, b, eps = 1e-4) {
+            const diff = Math.abs(a - b);
+            assert(desc, diff <= eps, `Expected ${a} ≈ ${b} (diff: ${diff.toExponential(4)})`);
+        }
+
+        // Fixture Generators
+        function createValidHierarchyState() {
+            return {
+                entities: [
+                    { id: 10, bounds: [10, 10, 20, 20] },
+                    { id: 20, bounds: [30, 30, 40, 40] }
+                ],
+                query: { bounds: [0, 0, 50, 50], results: [10] },
+                rtree: {
+                    height: 2,
+                    size: 2,
+                    internal_mbrs: [[10, 10, 40, 40]],
+                    leaf_mbrs: [[10, 10, 20, 20], [30, 30, 40, 40]],
+                    root: {
+                        id: "node_0",
+                        parent_id: null,
+                        type: "root",
+                        is_root: true,
+                        is_leaf: false,
+                        depth: 0,
+                        bounds: [10, 10, 40, 40],
+                        children: [
+                            {
+                                id: "node_1",
+                                parent_id: "node_0",
+                                type: "leaf",
+                                is_root: false,
+                                is_leaf: true,
+                                depth: 1,
+                                bounds: [10, 10, 20, 20],
+                                children: [
+                                    {
+                                        id: "entity_10",
+                                        parent_id: "node_1",
+                                        entity_id: 10,
+                                        type: "entity",
+                                        bounds: [10, 10, 20, 20]
+                                    }
+                                ]
+                            },
+                            {
+                                id: "node_2",
+                                parent_id: "node_0",
+                                type: "leaf",
+                                is_root: false,
+                                is_leaf: true,
+                                depth: 1,
+                                bounds: [30, 30, 40, 40],
+                                children: [
+                                    {
+                                        id: "entity_20",
+                                        parent_id: "node_2",
+                                        entity_id: 20,
+                                        type: "entity",
+                                        bounds: [30, 30, 40, 40]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            };
+        }
+
+        // Test 1: Valid new hierarchy normalization
+        const validState = createValidHierarchyState();
+        const normValid = validateAndNormalizeHierarchy(validState);
+        assert('Valid hierarchy produces status "valid"', normValid.status === 'valid');
+        assert('Valid hierarchy has 5 total nodes', normValid.totalNodes === 5, `Got: ${normValid.totalNodes}`);
+        assert('Valid hierarchy has maxDepth 2', normValid.maxDepth === 2, `Got: ${normValid.maxDepth}`);
+        assert('nodeMap contains root node_0', normValid.nodeMap.has('node_0'));
+        assert('nodeMap contains leaf node_1', normValid.nodeMap.has('node_1'));
+        assert('entityNodeMap contains entity 10', normValid.entityNodeMap.has(10));
+        assert('entityNodeMap contains entity 20', normValid.entityNodeMap.has(20));
+        assert('Root node parentId is null', normValid.root.parentId === null);
+        assert('Leaf node_1 parentId resolves to node_0', normValid.nodeMap.get('node_1').parentId === 'node_0');
+
+        // Test 2: Legacy file compatibility (internal_mbrs and leaf_mbrs only)
+        const legacyState = {
+            entities: [{ id: 1, bounds: [0, 0, 10, 10] }],
+            query: { bounds: [0, 0, 10, 10], results: [] },
+            rtree: {
+                internal_mbrs: [[0, 0, 10, 10]],
+                leaf_mbrs: [[0, 0, 10, 10]]
+            }
+        };
+        const normLegacy = validateAndNormalizeHierarchy(legacyState);
+        assert('Legacy dataset produces status "unavailable"', normLegacy.status === 'unavailable');
+        assert('Legacy dataset returns null root without error', normLegacy.root === null);
+        assert('Legacy dataset does NOT synthesize nodes', normLegacy.totalNodes === 0);
+
+        // Test 3: Valid empty hierarchy (root is null)
+        const nullRootState = {
+            entities: [],
+            rtree: {
+                root: null
+            }
+        };
+        const normNullRoot = validateAndNormalizeHierarchy(nullRootState);
+        assert('Null root hierarchy produces status "empty"', normNullRoot.status === 'empty');
+        assert('Null root hierarchy totalNodes is 0', normNullRoot.totalNodes === 0);
+
+        // Test 4: Valid empty hierarchy (root leaf with 0 children)
+        const emptyLeafState = {
+            entities: [],
+            rtree: {
+                root: {
+                    id: "node_0",
+                    parent_id: null,
+                    type: "root",
+                    is_root: true,
+                    is_leaf: true,
+                    depth: 0,
+                    bounds: [0, 0, 0, 0],
+                    children: []
+                }
+            }
+        };
+        const normEmptyLeaf = validateAndNormalizeHierarchy(emptyLeafState);
+        assert('Empty root leaf produces status "empty"', normEmptyLeaf.status === 'empty');
+        assert('Empty root leaf totalNodes is 1', normEmptyLeaf.totalNodes === 1);
+        assert('Empty root leaf maxDepth is 0', normEmptyLeaf.maxDepth === 0);
+
+        // Test 5: Missing or empty node ID
+        const noIdState = createValidHierarchyState();
+        delete noIdState.rtree.root.children[0].id;
+        const normNoId = validateAndNormalizeHierarchy(noIdState);
+        assert('Missing node ID produces status "invalid"', normNoId.status === 'invalid');
+        assert('Missing node ID error mentions missing string ID', normNoId.error.includes('missing a valid string ID'));
+
+        // Test 6: Duplicate node ID detection
+        const dupIdState = createValidHierarchyState();
+        dupIdState.rtree.root.children[1].id = "node_1"; // Duplicate with sibling
+        const normDup = validateAndNormalizeHierarchy(dupIdState);
+        assert('Duplicate node ID produces status "invalid"', normDup.status === 'invalid');
+        assert('Duplicate node ID error identifies duplicate "node_1"', normDup.error.includes('Duplicate node ID: "node_1"'));
+
+        // Test 7: Cycle detection (child references ancestor)
+        const cycleState = createValidHierarchyState();
+        // Point child node_1 back to root node_0 ID
+        cycleState.rtree.root.children[0].id = "node_0";
+        const normCycle = validateAndNormalizeHierarchy(cycleState);
+        assert('Direct cycle produces status "invalid"', normCycle.status === 'invalid');
+
+        // Test 8: Non-finite MBR coordinate detection
+        const nanMbrState = createValidHierarchyState();
+        nanMbrState.rtree.root.bounds = [NaN, 10, 40, 40];
+        const normNan = validateAndNormalizeHierarchy(nanMbrState);
+        assert('NaN in bounds produces status "invalid"', normNan.status === 'invalid');
+        assert('NaN error mentions non-finite coordinate', normNan.error.includes('non-finite coordinate'));
+
+        // Test 9: Inverted MBR bounds (min > max)
+        const invertedMbrState = createValidHierarchyState();
+        invertedMbrState.rtree.root.bounds = [50, 10, 40, 40]; // 50 > 40
+        const normInverted = validateAndNormalizeHierarchy(invertedMbrState);
+        assert('Inverted bounds produces status "invalid"', normInverted.status === 'invalid');
+        assert('Inverted bounds error mentions min_x > max_x', normInverted.error.includes('min_x (50) > max_x (40)'));
+
+        // Test 10: Parent-child inconsistency (child's parent_id does not match parent's id)
+        const inconsistentParentState = createValidHierarchyState();
+        inconsistentParentState.rtree.root.children[0].parent_id = "node_999";
+        const normInconsistent = validateAndNormalizeHierarchy(inconsistentParentState);
+        assert('Inconsistent parent_id produces status "invalid"', normInconsistent.status === 'invalid');
+        assert('Inconsistent parent_id error identifies mismatch', normInconsistent.error.includes('Parent-child inconsistency'));
+
+        // Test 11: Root cannot have non-null parent_id
+        const rootParentState = createValidHierarchyState();
+        rootParentState.rtree.root.parent_id = "external_node";
+        const normRootParent = validateAndNormalizeHierarchy(rootParentState);
+        assert('Root with parent_id produces status "invalid"', normRootParent.status === 'invalid');
+        assert('Root parent error mentions root cannot specify parent_id', normRootParent.error.includes('Root node "node_0" cannot specify a non-null parent_id'));
+
+        // Test 12: Dangling child reference (null child in children array)
+        const danglingState = createValidHierarchyState();
+        danglingState.rtree.root.children.push(null);
+        const normDangling = validateAndNormalizeHierarchy(danglingState);
+        assert('Dangling child reference produces status "invalid"', normDangling.status === 'invalid');
+        assert('Dangling child error mentions dangling/null child', normDangling.error.includes('dangling/null child reference'));
+
+        // Test 13: Leaf node with invalid non-entity child
+        const invalidLeafChildState = createValidHierarchyState();
+        invalidLeafChildState.rtree.root.children[0].children = [{
+            id: "sub_node",
+            parent_id: "node_1",
+            type: "internal",
+            bounds: [10, 10, 20, 20],
+            children: []
+        }];
+        const normInvalidLeaf = validateAndNormalizeHierarchy(invalidLeafChildState);
+        assert('Leaf with non-entity child produces status "invalid"', normInvalidLeaf.status === 'invalid');
+        assert('Leaf child error mentions cannot have non-entity child', normInvalidLeaf.error.includes('cannot have non-entity child'));
+
+        // Test 14: Degenerate point MBRs are accepted without error
+        const degenState = createValidHierarchyState();
+        degenState.rtree.root.children[0].children[0].bounds = [15.5, 15.5, 15.5, 15.5];
+        const normDegen = validateAndNormalizeHierarchy(degenState);
+        assert('Degenerate point bounds are accepted as valid', normDegen.status === 'valid');
+
+        // Test 15: Map resilience — handleLoadedState with corrupted hierarchy keeps map operational
+        handleLoadedState(dupIdState, 'test_dup.json');
+        assert('handleLoadedState records invalid hierarchy status', getHierarchyState().status === 'invalid');
+        assert('Existing map entities remain intact after invalid hierarchy load', currentState.entities.length === 2);
+        assert('Existing map query remains intact', currentState.query.results.length === 1);
+
+        // Test 16: Map resilience — handleLoadedState with legacy dataset keeps map operational
+        handleLoadedState(legacyState, 'test_legacy.json');
+        assert('handleLoadedState records unavailable hierarchy status', getHierarchyState().status === 'unavailable');
+        assert('Existing legacy map entities loaded successfully', currentState.entities.length === 1);
+
+        // Test 17: DOM Tree Population on valid load
+        handleLoadedState(validState, 'test_valid.json');
+        const emptyStateEl = document.getElementById('hierarchyEmptyState');
+        const treeEl = document.getElementById('hierarchyTree');
+        const badgeEl = document.getElementById('hierarchyBadge');
+        assert('Empty state is hidden on valid hierarchy load', emptyStateEl && emptyStateEl.style.display === 'none');
+        assert('Tree container is displayed on valid hierarchy load', treeEl && treeEl.style.display === 'flex');
+        assert('Badge indicates 5 NODES', badgeEl && badgeEl.textContent === '5 NODES', `Got: ${badgeEl ? badgeEl.textContent : 'null'}`);
+        assert('DOM contains root item rtree-item-node_0', Boolean(document.getElementById('rtree-item-node_0')));
+        assert('DOM contains leaf item rtree-item-node_1', Boolean(document.getElementById('rtree-item-node_1')));
+        assert('DOM contains entity item rtree-item-entity_10', Boolean(document.getElementById('rtree-item-entity_10')));
+
+        // Test 18: Selecting an internal node highlights its actual MBR on the canvas
+        selectHierarchyNode('node_0');
+        assert('Selected node ID is node_0', getSelectedNodeId() === 'node_0');
+        const internalBox = getSelectedNodeBox();
+        assert('Internal node returns valid projected screen box', internalBox !== null && isFinite(internalBox.x) && isFinite(internalBox.w) && internalBox.w > 0 && internalBox.h > 0);
+        const expectedInternalBox = projectBox(validState.rtree.root.bounds);
+        assert('Internal node screen box matches projectBox(node.bounds)',
+            internalBox && expectedInternalBox &&
+            Math.abs(internalBox.x - expectedInternalBox.x) < 1e-4 &&
+            Math.abs(internalBox.y - expectedInternalBox.y) < 1e-4 &&
+            Math.abs(internalBox.w - expectedInternalBox.w) < 1e-4 &&
+            Math.abs(internalBox.h - expectedInternalBox.h) < 1e-4
+        );
+        assert('Detail card displays ID node_0', document.getElementById('nodeDetailId').textContent === 'node_0');
+        assert('Detail card displays type root', document.getElementById('nodeDetailType').textContent.toLowerCase() === 'root');
+        assert('Detail card displays entries 2', document.getElementById('nodeDetailEntries').textContent === '2');
+        assert('Detail card displays entity refs #10, #20', document.getElementById('nodeDetailEntities').textContent === '#10, #20');
+        assert('Clear button is enabled when node is selected', document.getElementById('btnClearSelection').disabled === false);
+
+        // Test 19: Selecting a leaf node highlights its actual MBR on the canvas
+        selectHierarchyNode('node_1');
+        assert('Selected node ID is node_1', getSelectedNodeId() === 'node_1');
+        const leafBox = getSelectedNodeBox();
+        assert('Leaf node returns valid projected screen box', leafBox !== null && isFinite(leafBox.x) && isFinite(leafBox.w) && leafBox.w > 0 && leafBox.h > 0);
+        const expectedLeafBox = projectBox(validState.rtree.root.children[0].bounds);
+        assert('Leaf node screen box matches projectBox(node.bounds)',
+            leafBox && expectedLeafBox &&
+            Math.abs(leafBox.x - expectedLeafBox.x) < 1e-4 &&
+            Math.abs(leafBox.y - expectedLeafBox.y) < 1e-4 &&
+            Math.abs(leafBox.w - expectedLeafBox.w) < 1e-4 &&
+            Math.abs(leafBox.h - expectedLeafBox.h) < 1e-4
+        );
+        assert('Detail card displays ID node_1', document.getElementById('nodeDetailId').textContent === 'node_1');
+        assert('Detail card displays type leaf', document.getElementById('nodeDetailType').textContent.toLowerCase() === 'leaf');
+        assert('Detail card displays entries 1', document.getElementById('nodeDetailEntries').textContent === '1');
+        assert('Detail card displays entity refs #10', document.getElementById('nodeDetailEntities').textContent === '#10');
+
+        // Test 20: Selecting an entity node highlights its actual MBR
+        selectHierarchyNode('entity_10');
+        assert('Selected node ID is entity_10', getSelectedNodeId() === 'entity_10');
+        const entityBox = getSelectedNodeBox();
+        assert('Entity node returns valid projected screen box', entityBox !== null && isFinite(entityBox.x));
+        assert('Detail card displays entity_10', document.getElementById('nodeDetailId').textContent === 'entity_10');
+        assert('Detail card displays type entity', document.getElementById('nodeDetailType').textContent.toLowerCase() === 'entity');
+
+        // Test 21: Clear-selection control removes selection highlight and selection state
+        clearHierarchySelection();
+        assert('Selected node ID is null after clearHierarchySelection', getSelectedNodeId() === null);
+        assert('getSelectedNodeBox returns null after clearHierarchySelection', getSelectedNodeBox() === null);
+        assert('Clear button is disabled after clearHierarchySelection', document.getElementById('btnClearSelection').disabled === true);
+        assert('Detail card ID is reset to dash', document.getElementById('nodeDetailId').textContent === '—');
+        assert('Detail card Type is reset to dash', document.getElementById('nodeDetailType').textContent === '—');
+        assert('No tree row has selected class', document.querySelector('.tree-node-row.selected') === null);
+
+        // Test 22: Highlight remains correct under zoom
+        selectHierarchyNode('node_1');
+        const boxBeforeZoom = getSelectedNodeBox();
+        const initialScale = viewport.scale;
+        zoomAt(400, 300, 1.5);
+        const boxAfterZoom = getSelectedNodeBox();
+        assert('Viewport scale increased by 1.5x', Math.abs(viewport.scale - initialScale * 1.5) < 1e-4);
+        assert('Highlighted MBR width scaled by 1.5x under zoom',
+            Math.abs(boxAfterZoom.w - boxBeforeZoom.w * 1.5) < 1e-2,
+            `Expected ${boxBeforeZoom.w * 1.5}, got ${boxAfterZoom.w}`
+        );
+        assert('Highlighted MBR height scaled by 1.5x under zoom',
+            Math.abs(boxAfterZoom.h - boxBeforeZoom.h * 1.5) < 1e-2,
+            `Expected ${boxBeforeZoom.h * 1.5}, got ${boxAfterZoom.h}`
+        );
+
+        // Test 23: Highlight remains correct under pan
+        const boxBeforePan = getSelectedNodeBox();
+        viewport.tx += 40;
+        viewport.ty += 25;
+        requestRender();
+        const boxAfterPan = getSelectedNodeBox();
+        assert('Highlighted MBR x translated by +40px under pan', Math.abs(boxAfterPan.x - (boxBeforePan.x + 40)) < 1e-4);
+        assert('Highlighted MBR y translated by +25px under pan', Math.abs(boxAfterPan.y - (boxBeforePan.y + 25)) < 1e-4);
+        assert('Highlighted MBR dimensions unchanged under pan',
+            Math.abs(boxAfterPan.w - boxBeforePan.w) < 1e-4 && Math.abs(boxAfterPan.h - boxBeforePan.h) < 1e-4
+        );
+
+        // Test 24: Highlight remains correct under canvas resize
+        const boxBeforeResize = getSelectedNodeBox();
+        resizeCanvas();
+        const boxAfterResize = getSelectedNodeBox();
+        assert('Highlighted MBR remains valid after canvas resize', boxAfterResize !== null && isFinite(boxAfterResize.x));
+
+        // Test 25: Selection highlight functional with MBR display layers disabled
+        const layerInternalEl = document.getElementById('layerInternal');
+        const layerLeafEl = document.getElementById('layerLeaf');
+        layerInternalEl.checked = false;
+        layerLeafEl.checked = false;
+        drawState(currentState);
+        assert('Selected node ID preserved with MBR layers unchecked', getSelectedNodeId() === 'node_1');
+        assert('Selected MBR box projection valid with MBR layers unchecked', getSelectedNodeBox() !== null);
+        // Restore layer checkboxes
+        layerInternalEl.checked = true;
+        layerLeafEl.checked = true;
+
+        // Test 26: Clearing stale selection on loading new dataset without selected node
+        handleLoadedState(legacyState, 'legacy_dataset.json');
+        assert('Selected node ID cleared when loading dataset without node', getSelectedNodeId() === null);
+        assert('Selected MBR box is null for dataset without hierarchy', getSelectedNodeBox() === null);
+        assert('Clear button is disabled for dataset without hierarchy', document.getElementById('btnClearSelection').disabled === true);
+
+        // Test 27: Preserving selection when re-loading compatible dataset with same node
+        handleLoadedState(validState, 'valid_dataset_1.json');
+        selectHierarchyNode('node_1');
+        assert('Node_1 selected prior to reload', getSelectedNodeId() === 'node_1');
+        handleLoadedState(validState, 'valid_dataset_2.json');
+        assert('Node_1 selection safely preserved across compatible reload', getSelectedNodeId() === 'node_1');
+        assert('Node_1 MBR box valid after reload', getSelectedNodeBox() !== null);
+
+        // Test 28: Existing entities and query results remain unaltered by hierarchy selection
+        assert('Entities array preserved intact (2 entities)', currentState.entities.length === 2);
+        assert('Query results preserved intact (1 result)', currentState.query.results.length === 1);
+        assert('Query results entity ID is 10', currentState.query.results[0] === 10);
+
+        // Test 29: Expand and collapse toggling updates aria-expanded and does not reset selection
+        const rootItem = document.getElementById('rtree-item-node_0');
+        assert('Root item initially expanded', rootItem && rootItem.classList.contains('expanded'));
+        toggleNodeExpanded(rootItem);
+        assert('Root item collapsed after toggle', rootItem && rootItem.classList.contains('collapsed'));
+        assert('Root aria-expanded is false', rootItem && rootItem.getAttribute('aria-expanded') === 'false');
+        assert('Node selection preserved after collapsing branch', getSelectedNodeId() === 'node_1');
+        toggleNodeExpanded(rootItem);
+        assert('Root item re-expanded after second toggle', rootItem && rootItem.classList.contains('expanded'));
+        assert('Root aria-expanded is true', rootItem && rootItem.getAttribute('aria-expanded') === 'true');
+
+        // Test 30: Keyboard Escape clears selection
+        selectHierarchyNode('node_1');
+        assert('Node selected before Escape key', getSelectedNodeId() === 'node_1');
+        const keyEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+        treeEl.dispatchEvent(keyEvent);
+        assert('Escape key clears selection', getSelectedNodeId() === null);
+        assert('Clear button disabled after Escape key', document.getElementById('btnClearSelection').disabled === true);
+
+        // Test 31: Single-leaf root tree displays actual entity references directly in #nodeDetailEntities
+        const singleLeafState = {
+            entities: [
+                { id: 42, bounds: [100, 100, 110, 110] }
+            ],
+            query: { bounds: [0, 0, 200, 200], results: [42] },
+            rtree: {
+                height: 1,
+                size: 1,
+                internal_mbrs: [],
+                leaf_mbrs: [[100, 100, 110, 110]],
+                root: {
+                    id: "root_leaf",
+                    parent_id: null,
+                    type: "leaf",
+                    is_root: true,
+                    is_leaf: true,
+                    depth: 0,
+                    bounds: [100, 100, 110, 110],
+                    children: [
+                        {
+                            id: "entity_42",
+                            parent_id: "root_leaf",
+                            entity_id: 42,
+                            type: "entity",
+                            bounds: [100, 100, 110, 110]
+                        }
+                    ]
+                }
+            }
+        };
+        handleLoadedState(singleLeafState, 'single_leaf.json');
+        selectHierarchyNode('root_leaf');
+        assert('Root leaf node details displays actual entity reference #42', document.getElementById('nodeDetailEntities').textContent === '#42');
+        assert('Root leaf node detail type is root', document.getElementById('nodeDetailType').textContent.toLowerCase() === 'root');
+        assert('Root leaf node detail entries count is 1', document.getElementById('nodeDetailEntries').textContent === '1');
+
+        // Test 32: Layer toggle controls preserve viewport transform and hierarchy selection
+        const prevTx = viewport.tx;
+        const prevTy = viewport.ty;
+        const prevScale = viewport.scale;
+        const layerInternalCheckbox = document.getElementById('layerInternal');
+        const layerLeafCheckbox = document.getElementById('layerLeaf');
+        layerInternalCheckbox.checked = false;
+        layerInternalCheckbox.dispatchEvent(new Event('change'));
+        assert('layerInternal unchecked preserves selected node', getSelectedNodeId() === 'root_leaf');
+        assert('layerInternal unchecked preserves viewport tx', viewport.tx === prevTx);
+        assert('layerInternal unchecked preserves viewport ty', viewport.ty === prevTy);
+        assert('layerInternal unchecked preserves viewport scale', viewport.scale === prevScale);
+        layerLeafCheckbox.checked = false;
+        layerLeafCheckbox.dispatchEvent(new Event('change'));
+        assert('layerLeaf unchecked preserves selected node', getSelectedNodeId() === 'root_leaf');
+        assert('layerLeaf unchecked preserves selected MBR box', getSelectedNodeBox() !== null);
+        // Restore
+        layerInternalCheckbox.checked = true;
+        layerLeafCheckbox.checked = true;
+        layerInternalCheckbox.dispatchEvent(new Event('change'));
+        layerLeafCheckbox.dispatchEvent(new Event('change'));
+
+        // Test 33: Selecting entity reference directly highlights the entity MBR
+        selectHierarchyNode('entity_42');
+        assert('Selected node ID is entity_42', getSelectedNodeId() === 'entity_42');
+        assert('Entity detail card shows entity ID #42', document.getElementById('nodeDetailEntities').textContent === '#42');
+        assert('Entity detail card type is entity', document.getElementById('nodeDetailType').textContent.toLowerCase() === 'entity');
+        const entityBox42 = getSelectedNodeBox();
+        assert('Entity box matches projected bounds', entityBox42 !== null && isFinite(entityBox42.x));
+
+        // Test 34: Clearing hierarchy selection preserves entity and query state
+        clearHierarchySelection();
+        assert('selectedNodeId is null after clear', getSelectedNodeId() === null);
+        assert('Entities array preserved (1 entity)', currentState.entities.length === 1);
+        assert('Query results preserved (hit 42)', currentState.query.results[0] === 42);
+
+        // Test 35: Loading legacy dataset restores legacy behavior without hierarchy
+        handleLoadedState(legacyState, 'legacy_return.json');
+        assert('Legacy dataset status is unavailable', getHierarchyState().status === 'unavailable');
+        assert('Hierarchy tree is hidden for legacy dataset', document.getElementById('hierarchyTree').style.display === 'none');
+        assert('Legacy empty state is displayed', document.getElementById('hierarchyEmptyState').style.display === 'flex');
+        assert('Legacy badge indicates LEGACY', document.getElementById('hierarchyBadge').textContent === 'LEGACY');
+        assert('Legacy entities are accessible', currentState.entities.length === 1);
+        assert('Legacy MBR arrays preserved', currentState.rtree.leaf_mbrs.length === 1 && currentState.rtree.internal_mbrs.length === 1);
+
+        // Test 36: Valid multi-level hierarchy (3 levels: root -> internal -> leaf -> entity)
+        const multiLevelState = {
+            entities: [{ id: 77, bounds: [15, 15, 25, 25] }],
+            query: { bounds: [0, 0, 100, 100], results: [77] },
+            rtree: {
+                root: {
+                    id: "lvl0_root",
+                    parent_id: null,
+                    type: "root",
+                    is_root: true,
+                    is_leaf: false,
+                    depth: 0,
+                    bounds: [10, 10, 50, 50],
+                    children: [
+                        {
+                            id: "lvl1_internal",
+                            parent_id: "lvl0_root",
+                            type: "internal",
+                            is_root: false,
+                            is_leaf: false,
+                            depth: 1,
+                            bounds: [10, 10, 30, 30],
+                            children: [
+                                {
+                                    id: "lvl2_leaf",
+                                    parent_id: "lvl1_internal",
+                                    type: "leaf",
+                                    is_root: false,
+                                    is_leaf: true,
+                                    depth: 2,
+                                    bounds: [15, 15, 25, 25],
+                                    children: [
+                                        {
+                                            id: "lvl3_entity",
+                                            parent_id: "lvl2_leaf",
+                                            entity_id: 77,
+                                            type: "entity",
+                                            bounds: [15, 15, 25, 25]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        };
+        const normMulti = validateAndNormalizeHierarchy(multiLevelState);
+        assert('Multi-level hierarchy status is valid', normMulti.status === 'valid');
+        assert('Multi-level hierarchy maxDepth is 3', normMulti.maxDepth === 3);
+        assert('Multi-level hierarchy totalNodes is 4', normMulti.totalNodes === 4);
+        handleLoadedState(multiLevelState, 'multi_level.json');
+        assert('Multi-level badge indicates 4 NODES', document.getElementById('hierarchyBadge').textContent === '4 NODES');
+        assert('Multi-level DOM contains lvl0_root', Boolean(document.getElementById('rtree-item-lvl0_root')));
+        assert('Multi-level DOM contains lvl1_internal', Boolean(document.getElementById('rtree-item-lvl1_internal')));
+        assert('Multi-level DOM contains lvl2_leaf', Boolean(document.getElementById('rtree-item-lvl2_leaf')));
+        assert('Multi-level DOM contains lvl3_entity', Boolean(document.getElementById('rtree-item-lvl3_entity')));
+        selectHierarchyNode('lvl1_internal');
+        assert('lvl1_internal detail type is internal', document.getElementById('nodeDetailType').textContent.toLowerCase() === 'internal');
+        assert('lvl1_internal detail entries count is 1', document.getElementById('nodeDetailEntries').textContent === '1');
+        assert('lvl1_internal detail entity refs include #77', document.getElementById('nodeDetailEntities').textContent.includes('#77'));
+        selectHierarchyNode('lvl2_leaf');
+        assert('lvl2_leaf detail type is leaf', document.getElementById('nodeDetailType').textContent.toLowerCase() === 'leaf');
+        assert('lvl2_leaf detail entity refs is #77', document.getElementById('nodeDetailEntities').textContent === '#77');
+
+        // Test 37: Internal node with empty leaf child alongside populated leaf
+        const emptyLeafChildState = {
+            entities: [{ id: 50, bounds: [60, 60, 70, 70] }],
+            query: { bounds: [0, 0, 100, 100], results: [] },
+            rtree: {
+                root: {
+                    id: "mix_root",
+                    parent_id: null,
+                    type: "root",
+                    is_root: true,
+                    is_leaf: false,
+                    depth: 0,
+                    bounds: [0, 0, 100, 100],
+                    children: [
+                        {
+                            id: "empty_leaf",
+                            parent_id: "mix_root",
+                            type: "leaf",
+                            is_root: false,
+                            is_leaf: true,
+                            depth: 1,
+                            bounds: [0, 0, 10, 10],
+                            children: []
+                        },
+                        {
+                            id: "full_leaf",
+                            parent_id: "mix_root",
+                            type: "leaf",
+                            is_root: false,
+                            is_leaf: true,
+                            depth: 1,
+                            bounds: [60, 60, 70, 70],
+                            children: [
+                                {
+                                    id: "entity_50",
+                                    parent_id: "full_leaf",
+                                    entity_id: 50,
+                                    type: "entity",
+                                    bounds: [60, 60, 70, 70]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        };
+        const normMix = validateAndNormalizeHierarchy(emptyLeafChildState);
+        assert('State with empty leaf child produces status valid', normMix.status === 'valid');
+        assert('State with empty leaf child has 4 total nodes', normMix.totalNodes === 4);
+        handleLoadedState(emptyLeafChildState, 'empty_leaf_child.json');
+        selectHierarchyNode('empty_leaf');
+        assert('Empty leaf node entries count is 0', document.getElementById('nodeDetailEntries').textContent === '0');
+        assert('Empty leaf node entities readout displays None', document.getElementById('nodeDetailEntities').textContent === 'None');
+        selectHierarchyNode('full_leaf');
+        assert('Full leaf node entries count is 1', document.getElementById('nodeDetailEntries').textContent === '1');
+        assert('Full leaf node entities readout displays #50', document.getElementById('nodeDetailEntities').textContent === '#50');
+
+        // Test 38: Hierarchy with no entity references (all leaves are empty)
+        const noEntitiesState = {
+            entities: [],
+            query: { bounds: [0, 0, 100, 100], results: [] },
+            rtree: {
+                root: {
+                    id: "no_ent_root",
+                    parent_id: null,
+                    type: "root",
+                    is_root: true,
+                    is_leaf: false,
+                    depth: 0,
+                    bounds: [0, 0, 50, 50],
+                    children: [
+                        {
+                            id: "no_ent_leaf1",
+                            parent_id: "no_ent_root",
+                            type: "leaf",
+                            is_root: false,
+                            is_leaf: true,
+                            depth: 1,
+                            bounds: [0, 0, 20, 20],
+                            children: []
+                        },
+                        {
+                            id: "no_ent_leaf2",
+                            parent_id: "no_ent_root",
+                            type: "leaf",
+                            is_root: false,
+                            is_leaf: true,
+                            depth: 1,
+                            bounds: [25, 25, 50, 50],
+                            children: []
+                        }
+                    ]
+                }
+            }
+        };
+        const normNoEnt = validateAndNormalizeHierarchy(noEntitiesState);
+        assert('Hierarchy with no entities produces status valid', normNoEnt.status === 'valid');
+        assert('Hierarchy with no entities has 0 entity nodes', normNoEnt.entityNodes === 0);
+        assert('Hierarchy with no entities has 3 total nodes', normNoEnt.totalNodes === 3);
+        handleLoadedState(noEntitiesState, 'no_entities.json');
+        selectHierarchyNode('no_ent_root');
+        assert('Root with no entities displays None in entities readout', document.getElementById('nodeDetailEntities').textContent === 'None');
+
+        // Test 39: Missing rtree data / non-object rtree payloads
+        assert('Missing rtree object is unavailable', validateAndNormalizeHierarchy({}).status === 'unavailable');
+        assert('rtree null is unavailable', validateAndNormalizeHierarchy({ rtree: null }).status === 'unavailable');
+        assert('rtree string is unavailable', validateAndNormalizeHierarchy({ rtree: "corrupted" }).status === 'unavailable');
+        assert('rtree number is unavailable', validateAndNormalizeHierarchy({ rtree: 42 }).status === 'unavailable');
+        assert('rtree boolean is unavailable', validateAndNormalizeHierarchy({ rtree: true }).status === 'unavailable');
+        assert('rtree array is unavailable', validateAndNormalizeHierarchy({ rtree: [] }).status === 'unavailable');
+        handleLoadedState({ entities: [{ id: 99, bounds: [1, 1, 2, 2] }], rtree: "corrupted_rtree" }, 'corrupted_rtree.json');
+        assert('Non-object rtree gracefully treated as unavailable', getHierarchyState().status === 'unavailable');
+        assert('Entities remain accessible with corrupted rtree', currentState.entities.length === 1);
+
+        // Test 40: Missing or invalid hierarchy root references
+        const stringRoot = { rtree: { root: "node_0" } };
+        const numRoot = { rtree: { root: 12345 } };
+        const arrayRoot = { rtree: { root: [] } };
+        const boolRoot = { rtree: { root: true } };
+        const emptyObjRoot = { rtree: { root: {} } };
+        assert('String root produces status invalid', validateAndNormalizeHierarchy(stringRoot).status === 'invalid');
+        assert('String root error mentions object or null', validateAndNormalizeHierarchy(stringRoot).error.includes('Hierarchy root must be an object or null'));
+        assert('Number root produces status invalid', validateAndNormalizeHierarchy(numRoot).status === 'invalid');
+        assert('Array root produces status invalid', validateAndNormalizeHierarchy(arrayRoot).status === 'invalid');
+        assert('Boolean root produces status invalid', validateAndNormalizeHierarchy(boolRoot).status === 'invalid');
+        assert('Empty object root produces status invalid', validateAndNormalizeHierarchy(emptyObjRoot).status === 'invalid');
+        assert('Empty object root error mentions missing string ID', validateAndNormalizeHierarchy(emptyObjRoot).error.includes('missing a valid string ID'));
+
+        // Test 41: Invalid MBR coordinate lengths and non-numeric bounds
+        const bounds3State = createValidHierarchyState();
+        bounds3State.rtree.root.bounds = [0, 0, 10]; // only 3 elements
+        const normBounds3 = validateAndNormalizeHierarchy(bounds3State);
+        assert('Bounds with 3 elements produces status invalid', normBounds3.status === 'invalid');
+        assert('Bounds length error mentions array of 4 numbers', normBounds3.error.includes('bounds must be an array of 4 numbers'));
+
+        const stringCoordState = createValidHierarchyState();
+        stringCoordState.rtree.root.bounds = [0, "10", 20, 20];
+        const normStringCoord = validateAndNormalizeHierarchy(stringCoordState);
+        assert('String coordinate in bounds produces status invalid', normStringCoord.status === 'invalid');
+
+        const infCoordState = createValidHierarchyState();
+        infCoordState.rtree.root.bounds = [0, Infinity, 20, 20];
+        const normInfCoord = validateAndNormalizeHierarchy(infCoordState);
+        assert('Infinity in bounds produces status invalid', normInfCoord.status === 'invalid');
+        assert('Infinity error mentions non-finite coordinate', normInfCoord.error.includes('non-finite coordinate'));
+
+        // Test 42: Entity reference in tree not present in exported state.entities
+        const missingEntityState = {
+            entities: [{ id: 1, bounds: [0, 0, 10, 10] }],
+            query: { bounds: [0, 0, 100, 100], results: [] },
+            rtree: {
+                root: {
+                    id: "ghost_root",
+                    parent_id: null,
+                    type: "root",
+                    is_root: true,
+                    is_leaf: true,
+                    depth: 0,
+                    bounds: [50, 50, 60, 60],
+                    children: [
+                        {
+                            id: "entity_999",
+                            parent_id: "ghost_root",
+                            entity_id: 999,
+                            type: "entity",
+                            bounds: [50, 50, 60, 60]
+                        }
+                    ]
+                }
+            }
+        };
+        const normGhost = validateAndNormalizeHierarchy(missingEntityState);
+        assert('Tree with entity reference absent from state.entities is valid', normGhost.status === 'valid');
+        handleLoadedState(missingEntityState, 'ghost_entity.json');
+        selectHierarchyNode('entity_999');
+        assert('Selected node ID is entity_999', getSelectedNodeId() === 'entity_999');
+        assert('Ghost entity detail displays #999', document.getElementById('nodeDetailEntities').textContent === '#999');
+        assert('Ghost entity detail type is entity', document.getElementById('nodeDetailType').textContent.toLowerCase() === 'entity');
+        const ghostBox = getSelectedNodeBox();
+        assert('Ghost entity returns valid projected screen box', ghostBox !== null && isFinite(ghostBox.x));
+        let drawThrew = false;
+        try {
+            drawState(currentState);
+        } catch (e) {
+            drawThrew = true;
+        }
+        assert('drawState executes cleanly without throwing when entity is absent from entities list', !drawThrew);
+
+        // Test 43: Repeated consecutive loads of identical state (idempotency & DOM stability)
+        for (let i = 0; i < 3; i++) {
+            handleLoadedState(validState, `repeated_load_${i}.json`);
+        }
+        const treeItems = document.getElementById('hierarchyTree').querySelectorAll('.tree-item');
+        assert('Repeated loads do not duplicate tree items (exactly 5 items)', treeItems.length === 5, `Got: ${treeItems.length}`);
+        const rootItems = document.querySelectorAll('#rtree-item-node_0');
+        assert('Exactly one DOM item for root node_0 exists after repeated loads', rootItems.length === 1);
+        selectHierarchyNode('node_1');
+        assert('Selecting node after repeated loads works cleanly', getSelectedNodeId() === 'node_1');
+        assert('Detail card displays node_1 after repeated loads', document.getElementById('nodeDetailId').textContent === 'node_1');
+
+        // Test 44: Loading an invalid file after a valid file (purging stale tree, selection, and canvas highlight)
+        handleLoadedState(validState, 'valid_prior.json');
+        selectHierarchyNode('node_1');
+        assert('Node_1 selected prior to invalid load', getSelectedNodeId() === 'node_1');
+        assert('Highlight box exists prior to invalid load', getSelectedNodeBox() !== null);
+        assert('Clear button is enabled prior to invalid load', document.getElementById('btnClearSelection').disabled === false);
+
+        handleLoadedState(dupIdState, 'invalid_after_valid.json');
+        assert('Invalid state status recorded as invalid', getHierarchyState().status === 'invalid');
+        assert('Stale selectedNodeId is purged (null)', getSelectedNodeId() === null);
+        assert('Stale getSelectedNodeBox is purged (null)', getSelectedNodeBox() === null);
+        assert('Clear button is disabled after invalid load', document.getElementById('btnClearSelection').disabled === true);
+        assert('Detail card ID is reset to dash', document.getElementById('nodeDetailId').textContent === '—');
+        assert('Detail card type is reset to dash', document.getElementById('nodeDetailType').textContent === '—');
+        assert('Hierarchy tree container is hidden', document.getElementById('hierarchyTree').style.display === 'none');
+        assert('Hierarchy empty state is displayed with error', document.getElementById('hierarchyEmptyState').style.display === 'flex');
+        assert('Badge indicates INVALID', document.getElementById('hierarchyBadge').textContent === 'INVALID');
+        assert('Map entities remain intact and functional after invalid hierarchy load', currentState.entities.length === 2);
+
+        // Test 45: Loading a valid file after an invalid file (clean recovery)
+        handleLoadedState(validState, 'valid_recovery.json');
+        assert('Recovered status is valid', getHierarchyState().status === 'valid');
+        assert('Hierarchy empty state is hidden after recovery', document.getElementById('hierarchyEmptyState').style.display === 'none');
+        assert('Hierarchy tree is displayed after recovery', document.getElementById('hierarchyTree').style.display === 'flex');
+        assert('Badge indicates 5 NODES after recovery', document.getElementById('hierarchyBadge').textContent === '5 NODES');
+        assert('Root item is present after recovery', Boolean(document.getElementById('rtree-item-node_0')));
+        selectHierarchyNode('node_0');
+        assert('Root node selectable after recovery', getSelectedNodeId() === 'node_0');
+        assert('Root node screen box valid after recovery', getSelectedNodeBox() !== null);
+
+        // Test 46: Clearing selection when loading new valid dataset with different node IDs
+        handleLoadedState(validState, 'state_a.json');
+        selectHierarchyNode('node_1');
+        assert('Node_1 selected in State A', getSelectedNodeId() === 'node_1');
+
+        const alternateState = {
+            entities: [{ id: 88, bounds: [0, 0, 5, 5] }],
+            query: { bounds: [0, 0, 10, 10], results: [] },
+            rtree: {
+                root: {
+                    id: "other_root",
+                    parent_id: null,
+                    type: "root",
+                    is_root: true,
+                    is_leaf: true,
+                    depth: 0,
+                    bounds: [0, 0, 5, 5],
+                    children: [
+                        {
+                            id: "other_entity_88",
+                            parent_id: "other_root",
+                            entity_id: 88,
+                            type: "entity",
+                            bounds: [0, 0, 5, 5]
+                        }
+                    ]
+                }
+            }
+        };
+        handleLoadedState(alternateState, 'state_b.json');
+        assert('selectedNodeId cleared when missing from new dataset', getSelectedNodeId() === null);
+        assert('Selected MBR box is null when node is cleared', getSelectedNodeBox() === null);
+        assert('Clear button is disabled after node cleared', document.getElementById('btnClearSelection').disabled === true);
+        assert('Detail card ID reset to dash', document.getElementById('nodeDetailId').textContent === '—');
+        selectHierarchyNode('other_root');
+        assert('New root selectable in State B', getSelectedNodeId() === 'other_root');
+
+        // --- Hierarchy Panel Scrolling & Lower Panels Stability Tests (Tests 33-36) ---
+        // Generate a large 37-node hierarchy to guarantee vertical overflow in the tree container
+        const largeChildren = [];
+        let curId = 100;
+        for (let d = 0; d < 4; d++) {
+            const intId = `int_node_${d}`;
+            const leafChildren = [];
+            for (let l = 0; l < 2; l++) {
+                const leafId = `leaf_node_${d}_${l}`;
+                const entChildren = [];
+                for (let e = 0; e < 3; e++) {
+                    const entId = curId++;
+                    entChildren.push({
+                        id: `ent_ref_${entId}`,
+                        parent_id: leafId,
+                        entity_id: entId,
+                        type: "entity",
+                        bounds: [d * 100 + l * 20 + e * 5, 0, d * 100 + l * 20 + e * 5 + 4, 4]
+                    });
+                }
+                leafChildren.push({
+                    id: leafId,
+                    parent_id: intId,
+                    type: "leaf",
+                    is_root: false,
+                    is_leaf: true,
+                    depth: 2,
+                    bounds: [d * 100 + l * 20, 0, d * 100 + l * 20 + 20, 10],
+                    children: entChildren
+                });
+            }
+            largeChildren.push({
+                id: intId,
+                parent_id: "large_root",
+                type: "internal",
+                is_root: false,
+                is_leaf: false,
+                depth: 1,
+                bounds: [d * 100, 0, d * 100 + 80, 20],
+                children: leafChildren
+            });
+        }
+        const largeState = {
+            entities: [{ id: 100, bounds: [0, 0, 10, 10] }],
+            query: { bounds: [0, 0, 50, 50], results: [] },
+            rtree: {
+                height: 3,
+                size: 37,
+                internal_mbrs: [],
+                leaf_mbrs: [],
+                root: {
+                    id: "large_root",
+                    parent_id: null,
+                    type: "root",
+                    is_root: true,
+                    is_leaf: false,
+                    depth: 0,
+                    bounds: [0, 0, 500, 50],
+                    children: largeChildren
+                }
+            }
+        };
+        handleLoadedState(largeState, 'large_state.json');
+
+        const testTreeContainer = document.getElementById('hierarchyTreeContainer');
+        const testSidebar = document.getElementById('testSidebar');
+        const testInspector = document.getElementById('nodeDetailCard');
+        const testHeader = document.getElementById('testHierarchyHeader');
+        const testLegend = document.getElementById('testHierarchyLegend');
+        const testTelemetry = document.getElementById('testTelemetryRegion');
+
+        assert('Large hierarchy tree container has vertical scroll overflow', testTreeContainer.scrollHeight > testTreeContainer.clientHeight);
+        assert('Tree container height is bounded and does not blow out card', testTreeContainer.clientHeight <= 460);
+
+        // Record positions before scrolling
+        const headerTopBefore = testHeader ? testHeader.getBoundingClientRect().top : 0;
+        const legendTopBefore = testLegend ? testLegend.getBoundingClientRect().top : 0;
+        const inspectorTopBefore = testInspector ? testInspector.getBoundingClientRect().top : 0;
+        const telemetryTopBefore = testTelemetry ? testTelemetry.getBoundingClientRect().top : 0;
+
+        // Perform independent scroll on tree container
+        testTreeContainer.scrollTop = 120;
+        assert('Tree container successfully scrolls independently', testTreeContainer.scrollTop > 0);
+        if (testSidebar) {
+            assert('Outer sidebar does not scroll when tree container scrolls', testSidebar.scrollTop === 0);
+        }
+
+        // Validate that heading, legend, inspector, and telemetry panels remain stationary
+        const headerTopAfter = testHeader ? testHeader.getBoundingClientRect().top : 0;
+        const legendTopAfter = testLegend ? testLegend.getBoundingClientRect().top : 0;
+        const inspectorTopAfter = testInspector ? testInspector.getBoundingClientRect().top : 0;
+        const telemetryTopAfter = testTelemetry ? testTelemetry.getBoundingClientRect().top : 0;
+
+        assertAlmostEqual('Hierarchy panel heading remains stationary when scrolling tree', headerTopAfter, headerTopBefore);
+        assertAlmostEqual('Hierarchy legend remains stationary when scrolling tree', legendTopAfter, legendTopBefore);
+        assertAlmostEqual('Node inspector remains stationary when scrolling tree', inspectorTopAfter, inspectorTopBefore);
+        assertAlmostEqual('Lower dashboard panels remain stationary when scrolling tree', telemetryTopAfter, telemetryTopBefore);
+
+        // Node selection on a scrolled node row functions correctly
+        const targetScrolledId = 'leaf_node_2_1';
+        selectHierarchyNode(targetScrolledId);
+        assert('Node selected correctly after scrolling tree', getSelectedNodeId() === targetScrolledId);
+        assert('Node detail inspector displays selected node ID after scroll', document.getElementById('nodeDetailId').textContent === targetScrolledId);
+        const targetRow = document.querySelector(`.tree-node-row[data-node-id="${targetScrolledId}"]`);
+        assert('Selected node row has .selected class after scroll', Boolean(targetRow && targetRow.classList.contains('selected')));
+
+        // Small hierarchy does not overflow container
+        const smallState = {
+            entities: [{ id: 1, bounds: [0, 0, 10, 10] }],
+            query: { bounds: [0, 0, 50, 50], results: [] },
+            rtree: {
+                height: 1,
+                size: 1,
+                internal_mbrs: [],
+                leaf_mbrs: [[0, 0, 10, 10]],
+                root: {
+                    id: "small_root",
+                    parent_id: null,
+                    type: "leaf",
+                    is_root: true,
+                    is_leaf: true,
+                    depth: 0,
+                    bounds: [0, 0, 10, 10],
+                    children: [{
+                        id: "entity_1",
+                        parent_id: "small_root",
+                        entity_id: 1,
+                        type: "entity",
+                        bounds: [0, 0, 10, 10]
+                    }]
+                }
+            }
+        };
+        handleLoadedState(smallState, 'small_state.json');
+        assert('Small hierarchy content fits within container without overflow', testTreeContainer.scrollHeight <= testTreeContainer.clientHeight + 1, `scrollHeight=${testTreeContainer.scrollHeight}, clientHeight=${testTreeContainer.clientHeight}`);
+
+        // Test 37: Multi-zoom vertical space adaptation (70%, 80%, 90%, 100%, 125% zoom heights)
+        handleLoadedState(largeState, 'large_state_zoom_test.json');
+        selectHierarchyNode('leaf_node_2_1');
+
+        const zoomHeights = [
+            { zoom: '70%', height: 850 },
+            { zoom: '80%', height: 720 },
+            { zoom: '90%', height: 640 },
+            { zoom: '100%', height: 580 },
+            { zoom: '125%', height: 480 }
+        ];
+
+        const testQueryPerf = document.getElementById('testQueryPerf');
+
+        zoomHeights.forEach(({ zoom, height }) => {
+            testSidebar.style.height = `${height}px`;
+
+            // 1. Hierarchy tree container remains usable and never compressed to 0px
+            assert(`Hierarchy tree container has usable height at ${zoom} zoom (h=${height}px)`, testTreeContainer.clientHeight >= 55, `clientHeight=${testTreeContainer.clientHeight}`);
+
+            // 2. Tree container scrolls independently
+            assert(`Hierarchy tree container scrolls independently at ${zoom} zoom`, testTreeContainer.scrollHeight > testTreeContainer.clientHeight);
+
+            // 3. Node Inspector remains usable and bounded within max-height
+            assert(`Node Inspector remains usable and bounded at ${zoom} zoom`, testInspector.clientHeight >= 65 && testInspector.clientHeight <= 145, `inspectorHeight=${testInspector.clientHeight}`);
+
+            // 4. Telemetry region preserves allocated space
+            assert(`Telemetry region retains allocated space at ${zoom} zoom`, testTelemetry.clientHeight >= 105, `telemetryHeight=${testTelemetry.clientHeight}`);
+
+            // 5. Query Performance panel is accessible and not submerged
+            assert(`Query Performance panel is accessible at ${zoom} zoom`, testQueryPerf ? testQueryPerf.clientHeight >= 40 : false);
+
+            // 6. Independent scroll within tree container does not scroll outer sidebar
+            testTreeContainer.scrollTop = 30;
+            assert(`Tree container scrolls without moving outer sidebar at ${zoom} zoom`, testSidebar.scrollTop === 0);
+            testTreeContainer.scrollTop = 0;
+
+            // 7. Node selection remains intact
+            assert(`Node selection preserved at ${zoom} zoom`, getSelectedNodeId() === 'leaf_node_2_1');
+        });
+
+        // Test 47: Toolbar Layer Visibility and Sidebar Top Hierarchy Alignment
+        const layerCmdGroup = document.querySelector('.cmd-layers');
+        assert('Toolbar contains .cmd-layers container', Boolean(layerCmdGroup));
+
+        const layerIds = ['layerEntities', 'layerResults', 'layerLeaf', 'layerInternal', 'layerQuery'];
+        layerIds.forEach(id => {
+            const matches = document.querySelectorAll(`#${id}`);
+            assert(`Exactly 1 element exists with id #${id} (no duplicates)`, matches.length === 1);
+            const el = document.getElementById(id);
+            assert(`Layer toggle #${id} is inside .cmd-layers in toolbar`, Boolean(el && el.closest('.cmd-layers')));
+        });
+
+        // Confirm sidebar starts with hierarchyDock (layer-dock removed from sidebar)
+        if (testSidebar) {
+            const firstChildSection = testSidebar.querySelector('section');
+            assert('First section in sidebar is #hierarchyDock', Boolean(firstChildSection && firstChildSection.id === 'hierarchyDock'));
+            const staleLayerDock = testSidebar.querySelector('.layer-dock');
+            assert('Sidebar does not contain stale .layer-dock', staleLayerDock === null);
+        }
+
+        // Confirm layer toggle functionality
+        const cbTest = document.getElementById('layerEntities');
+        const initialChecked = cbTest.checked;
+        cbTest.checked = !initialChecked;
+        cbTest.dispatchEvent(new Event('change'));
+        assert('layerEntities toggled cleanly', cbTest.checked === !initialChecked);
+        cbTest.checked = initialChecked;
+        cbTest.dispatchEvent(new Event('change'));
+        assert('layerEntities restored cleanly', cbTest.checked === initialChecked);
+
+        // Restore default harness sidebar height
+        testSidebar.style.height = '580px';
+
+        // Render Test Table
+        document.getElementById('totalCount').textContent = results.length;
+        document.getElementById('passCount').textContent = passed;
+        document.getElementById('failCount').textContent = failed;
+
+        const tbody = document.getElementById('testTableBody');
+        results.forEach((res, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td>${res.desc}</td>
+                <td><span class="badge ${res.ok ? 'pass' : 'fail'}">${res.ok ? 'PASS' : 'FAIL'}</span></td>
+                <td style="color: ${res.ok ? '#5e7399' : '#ff1744'}; font-family: monospace; font-size: 11px;">${res.details || 'OK'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        console.log(`[KESTREL HIERARCHY TEST SUITE] Complete: ${passed} passed, ${failed} failed out of ${results.length}.`);
+
+        if (typeof dump === 'function') {
+            dump('\n=== KESTREL HIERARCHY TEST RESULTS ===\n');
+            results.forEach((r, idx) => {
+                dump(`[${r.ok ? 'PASS' : 'FAIL'}] #${idx + 1} ${r.desc} - ${r.details || 'OK'}\n`);
+            });
+            dump(`=== TOTAL: ${results.length}, PASSED: ${passed}, FAILED: ${failed} ===\n\n`);
+        }
+    </script>
+</body>
+</html>

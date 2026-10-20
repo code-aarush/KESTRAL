@@ -14,6 +14,8 @@
     {"id": 26, "bounds": [154.63410070108023, 117.34766394410136, 158.28454622295033, 127.31014627823711]}
   ],
   "rtree": {
+    "height": 2,
+    "size": 11,
     "internal_mbrs": [
       [55.804178441242129, -170.40862226235367, 743.8073122172292, 647.17423401632072]
     ],
@@ -23,13 +25,138 @@
       [303.81008658773982, 421.96233064083094, 566.40078233432178, 452.47837830477334],
       [498.75739282156064, -46.309185457598161, 743.8073122172292, 103.86094669496077]
     ],
-    "nodes": [
-      {"id": 100, "parent_id": 0, "level": 0, "is_leaf": false, "entry_count": 4, "mbr": [55.804178441242129, -170.40862226235367, 743.8073122172292, 647.17423401632072]},
-      {"id": 97, "parent_id": 100, "level": 1, "is_leaf": true, "entry_count": 3, "mbr": [55.804178441242129, -170.40862226235367, 158.28454622295033, 289.38358754576581]},
-      {"id": 104, "parent_id": 100, "level": 1, "is_leaf": true, "entry_count": 4, "mbr": [273.93313238918563, 286.06595488681779, 304.001461864818, 647.17423401632072]},
-      {"id": 103, "parent_id": 100, "level": 1, "is_leaf": true, "entry_count": 2, "mbr": [303.81008658773982, 421.96233064083094, 566.40078233432178, 452.47837830477334]},
-      {"id": 118, "parent_id": 100, "level": 1, "is_leaf": true, "entry_count": 2, "mbr": [498.75739282156064, -46.309185457598161, 743.8073122172292, 103.86094669496077]}
-    ]
+    "root": {
+      "id": "node_0",
+      "parent_id": null,
+      "type": "root",
+      "is_root": true,
+      "is_leaf": false,
+      "depth": 0,
+      "bounds": [55.804178441242129, -170.40862226235367, 743.8073122172292, 647.17423401632072],
+      "children": [
+        {
+          "id": "node_1",
+          "parent_id": "node_0",
+          "type": "leaf",
+          "is_root": false,
+          "is_leaf": true,
+          "depth": 1,
+          "bounds": [55.804178441242129, -170.40862226235367, 158.28454622295033, 289.38358754576581],
+          "children": [
+            {
+              "id": "entity_29",
+              "parent_id": "node_1",
+              "entity_id": 29,
+              "type": "entity",
+              "bounds": [60.111576017549453, 283.7786744340512, 67.301638511252577, 289.38358754576581]
+            },
+            {
+              "id": "entity_6",
+              "parent_id": "node_1",
+              "entity_id": 6,
+              "type": "entity",
+              "bounds": [55.804178441242129, -170.40862226235367, 60.614791734648222, -165.85468861048022]
+            },
+            {
+              "id": "entity_26",
+              "parent_id": "node_1",
+              "entity_id": 26,
+              "type": "entity",
+              "bounds": [154.63410070108023, 117.34766394410136, 158.28454622295033, 127.31014627823711]
+            }
+          ]
+        },
+        {
+          "id": "node_2",
+          "parent_id": "node_0",
+          "type": "leaf",
+          "is_root": false,
+          "is_leaf": true,
+          "depth": 1,
+          "bounds": [273.93313238918563, 286.06595488681779, 304.001461864818, 647.17423401632072],
+          "children": [
+            {
+              "id": "entity_31",
+              "parent_id": "node_2",
+              "entity_id": 31,
+              "type": "entity",
+              "bounds": [295.34410415569744, 288.24241677748694, 304.001461864818, 290.03340544039088]
+            },
+            {
+              "id": "entity_24",
+              "parent_id": "node_2",
+              "entity_id": 24,
+              "type": "entity",
+              "bounds": [282.64092678186472, 545.70784997459884, 284.96037017521348, 551.32778554598531]
+            },
+            {
+              "id": "entity_20",
+              "parent_id": "node_2",
+              "entity_id": 20,
+              "type": "entity",
+              "bounds": [299.16988860843014, 646.0197840739695, 301.74786101549472, 647.17423401632072]
+            },
+            {
+              "id": "entity_30",
+              "parent_id": "node_2",
+              "entity_id": 30,
+              "type": "entity",
+              "bounds": [273.93313238918563, 286.06595488681779, 278.12907108606362, 292.90536043443632]
+            }
+          ]
+        },
+        {
+          "id": "node_3",
+          "parent_id": "node_0",
+          "type": "leaf",
+          "is_root": false,
+          "is_leaf": true,
+          "depth": 1,
+          "bounds": [303.81008658773982, 421.96233064083094, 566.40078233432178, 452.47837830477334],
+          "children": [
+            {
+              "id": "entity_12",
+              "parent_id": "node_3",
+              "entity_id": 12,
+              "type": "entity",
+              "bounds": [563.34383216928802, 421.96233064083094, 566.40078233432178, 424.53692496271049]
+            },
+            {
+              "id": "entity_14",
+              "parent_id": "node_3",
+              "entity_id": 14,
+              "type": "entity",
+              "bounds": [303.81008658773982, 448.70583114987215, 311.29854586788309, 452.47837830477334]
+            }
+          ]
+        },
+        {
+          "id": "node_4",
+          "parent_id": "node_0",
+          "type": "leaf",
+          "is_root": false,
+          "is_leaf": true,
+          "depth": 1,
+          "bounds": [498.75739282156064, -46.309185457598161, 743.8073122172292, 103.86094669496077],
+          "children": [
+            {
+              "id": "entity_19",
+              "parent_id": "node_4",
+              "entity_id": 19,
+              "type": "entity",
+              "bounds": [498.75739282156064, -46.309185457598161, 507.99431641245906, -41.328015377133845]
+            },
+            {
+              "id": "entity_18",
+              "parent_id": "node_4",
+              "entity_id": 18,
+              "type": "entity",
+              "bounds": [734.12004576197785, 98.745560232282116, 743.8073122172292, 103.86094669496077]
+            }
+          ]
+        }
+      ]
+    }
   },
   "query": {
     "query_id": 1,
@@ -43,25 +170,25 @@
     "truncated": false,
     "total_events": 19,
     "events": [
-      {"type": "node_visited", "node_id": 100, "child_node_id": 0, "entity_id": -1, "mbr": [55.804178441242129, -170.40862226235367, 743.8073122172292, 647.17423401632072], "intersects": true},
-      {"type": "mbr_tested", "node_id": 100, "child_node_id": 97, "entity_id": -1, "mbr": [55.804178441242129, -170.40862226235367, 158.28454622295033, 289.38358754576581], "intersects": false},
-      {"type": "branch_pruned", "node_id": 100, "child_node_id": 97, "entity_id": -1, "mbr": [55.804178441242129, -170.40862226235367, 158.28454622295033, 289.38358754576581], "intersects": false},
-      {"type": "mbr_tested", "node_id": 100, "child_node_id": 104, "entity_id": -1, "mbr": [273.93313238918563, 286.06595488681779, 304.001461864818, 647.17423401632072], "intersects": true},
-      {"type": "child_entered", "node_id": 100, "child_node_id": 104, "entity_id": -1, "mbr": [273.93313238918563, 286.06595488681779, 304.001461864818, 647.17423401632072], "intersects": true},
-      {"type": "mbr_tested", "node_id": 100, "child_node_id": 103, "entity_id": -1, "mbr": [303.81008658773982, 421.96233064083094, 566.40078233432178, 452.47837830477334], "intersects": false},
-      {"type": "branch_pruned", "node_id": 100, "child_node_id": 103, "entity_id": -1, "mbr": [303.81008658773982, 421.96233064083094, 566.40078233432178, 452.47837830477334], "intersects": false},
-      {"type": "mbr_tested", "node_id": 100, "child_node_id": 118, "entity_id": -1, "mbr": [498.75739282156064, -46.309185457598161, 743.8073122172292, 103.86094669496077], "intersects": false},
-      {"type": "branch_pruned", "node_id": 100, "child_node_id": 118, "entity_id": -1, "mbr": [498.75739282156064, -46.309185457598161, 743.8073122172292, 103.86094669496077], "intersects": false},
-      {"type": "node_visited", "node_id": 104, "child_node_id": 0, "entity_id": -1, "mbr": [273.93313238918563, 286.06595488681779, 304.001461864818, 647.17423401632072], "intersects": true},
-      {"type": "mbr_tested", "node_id": 104, "child_node_id": 0, "entity_id": 31, "mbr": [295.34410415569744, 288.24241677748694, 304.001461864818, 290.03340544039088], "intersects": true},
-      {"type": "leaf_entry_examined", "node_id": 104, "child_node_id": 0, "entity_id": 31, "mbr": [295.34410415569744, 288.24241677748694, 304.001461864818, 290.03340544039088], "intersects": true},
-      {"type": "entity_accepted", "node_id": 104, "child_node_id": 0, "entity_id": 31, "mbr": [295.34410415569744, 288.24241677748694, 304.001461864818, 290.03340544039088], "intersects": true},
-      {"type": "mbr_tested", "node_id": 104, "child_node_id": 0, "entity_id": 24, "mbr": [282.64092678186472, 545.70784997459884, 284.96037017521348, 551.32778554598531], "intersects": false},
-      {"type": "mbr_tested", "node_id": 104, "child_node_id": 0, "entity_id": 20, "mbr": [299.16988860843014, 646.0197840739695, 301.74786101549472, 647.17423401632072], "intersects": false},
-      {"type": "mbr_tested", "node_id": 104, "child_node_id": 0, "entity_id": 30, "mbr": [273.93313238918563, 286.06595488681779, 278.12907108606362, 292.90536043443632], "intersects": true},
-      {"type": "leaf_entry_examined", "node_id": 104, "child_node_id": 0, "entity_id": 30, "mbr": [273.93313238918563, 286.06595488681779, 278.12907108606362, 292.90536043443632], "intersects": true},
-      {"type": "entity_accepted", "node_id": 104, "child_node_id": 0, "entity_id": 30, "mbr": [273.93313238918563, 286.06595488681779, 278.12907108606362, 292.90536043443632], "intersects": true},
-      {"type": "traversal_completed", "node_id": 0, "child_node_id": 0, "entity_id": -1, "mbr": [0, 0, 0, 0], "intersects": false}
+      {"type": "node_visited", "node_id": "node_0", "child_node_id": null, "entity_id": -1, "mbr": [55.804178441242129, -170.40862226235367, 743.8073122172292, 647.17423401632072], "intersects": true},
+      {"type": "mbr_tested", "node_id": "node_0", "child_node_id": "node_1", "entity_id": -1, "mbr": [55.804178441242129, -170.40862226235367, 158.28454622295033, 289.38358754576581], "intersects": false},
+      {"type": "branch_pruned", "node_id": "node_0", "child_node_id": "node_1", "entity_id": -1, "mbr": [55.804178441242129, -170.40862226235367, 158.28454622295033, 289.38358754576581], "intersects": false},
+      {"type": "mbr_tested", "node_id": "node_0", "child_node_id": "node_2", "entity_id": -1, "mbr": [273.93313238918563, 286.06595488681779, 304.001461864818, 647.17423401632072], "intersects": true},
+      {"type": "child_entered", "node_id": "node_0", "child_node_id": "node_2", "entity_id": -1, "mbr": [273.93313238918563, 286.06595488681779, 304.001461864818, 647.17423401632072], "intersects": true},
+      {"type": "mbr_tested", "node_id": "node_0", "child_node_id": "node_3", "entity_id": -1, "mbr": [303.81008658773982, 421.96233064083094, 566.40078233432178, 452.47837830477334], "intersects": false},
+      {"type": "branch_pruned", "node_id": "node_0", "child_node_id": "node_3", "entity_id": -1, "mbr": [303.81008658773982, 421.96233064083094, 566.40078233432178, 452.47837830477334], "intersects": false},
+      {"type": "mbr_tested", "node_id": "node_0", "child_node_id": "node_4", "entity_id": -1, "mbr": [498.75739282156064, -46.309185457598161, 743.8073122172292, 103.86094669496077], "intersects": false},
+      {"type": "branch_pruned", "node_id": "node_0", "child_node_id": "node_4", "entity_id": -1, "mbr": [498.75739282156064, -46.309185457598161, 743.8073122172292, 103.86094669496077], "intersects": false},
+      {"type": "node_visited", "node_id": "node_2", "child_node_id": null, "entity_id": -1, "mbr": [273.93313238918563, 286.06595488681779, 304.001461864818, 647.17423401632072], "intersects": true},
+      {"type": "mbr_tested", "node_id": "node_2", "child_node_id": null, "entity_id": 31, "mbr": [295.34410415569744, 288.24241677748694, 304.001461864818, 290.03340544039088], "intersects": true},
+      {"type": "leaf_entry_examined", "node_id": "node_2", "child_node_id": null, "entity_id": 31, "mbr": [295.34410415569744, 288.24241677748694, 304.001461864818, 290.03340544039088], "intersects": true},
+      {"type": "entity_accepted", "node_id": "node_2", "child_node_id": null, "entity_id": 31, "mbr": [295.34410415569744, 288.24241677748694, 304.001461864818, 290.03340544039088], "intersects": true},
+      {"type": "mbr_tested", "node_id": "node_2", "child_node_id": null, "entity_id": 24, "mbr": [282.64092678186472, 545.70784997459884, 284.96037017521348, 551.32778554598531], "intersects": false},
+      {"type": "mbr_tested", "node_id": "node_2", "child_node_id": null, "entity_id": 20, "mbr": [299.16988860843014, 646.0197840739695, 301.74786101549472, 647.17423401632072], "intersects": false},
+      {"type": "mbr_tested", "node_id": "node_2", "child_node_id": null, "entity_id": 30, "mbr": [273.93313238918563, 286.06595488681779, 278.12907108606362, 292.90536043443632], "intersects": true},
+      {"type": "leaf_entry_examined", "node_id": "node_2", "child_node_id": null, "entity_id": 30, "mbr": [273.93313238918563, 286.06595488681779, 278.12907108606362, 292.90536043443632], "intersects": true},
+      {"type": "entity_accepted", "node_id": "node_2", "child_node_id": null, "entity_id": 30, "mbr": [273.93313238918563, 286.06595488681779, 278.12907108606362, 292.90536043443632], "intersects": true},
+      {"type": "traversal_completed", "node_id": null, "child_node_id": null, "entity_id": -1, "mbr": [0, 0, 0, 0], "intersects": false}
     ]
   }
 }

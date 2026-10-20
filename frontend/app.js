@@ -43,23 +43,43 @@ const emptyFeedbackText = document.getElementById('emptyFeedbackText');
 const btnEmptyLoad = document.getElementById('btnEmptyLoad');
 const btnEmptyBrowse = document.getElementById('btnEmptyBrowse');
 
+// R-Tree Hierarchy panel DOM elements
+const hierarchyDock = typeof document !== 'undefined' ? document.getElementById('hierarchyDock') : null;
+const hierarchyBadge = typeof document !== 'undefined' ? document.getElementById('hierarchyBadge') : null;
+const hierarchyTreeContainer = typeof document !== 'undefined' ? document.getElementById('hierarchyTreeContainer') : null;
+const hierarchyTree = typeof document !== 'undefined' ? document.getElementById('hierarchyTree') : null;
+const hierarchyEmptyState = typeof document !== 'undefined' ? document.getElementById('hierarchyEmptyState') : null;
+const hierarchyEmptyTitle = typeof document !== 'undefined' ? document.getElementById('hierarchyEmptyTitle') : null;
+const hierarchyEmptyDesc = typeof document !== 'undefined' ? document.getElementById('hierarchyEmptyDesc') : null;
+const nodeDetailCard = typeof document !== 'undefined' ? document.getElementById('nodeDetailCard') : null;
+const btnClearSelection = typeof document !== 'undefined' ? document.getElementById('btnClearSelection') : null;
+const nodeDetailId = typeof document !== 'undefined' ? document.getElementById('nodeDetailId') : null;
+const nodeDetailType = typeof document !== 'undefined' ? document.getElementById('nodeDetailType') : null;
+const nodeDetailDepth = typeof document !== 'undefined' ? document.getElementById('nodeDetailDepth') : null;
+const nodeDetailEntries = typeof document !== 'undefined' ? document.getElementById('nodeDetailEntries') : null;
+const nodeDetailBounds = typeof document !== 'undefined' ? document.getElementById('nodeDetailBounds') : null;
+const nodeDetailEntities = typeof document !== 'undefined' ? document.getElementById('nodeDetailEntities') : null;
+
 // Traversal replay elements
-const traceBadge = document.getElementById('traceBadge');
-const traceStatus = document.getElementById('traceStatus');
-const traceStepLabel = document.getElementById('traceStep');
-const traceProgressFill = document.getElementById('traceProgressFill');
-const traceEventTag = document.getElementById('traceEventTag');
-const traceEventText = document.getElementById('traceEventText');
-const traceLog = document.getElementById('traceLog');
-const btnTraceStart = document.getElementById('btnTraceStart');
-const btnTracePrev = document.getElementById('btnTracePrev');
-const btnTraceNext = document.getElementById('btnTraceNext');
-const btnTracePlay = document.getElementById('btnTracePlay');
-const btnTracePause = document.getElementById('btnTracePause');
-const btnTraceRestart = document.getElementById('btnTraceRestart');
-const btnTraceClear = document.getElementById('btnTraceClear');
+const traceBadge = typeof document !== 'undefined' ? document.getElementById('traceBadge') : null;
+const traceStatus = typeof document !== 'undefined' ? document.getElementById('traceStatus') : null;
+const traceStepLabel = typeof document !== 'undefined' ? document.getElementById('traceStep') : null;
+const traceProgressFill = typeof document !== 'undefined' ? document.getElementById('traceProgressFill') : null;
+const traceEventTag = typeof document !== 'undefined' ? document.getElementById('traceEventTag') : null;
+const traceEventText = typeof document !== 'undefined' ? document.getElementById('traceEventText') : null;
+const traceLog = typeof document !== 'undefined' ? document.getElementById('traceLog') : null;
+const btnTraceStart = typeof document !== 'undefined' ? document.getElementById('btnTraceStart') : null;
+const btnTracePrev = typeof document !== 'undefined' ? document.getElementById('btnTracePrev') : null;
+const btnTraceNext = typeof document !== 'undefined' ? document.getElementById('btnTraceNext') : null;
+const btnTracePlay = typeof document !== 'undefined' ? document.getElementById('btnTracePlay') : null;
+const btnTracePause = typeof document !== 'undefined' ? document.getElementById('btnTracePause') : null;
+const btnTraceRestart = typeof document !== 'undefined' ? document.getElementById('btnTraceRestart') : null;
+const btnTraceClear = typeof document !== 'undefined' ? document.getElementById('btnTraceClear') : null;
 
 let currentState = null;
+let currentHierarchy = null;
+let selectedNodeId = null;
+const collapsedNodeIds = new Set();
 let dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
 let cssWidth = 800;
 let cssHeight = 600;
@@ -77,6 +97,32 @@ const viewport = {
     panStartY: 0.0,
     initialTransform: null
 };
+
+let activePointerId = null;
+let hasActiveCapture = false;
+
+/**
+ * Idempotently terminates an active pan gesture.
+ * Cleans up viewport panning state, removes visual panning classes,
+ * and releases active pointer capture safely.
+ */
+function endPan(e) {
+    if (!viewport.isPanning) return;
+    viewport.isPanning = false;
+    if (canvas) canvas.classList.remove('panning');
+
+    const pId = (e && typeof e.pointerId === 'number') ? e.pointerId : activePointerId;
+    activePointerId = null;
+    hasActiveCapture = false;
+
+    if (canvas && pId !== null && pId !== undefined) {
+        try {
+            if (canvas.hasPointerCapture && canvas.hasPointerCapture(pId)) {
+                canvas.releasePointerCapture(pId);
+            }
+        } catch (_) {}
+    }
+}
 
 // Candidate URLs for resolving state.json across different local server roots
 const CANDIDATE_URLS = [
@@ -188,10 +234,11 @@ function computeFitTransform(state, targetW = cssWidth, targetH = cssHeight) {
         }
     };
 
-    if (state && state.entities) state.entities.forEach(e => expand(e.bounds));
-    if (state && state.rtree) {
-        (state.rtree.internal_mbrs || []).forEach(expand);
-        (state.rtree.leaf_mbrs || []).forEach(expand);
+    if (state && Array.isArray(state.entities)) state.entities.forEach(e => e && expand(e.bounds));
+    if (state && state.rtree && typeof state.rtree === 'object') {
+        if (Array.isArray(state.rtree.internal_mbrs)) state.rtree.internal_mbrs.forEach(expand);
+        if (Array.isArray(state.rtree.leaf_mbrs)) state.rtree.leaf_mbrs.forEach(expand);
+        if (state.rtree.root && state.rtree.root.bounds) expand(state.rtree.root.bounds);
     }
     if (state && state.query && state.query.bounds) expand(state.query.bounds);
 
@@ -302,18 +349,22 @@ function updateHud() {
 /**
  * Adapts canvas buffer to DOM container dimensions and Device Pixel Ratio (HiDPI).
  * Shifts viewport offsets to preserve spatial center when resizing.
+ * Updates saved initialTransform so Reset View restores framing for the new canvas size.
  */
-function resizeCanvas() {
+function resizeCanvas(targetW, targetH) {
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const w = Math.floor(rect.width) || 800;
-    const h = Math.floor(rect.height) || 600;
+    const container = canvas.parentElement || canvas;
+    const rect = (container && typeof container.getBoundingClientRect === 'function')
+        ? container.getBoundingClientRect()
+        : canvas.getBoundingClientRect();
+    const w = (typeof targetW === 'number' && targetW > 0) ? Math.floor(targetW) : (Math.floor(rect.width) || 800);
+    const h = (typeof targetH === 'number' && targetH > 0) ? Math.floor(targetH) : (Math.floor(rect.height) || 600);
 
     dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
     const bufferW = Math.round(w * dpr);
     const bufferH = Math.round(h * dpr);
 
-    if (canvas.width !== bufferW || canvas.height !== bufferH) {
+    if (canvas.width !== bufferW || canvas.height !== bufferH || cssWidth !== w || cssHeight !== h) {
         const wasInitial = !viewport.initialTransform || (
             Math.abs(viewport.scale - viewport.initialTransform.scale) < 1e-4 &&
             Math.abs(viewport.tx - viewport.initialTransform.tx) < 1e-2 &&
@@ -330,12 +381,28 @@ function resizeCanvas() {
         cssWidth = w;
         cssHeight = h;
 
+        if (ctx) {
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
         if (currentState) {
+            const newInitial = computeFitTransform(currentState, w, h);
+            viewport.initialTransform = { scale: newInitial.scale, tx: newInitial.tx, ty: newInitial.ty };
             if (wasInitial) {
-                fitAll(true);
+                viewport.scale = newInitial.scale;
+                viewport.tx = newInitial.tx;
+                viewport.ty = newInitial.ty;
+                updateHud();
             }
             drawState(currentState);
         } else {
+            viewport.initialTransform = { scale: 1.0, tx: w / 2, ty: h / 2 };
+            if (wasInitial) {
+                viewport.scale = 1.0;
+                viewport.tx = w / 2;
+                viewport.ty = h / 2;
+                updateHud();
+            }
             drawBackgroundGrid();
         }
     }
@@ -357,6 +424,10 @@ function requestRender() {
 }
 
 function drawBackgroundGrid() {
+    if (!ctx) return;
+    dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || dpr || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
     ctx.fillStyle = '#060911';
     ctx.fillRect(0, 0, cssWidth, cssHeight);
 
@@ -486,10 +557,23 @@ function calcOverlapArea(a, b) {
     return xOverlap * yOverlap;
 }
 
+/**
+ * Canonical DOM identifier for a hierarchy node.
+ *
+ * This is the single place where a canonical node id ("node_3", "entity_42")
+ * is turned into a DOM id, so the hierarchy tree, the node inspector and the
+ * traversal replay all address the very same node.
+ */
+function hierarchyDomId(nodeId) {
+    return 'rtree-item-' + encodeURIComponent(nodeId).replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
 /* ===========================================================================
    Traversal Replay — step-through of the recorded R-tree range query.
+
    The replay always uses the trace that belongs to the scene and query that
-   are currently loaded; a trace that does not match is discarded.
+   are currently loaded. A trace whose identity or references disagree with the
+   loaded scene is rejected instead of being replayed.
    =========================================================================== */
 
 // Display metadata for each recorded event kind.
@@ -503,6 +587,8 @@ const TRACE_EVENT_META = {
     traversal_completed: { tag: 'COMPLETE', glyph: '■' }
 };
 
+const TRACE_EVENT_TYPES = Object.keys(TRACE_EVENT_META);
+
 // Number of log entries kept in the DOM around the current step.
 const TRACE_LOG_WINDOW = 120;
 
@@ -512,14 +598,37 @@ const replay = {
     playing: false,
     timer: null,
     intervalMs: 700,
-    visited: [],          // node MBRs visited so far
-    entered: [],          // branch MBRs entered but not yet visited
-    pruned: [],           // branch MBRs pruned so far
-    accepted: []          // accepted entity records so far
+    visited: [],          // nodes visited so far
+    entered: [],          // branches entered but not visited yet
+    pruned: [],           // branches pruned so far
+    accepted: [],         // entities accepted so far
+    rejected: null        // reason the last candidate trace was rejected
 };
+
+// Set while the replay itself drives the hierarchy selection, so the manual
+// "pause on user selection" behaviour does not fight the replay.
+let replayDrivingSelection = false;
 
 function replayIsActive() {
     return !!(replay.trace && replay.index >= 0);
+}
+
+/**
+ * Read-only view of the replay state (used by the browser harnesses).
+ */
+function getReplayState() {
+    return {
+        hasTrace: !!replay.trace,
+        index: replay.index,
+        total: replay.trace ? replay.trace.totalEvents : 0,
+        playing: replay.playing,
+        truncated: replay.trace ? replay.trace.truncated : false,
+        visited: replay.visited.slice(),
+        entered: replay.entered.slice(),
+        pruned: replay.pruned.slice(),
+        accepted: replay.accepted.slice(),
+        currentEvent: replay.trace && replay.index >= 0 ? replay.trace.events[replay.index] : null
+    };
 }
 
 /**
@@ -548,6 +657,28 @@ function traceAcceptedIds(events) {
 }
 
 /**
+ * Validates a single recorded event. Every field the replay relies on must be
+ * present and well formed before the trace may be used.
+ */
+function isValidTraceEvent(ev) {
+    if (!ev || typeof ev !== 'object' || Array.isArray(ev)) return false;
+    if (TRACE_EVENT_TYPES.indexOf(ev.type) === -1) return false;
+
+    if (!Array.isArray(ev.mbr) || ev.mbr.length !== 4) return false;
+    for (let i = 0; i < 4; i++) {
+        if (typeof ev.mbr[i] !== 'number' || !isFinite(ev.mbr[i])) return false;
+    }
+    if (ev.mbr[0] > ev.mbr[2] || ev.mbr[1] > ev.mbr[3]) return false;
+
+    if (ev.node_id !== null && ev.node_id !== undefined && typeof ev.node_id !== 'string') return false;
+    if (ev.child_node_id !== null && ev.child_node_id !== undefined && typeof ev.child_node_id !== 'string') return false;
+    if (typeof ev.entity_id !== 'number' || !Number.isInteger(ev.entity_id)) return false;
+    if (typeof ev.intersects !== 'boolean') return false;
+
+    return true;
+}
+
+/**
  * Extracts the traversal trace that belongs to the given state.
  * Returns null when the state carries no trace, or when the trace does not
  * belong to the loaded scene / query (stale trace protection).
@@ -556,7 +687,7 @@ function extractTrace(state) {
     if (!state || typeof state !== 'object') return null;
 
     const raw = state.trace;
-    if (!raw || typeof raw !== 'object' || !Array.isArray(raw.events) || raw.events.length === 0) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !Array.isArray(raw.events) || raw.events.length === 0) {
         return null;
     }
 
@@ -569,6 +700,11 @@ function extractTrace(state) {
     // ...and to the query that is currently loaded.
     if (queryId !== undefined && raw.query_id !== queryId) return null;
     if (!boundsEqual(raw.query_bounds, state.query ? state.query.bounds : null)) return null;
+
+    // Every event must be well formed.
+    for (const ev of raw.events) {
+        if (!isValidTraceEvent(ev)) return null;
+    }
 
     // The recorded results must agree with the reported query results.
     if (!raw.truncated) {
@@ -604,14 +740,14 @@ function describeTraceEvent(ev) {
     switch (ev.type) {
         case 'node_visited':
             if (ev.intersects === false) {
-                return `Visiting node #${ev.node_id}. Its MBR does not intersect the query region, so all of its child branches will be pruned.`;
+                return `Visiting ${ev.node_id}. Its MBR does not intersect the query region, so all of its child branches will be pruned.`;
             }
-            return `Visiting node #${ev.node_id}.`;
+            return `Visiting ${ev.node_id}.`;
         case 'mbr_tested':
             if (ev.child_node_id) {
                 return ev.intersects
-                    ? `Testing node #${ev.child_node_id}'s MBR against the query region.`
-                    : `Testing node #${ev.child_node_id}'s MBR against the query region. It does not intersect.`;
+                    ? `Testing ${ev.child_node_id}'s MBR against the query region.`
+                    : `Testing ${ev.child_node_id}'s MBR against the query region. It does not intersect.`;
             }
             return ev.intersects
                 ? `Testing leaf entry #${ev.entity_id}'s MBR against the query region.`
@@ -629,6 +765,68 @@ function describeTraceEvent(ev) {
         default:
             return 'Unknown traversal event.';
     }
+}
+
+/**
+ * Resolves the hierarchy node a recorded event refers to.
+ * Node references use the canonical hierarchy identifiers, entity references
+ * use the canonical numeric entity id.
+ */
+function resolveTraceFocusNode(ev) {
+    if (!ev) return null;
+
+    if ((ev.type === 'entity_accepted' || ev.type === 'leaf_entry_examined') &&
+        ev.entity_id >= 0 && currentHierarchy && currentHierarchy.entityNodeMap) {
+        const entityNode = currentHierarchy.entityNodeMap.get(ev.entity_id);
+        if (entityNode) return entityNode.id;
+    }
+    if (ev.child_node_id) return ev.child_node_id;
+    if (ev.node_id) return ev.node_id;
+    return null;
+}
+
+/**
+ * Expands the collapsed ancestors of a node so it becomes visible in the tree.
+ * The DOM is updated in place — the tree is never re-rendered.
+ */
+function expandAncestorItems(nodeId) {
+    if (!hierarchyTree || !nodeId) return;
+
+    let item = document.getElementById(hierarchyDomId(nodeId));
+    while (item) {
+        const parentItem = item.parentElement ? item.parentElement.closest('.tree-item') : null;
+        if (!parentItem) break;
+
+        if (parentItem.classList.contains('collapsed')) {
+            parentItem.classList.remove('collapsed');
+            parentItem.classList.add('expanded');
+            parentItem.setAttribute('aria-expanded', 'true');
+            const parentId = parentItem.dataset.nodeId;
+            if (parentId) collapsedNodeIds.delete(parentId);
+            const toggleBtn = parentItem.querySelector(':scope > .tree-node-row > .tree-toggle');
+            if (toggleBtn && parentId) toggleBtn.setAttribute('aria-label', 'Collapse ' + parentId);
+        }
+        item = parentItem;
+    }
+}
+
+/**
+ * Selects the hierarchy node a traversal event refers to, expanding its
+ * ancestor path when needed. Returns true when the node could be resolved.
+ */
+function focusHierarchyNode(nodeId) {
+    if (!nodeId || !currentHierarchy || !currentHierarchy.nodeMap) return false;
+    if (!currentHierarchy.nodeMap.has(nodeId)) return false;
+
+    expandAncestorItems(nodeId);
+
+    replayDrivingSelection = true;
+    try {
+        selectHierarchyNode(nodeId);
+    } finally {
+        replayDrivingSelection = false;
+    }
+    return true;
 }
 
 /**
@@ -668,6 +866,7 @@ function recomputeReplayAccumulation() {
 function setReplayIndex(index) {
     if (!replay.trace) {
         replay.index = -1;
+        recomputeReplayAccumulation();
         updateReplayUi();
         requestRender();
         return;
@@ -676,6 +875,11 @@ function setReplayIndex(index) {
     const max = replay.trace.totalEvents - 1;
     replay.index = Math.max(0, Math.min(index, max));
     recomputeReplayAccumulation();
+
+    // Keep the hierarchy panel in sync with the traversal.
+    const current = replay.trace.events[replay.index];
+    focusHierarchyNode(resolveTraceFocusNode(current));
+
     updateReplayUi();
     requestRender();
 }
@@ -725,6 +929,7 @@ function installTraceForState(state) {
     stopReplayTimer();
     replay.trace = null;
     replay.index = -1;
+    replay.rejected = null;
     recomputeReplayAccumulation();
 
     const extracted = extractTrace(state);
@@ -744,6 +949,7 @@ function clearReplayTrace() {
     stopReplayTimer();
     replay.trace = null;
     replay.index = -1;
+    replay.rejected = null;
     recomputeReplayAccumulation();
     updateReplayUi();
     requestRender();
@@ -754,7 +960,7 @@ function clearReplayTrace() {
  */
 function renderTraceLog() {
     if (!traceLog) return;
-    traceLog.textContent = '';
+    clearElementChildren(traceLog);
 
     if (!replay.trace) return;
 
@@ -769,7 +975,7 @@ function renderTraceLog() {
         const meta = TRACE_EVENT_META[ev && ev.type] || { tag: 'EVENT', glyph: '·' };
 
         const item = document.createElement('li');
-        item.className = `trace-log-item trace-log-${ev && ev.type ? ev.type : 'unknown'}`;
+        item.className = 'trace-log-item trace-log-' + (ev && ev.type ? ev.type : 'unknown');
         if (i === replay.index) item.classList.add('is-current');
 
         const indexSpan = document.createElement('span');
@@ -818,12 +1024,12 @@ function updateReplayUi() {
 
     if (traceBadge) {
         traceBadge.textContent = hasTrace ? `${total} EVENTS` : 'NO TRACE';
-        traceBadge.classList.toggle('is-active', hasTrace);
+        traceBadge.className = 'panel-badge' + (hasTrace ? ' is-active' : '');
     }
 
     if (traceStatus) {
         if (hasTrace) {
-            const truncated = replay.trace.truncated ? ' (trace truncated)' : '';
+            const truncated = replay.trace.truncated ? ' — trace truncated, history is incomplete' : '';
             traceStatus.textContent = `Recorded traversal of the current query region${truncated}.`;
             traceStatus.classList.remove('is-empty');
         } else {
@@ -846,7 +1052,7 @@ function updateReplayUi() {
 
     if (traceEventTag) {
         traceEventTag.textContent = currentEvent ? meta.tag : 'IDLE';
-        traceEventTag.className = `trace-event-tag trace-tag-${currentEvent && currentEvent.type ? currentEvent.type : 'idle'}`;
+        traceEventTag.className = 'trace-event-tag trace-tag-' + (currentEvent && currentEvent.type ? currentEvent.type : 'idle');
     }
     if (traceEventText) {
         traceEventText.textContent = currentEvent
@@ -990,9 +1196,9 @@ function drawTraceOverlay() {
             glow: 12
         });
         if (r) {
-            const label = current.entity_id >= 0 && current.entity_id !== null
+            const label = current.entity_id >= 0
                 ? `#${current.entity_id}`
-                : (current.child_node_id ? `N${current.child_node_id}` : `N${current.node_id}`);
+                : (current.child_node_id ? current.child_node_id : (current.node_id || ''));
             drawTraceGlyph(r.x + r.w, r.y + r.h, label, '#ffffff');
         }
     }
@@ -1000,6 +1206,7 @@ function drawTraceOverlay() {
 
 function drawState(state) {
     if (!ctx) return;
+    dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || dpr || 1;
 
     if (!state) {
         if (emptyStateOverlay) emptyStateOverlay.classList.remove('is-hidden');
@@ -1007,6 +1214,7 @@ function drawState(state) {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         drawBackgroundGrid();
         ctx.restore();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         return;
     }
 
@@ -1018,7 +1226,7 @@ function drawState(state) {
     drawBackgroundGrid();
 
     // 1. Internal MBRs (Level 1+) - Supporting directory hierarchy boundaries
-    if (layerInternal && layerInternal.checked && state.rtree && state.rtree.internal_mbrs) {
+    if (layerInternal && layerInternal.checked && state.rtree && Array.isArray(state.rtree.internal_mbrs)) {
         ctx.strokeStyle = 'rgba(203, 213, 225, 0.65)';
         ctx.setLineDash([5, 5]);
         ctx.lineWidth = 1;
@@ -1029,7 +1237,7 @@ function drawState(state) {
     }
 
     // 2. Leaf MBRs (Level 0)
-    if (layerLeaf && layerLeaf.checked && state.rtree && state.rtree.leaf_mbrs) {
+    if (layerLeaf && layerLeaf.checked && state.rtree && Array.isArray(state.rtree.leaf_mbrs)) {
         ctx.strokeStyle = '#c084fc';
         ctx.fillStyle = 'rgba(192, 132, 252, 0.05)';
         ctx.setLineDash([]);
@@ -1043,11 +1251,23 @@ function drawState(state) {
         });
     }
 
+    // 2b. Selected Hierarchy Node MBR Highlight (Translucent Fill)
+    let selectedBox = null;
+    let selectedNode = null;
+    if (selectedNodeId && currentHierarchy && currentHierarchy.nodeMap) {
+        selectedNode = currentHierarchy.nodeMap.get(selectedNodeId);
+        if (selectedNode && selectedNode.bounds) {
+            selectedBox = projectBox(selectedNode.bounds);
+            if (selectedBox) {
+                ctx.fillStyle = 'rgba(0, 200, 230, 0.12)';
+                ctx.fillRect(selectedBox.x, selectedBox.y, selectedBox.w, selectedBox.h);
+            }
+        }
+    }
+
     // 3. Query Region & Obstacle Registration
-    // The active query region stays visible while a traversal is replayed.
     const occupiedBoxes = [];
-    const showQueryRegion = (layerQuery && layerQuery.checked) || replayIsActive();
-    if (showQueryRegion && state.query && state.query.bounds) {
+    if (layerQuery && layerQuery.checked && state.query && state.query.bounds) {
         const r = projectBox(state.query.bounds);
         if (r) {
             ctx.fillStyle = 'rgba(245, 158, 11, 0.09)';
@@ -1090,8 +1310,8 @@ function drawState(state) {
     }
 
     // 4. Active Entities (Deterministic Ordering & Collision Avoidance)
-    if (state.entities) {
-        const resultSet = new Set((state.query && state.query.results) || []);
+    if (Array.isArray(state.entities)) {
+        const resultSet = new Set((state.query && Array.isArray(state.query.results)) ? state.query.results : []);
         ctx.setLineDash([]);
 
         const queryQueue = [];
@@ -1280,19 +1500,94 @@ function drawState(state) {
         ctx.textBaseline = 'alphabetic';
     }
 
-    ctx.restore();
+    // 5. Selected Hierarchy Node MBR Outline, Reticle Accents, and Identification Badge
+    if (selectedBox && selectedNode) {
+        ctx.save();
+        // Ensure box dimensions have a clean minimum visible footprint for degenerate bounds
+        const boxW = Math.max(selectedBox.w, 6);
+        const boxH = Math.max(selectedBox.h, 6);
+        const boxX = selectedBox.x - (boxW - selectedBox.w) / 2;
+        const boxY = selectedBox.y - (boxH - selectedBox.h) / 2;
 
-    // 5. Traversal Replay Highlights (visited nodes, pruned branches, results)
-    ctx.save();
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // Outer halo / glow
+        ctx.strokeStyle = 'rgba(0, 200, 230, 0.35)';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([]);
+        ctx.strokeRect(boxX - 1, boxY - 1, boxW + 2, boxH + 2);
+
+        // Primary precision cyan border
+        ctx.strokeStyle = '#00c8e6';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+        // Precision corner reticle accents
+        const cornerLen = Math.min(10, Math.max(3, Math.min(boxW, boxH) / 3));
+        if (cornerLen > 3) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            // Top-Left
+            ctx.moveTo(boxX, boxY + cornerLen);
+            ctx.lineTo(boxX, boxY);
+            ctx.lineTo(boxX + cornerLen, boxY);
+            // Top-Right
+            ctx.moveTo(boxX + boxW - cornerLen, boxY);
+            ctx.lineTo(boxX + boxW, boxY);
+            ctx.lineTo(boxX + boxW, boxY + cornerLen);
+            // Bottom-Left
+            ctx.moveTo(boxX, boxY + boxH - cornerLen);
+            ctx.lineTo(boxX, boxY + boxH);
+            ctx.lineTo(boxX + cornerLen, boxY + boxH);
+            // Bottom-Right
+            ctx.moveTo(boxX + boxW - cornerLen, boxY + boxH);
+            ctx.lineTo(boxX + boxW, boxY + boxH);
+            ctx.lineTo(boxX + boxW, boxY + boxH - cornerLen);
+            ctx.stroke();
+        }
+
+        // Selection Tag / Badge
+        const typeName = selectedNode.type === 'entity' ? 'ENT' : (selectedNode.type === 'internal' ? 'DIR' : selectedNode.type.toUpperCase());
+        const idName = selectedNode.type === 'entity' ? `#${selectedNode.entityId}` : selectedNode.id;
+        const tagText = `${idName} • ${typeName}`;
+
+        ctx.font = 'bold 9px "JetBrains Mono", Menlo, Consolas, monospace';
+        const tm = ctx.measureText(tagText);
+        const tagW = Math.ceil(tm.width) + 12;
+        const tagH = 16;
+        let tagX = Math.max(2, Math.min(cssWidth - tagW - 2, boxX));
+        let tagY = (boxY - tagH - 3 >= 2) ? (boxY - tagH - 3) : (boxY + 3);
+
+        ctx.fillStyle = 'rgba(6, 12, 22, 0.94)';
+        ctx.strokeStyle = 'rgba(0, 200, 230, 0.75)';
+        ctx.lineWidth = 1;
+        if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(tagX, tagY, tagW, tagH, 2);
+            ctx.fill();
+            ctx.stroke();
+        } else {
+            ctx.fillRect(tagX, tagY, tagW, tagH);
+            ctx.strokeRect(tagX, tagY, tagW, tagH);
+        }
+
+        ctx.fillStyle = '#00c8e6';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(tagText, tagX + 6, tagY + tagH / 2);
+        ctx.restore();
+    }
+
+    // 6. Traversal Replay Highlights (visited nodes, pruned branches, results)
     drawTraceOverlay();
+
     ctx.restore();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Update telemetry bar
-    if (valEntities) valEntities.textContent = (state.entities ? state.entities.length : 0);
-    if (valResults) valResults.textContent = (state.query && state.query.results ? state.query.results.length : 0);
-    if (valLeaf) valLeaf.textContent = (state.rtree && state.rtree.leaf_mbrs ? state.rtree.leaf_mbrs.length : 0);
-    if (valInternal) valInternal.textContent = (state.rtree && state.rtree.internal_mbrs ? state.rtree.internal_mbrs.length : 0);
+    if (valEntities) valEntities.textContent = (Array.isArray(state.entities) ? state.entities.length : 0);
+    if (valResults) valResults.textContent = (state.query && Array.isArray(state.query.results) ? state.query.results.length : 0);
+    if (valLeaf) valLeaf.textContent = (state.rtree && Array.isArray(state.rtree.leaf_mbrs) ? state.rtree.leaf_mbrs.length : 0);
+    if (valInternal) valInternal.textContent = (state.rtree && Array.isArray(state.rtree.internal_mbrs) ? state.rtree.internal_mbrs.length : 0);
 }
 
 /**
@@ -1324,11 +1619,754 @@ async function fetchState() {
             emptyFeedbackText.textContent = `state.json not found on local server. Click "Upload JSON" or run build export.`;
         }
         if (emptyStateOverlay) emptyStateOverlay.classList.remove('is-hidden');
+        if (ctx) {
+            dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || dpr || 1;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
         drawBackgroundGrid();
     } else {
         const entityCount = currentState.entities ? currentState.entities.length : 0;
         const matchCount = (currentState.query && currentState.query.results) ? currentState.query.results.length : 0;
         setStatus(`Loaded ${entityCount} entities (${matchCount} matched query)`, 'success');
+    }
+}
+
+const MAX_HIERARCHY_DEPTH = 100;
+
+/**
+ * Validates and normalizes R-tree hierarchy data from raw simulation state.
+ *
+ * Requirements & Invariants:
+ * - Accepts valid hierarchy data (root, internal, leaf, entity nodes).
+ * - Distinguishes a valid empty hierarchy (root is null or root leaf has 0 children) from malformed data.
+ * - Distinguishes legacy files lacking hierarchy (status: 'unavailable') from corrupted hierarchy (status: 'invalid').
+ * - Validates node IDs, node types, MBR shape and numeric values, child references, parent-child consistency, and entity references.
+ * - Detects duplicate node IDs, dangling child references, cycles, and invalid recursive structures.
+ * - Prevents malformed hierarchy data from causing infinite recursion or throwing exceptions.
+ * - Does not fabricate parent-child relationships when hierarchy data is absent.
+ * - Preserves map usability by providing graceful fallback statuses without breaking map layers.
+ * - Is computed once upon state load, never inside the 60fps animation frame.
+ *
+ * @param {Object} state Simulation state object
+ * @returns {Object} Normalized hierarchy descriptor
+ */
+function validateAndNormalizeHierarchy(state) {
+    if (!state || typeof state !== 'object') {
+        return {
+            status: 'unavailable',
+            error: null,
+            message: 'State object missing or invalid',
+            root: null,
+            nodeMap: new Map(),
+            entityNodeMap: new Map(),
+            totalNodes: 0,
+            internalNodes: 0,
+            leafNodes: 0,
+            entityNodes: 0,
+            maxDepth: 0
+        };
+    }
+
+    if (!state.rtree || typeof state.rtree !== 'object' || Array.isArray(state.rtree) || !('root' in state.rtree) || state.rtree.root === undefined) {
+        return {
+            status: 'unavailable',
+            error: null,
+            message: 'No hierarchy data present in dataset (legacy format)',
+            root: null,
+            nodeMap: new Map(),
+            entityNodeMap: new Map(),
+            totalNodes: 0,
+            internalNodes: 0,
+            leafNodes: 0,
+            entityNodes: 0,
+            maxDepth: 0
+        };
+    }
+
+    const rawRoot = state.rtree.root;
+    if (rawRoot === null) {
+        return {
+            status: 'empty',
+            error: null,
+            message: 'R-tree hierarchy is empty',
+            root: null,
+            nodeMap: new Map(),
+            entityNodeMap: new Map(),
+            totalNodes: 0,
+            internalNodes: 0,
+            leafNodes: 0,
+            entityNodes: 0,
+            maxDepth: 0
+        };
+    }
+
+    if (typeof rawRoot !== 'object' || Array.isArray(rawRoot)) {
+        return {
+            status: 'invalid',
+            error: 'Hierarchy root must be an object or null',
+            root: null,
+            nodeMap: new Map(),
+            entityNodeMap: new Map(),
+            totalNodes: 0,
+            internalNodes: 0,
+            leafNodes: 0,
+            entityNodes: 0,
+            maxDepth: 0
+        };
+    }
+
+    const visitedIds = new Set();
+    const ancestorIds = new Set();
+    const nodeMap = new Map();
+    const entityNodeMap = new Map();
+    let maxDepth = 0;
+    let internalCount = 0;
+    let leafCount = 0;
+    let entityCount = 0;
+
+    function validateBounds(bounds, nodeId) {
+        if (!Array.isArray(bounds) || bounds.length !== 4) {
+            return `Node "${nodeId}" bounds must be an array of 4 numbers`;
+        }
+        for (let i = 0; i < 4; i++) {
+            if (typeof bounds[i] !== 'number' || !Number.isFinite(bounds[i])) {
+                return `Node "${nodeId}" contains non-finite coordinate at bounds[${i}]`;
+            }
+        }
+        if (bounds[0] > bounds[2]) {
+            return `Node "${nodeId}" bounds min_x (${bounds[0]}) > max_x (${bounds[2]})`;
+        }
+        if (bounds[1] > bounds[3]) {
+            return `Node "${nodeId}" bounds min_y (${bounds[1]}) > max_y (${bounds[3]})`;
+        }
+        return null;
+    }
+
+    function processNode(rawNode, expectedParentId, currentDepth, isRoot) {
+        if (!rawNode || typeof rawNode !== 'object' || Array.isArray(rawNode)) {
+            return { error: `Encountered null or non-object node at depth ${currentDepth}` };
+        }
+
+        if (currentDepth > MAX_HIERARCHY_DEPTH) {
+            return { error: `Hierarchy depth exceeded maximum safe limit (${MAX_HIERARCHY_DEPTH})` };
+        }
+
+        const id = rawNode.id;
+        if (typeof id !== 'string' || id.trim() === '') {
+            return { error: `Node at depth ${currentDepth} is missing a valid string ID` };
+        }
+
+        if (ancestorIds.has(id)) {
+            return { error: `Cycle detected: node "${id}" is an ancestor of itself` };
+        }
+
+        if (visitedIds.has(id)) {
+            return { error: `Duplicate node ID: "${id}" appears multiple times in tree` };
+        }
+
+        visitedIds.add(id);
+        ancestorIds.add(id);
+
+        // Check parent-child consistency
+        if (isRoot) {
+            if (rawNode.parent_id !== null && rawNode.parent_id !== undefined) {
+                return { error: `Root node "${id}" cannot specify a non-null parent_id` };
+            }
+        } else {
+            if (rawNode.parent_id !== undefined && rawNode.parent_id !== null && rawNode.parent_id !== expectedParentId) {
+                return { error: `Parent-child inconsistency: node "${id}" has parent_id "${rawNode.parent_id}", expected "${expectedParentId}"` };
+            }
+        }
+
+        // Validate type
+        const type = rawNode.type;
+        const validTypes = ['root', 'internal', 'leaf', 'entity'];
+        if (!validTypes.includes(type)) {
+            return { error: `Node "${id}" has invalid type "${type}"` };
+        }
+
+        if (isRoot && type !== 'root' && type !== 'leaf') {
+            return { error: `Root node "${id}" must have type "root" or "leaf"` };
+        }
+
+        // Validate bounds
+        const boundsErr = validateBounds(rawNode.bounds, id);
+        if (boundsErr) return { error: boundsErr };
+
+        // Process based on type
+        if (type === 'entity') {
+            const entityId = rawNode.entity_id;
+            if (typeof entityId !== 'number' || !Number.isInteger(entityId) || entityId <= 0) {
+                return { error: `Entity node "${id}" must have a positive integer entity_id` };
+            }
+            if (rawNode.children && (!Array.isArray(rawNode.children) || rawNode.children.length > 0)) {
+                return { error: `Entity node "${id}" cannot contain child nodes` };
+            }
+
+            entityCount++;
+            maxDepth = Math.max(maxDepth, currentDepth);
+
+            const normalized = {
+                id,
+                parentId: expectedParentId,
+                type: 'entity',
+                isRoot: false,
+                isLeaf: false,
+                depth: currentDepth,
+                bounds: [rawNode.bounds[0], rawNode.bounds[1], rawNode.bounds[2], rawNode.bounds[3]],
+                entityId,
+                children: []
+            };
+
+            nodeMap.set(id, normalized);
+            entityNodeMap.set(entityId, normalized);
+            ancestorIds.delete(id);
+            return { node: normalized };
+        }
+
+        // Internal, leaf, or root
+        const isLeaf = (type === 'leaf') || (isRoot && rawNode.is_leaf === true);
+        if (isLeaf) {
+            leafCount++;
+        } else {
+            internalCount++;
+        }
+
+        maxDepth = Math.max(maxDepth, currentDepth);
+
+        const rawChildren = rawNode.children;
+        if (!Array.isArray(rawChildren)) {
+            return { error: `Node "${id}" (${type}) must have an array of children` };
+        }
+
+        // Validate children types
+        const normalizedChildren = [];
+        for (let i = 0; i < rawChildren.length; i++) {
+            const rawChild = rawChildren[i];
+            if (!rawChild || typeof rawChild !== 'object') {
+                return { error: `Node "${id}" has dangling/null child reference at index ${i}` };
+            }
+
+            if (isLeaf) {
+                if (rawChild.type !== 'entity') {
+                    return { error: `Leaf node "${id}" cannot have non-entity child "${rawChild.id || i}" (type: ${rawChild.type})` };
+                }
+            } else {
+                if (rawChild.type === 'entity') {
+                    return { error: `Internal node "${id}" cannot directly contain entity child "${rawChild.id || i}"` };
+                }
+            }
+
+            const res = processNode(rawChild, id, currentDepth + 1, false);
+            if (res.error) return res;
+            normalizedChildren.push(res.node);
+        }
+
+        const normalized = {
+            id,
+            parentId: expectedParentId,
+            type: isRoot ? 'root' : (isLeaf ? 'leaf' : 'internal'),
+            isRoot: !!isRoot,
+            isLeaf,
+            depth: currentDepth,
+            bounds: [rawNode.bounds[0], rawNode.bounds[1], rawNode.bounds[2], rawNode.bounds[3]],
+            entityId: null,
+            children: normalizedChildren
+        };
+
+        nodeMap.set(id, normalized);
+        ancestorIds.delete(id);
+        return { node: normalized };
+    }
+
+    try {
+        const rootResult = processNode(rawRoot, null, 0, true);
+        if (rootResult.error) {
+            return {
+                status: 'invalid',
+                error: rootResult.error,
+                root: null,
+                nodeMap: new Map(),
+                entityNodeMap: new Map(),
+                totalNodes: 0,
+                internalNodes: 0,
+                leafNodes: 0,
+                entityNodes: 0,
+                maxDepth: 0
+            };
+        }
+
+        const normRoot = rootResult.node;
+        const totalNodes = visitedIds.size;
+
+        // Check if empty tree (e.g. root leaf with 0 children)
+        const isEmpty = (normRoot.isLeaf && normRoot.children.length === 0);
+
+        return {
+            status: isEmpty ? 'empty' : 'valid',
+            error: null,
+            message: isEmpty ? 'R-tree hierarchy is empty' : 'R-tree hierarchy loaded successfully',
+            root: normRoot,
+            nodeMap,
+            entityNodeMap,
+            totalNodes,
+            internalNodes: internalCount,
+            leafNodes: leafCount,
+            entityNodes: entityCount,
+            maxDepth
+        };
+    } catch (err) {
+        return {
+            status: 'invalid',
+            error: `Unexpected error during hierarchy normalization: ${err.message}`,
+            root: null,
+            nodeMap: new Map(),
+            entityNodeMap: new Map(),
+            totalNodes: 0,
+            internalNodes: 0,
+            leafNodes: 0,
+            entityNodes: 0,
+            maxDepth: 0
+        };
+    }
+}
+
+function getHierarchyState() {
+    return currentHierarchy;
+}
+
+function getSelectedNodeId() {
+    return selectedNodeId;
+}
+
+function getCollapsedNodeIds() {
+    return collapsedNodeIds;
+}
+
+/**
+ * Safely clears all children of a DOM element without using innerHTML.
+ */
+function clearElementChildren(el) {
+    if (!el) return;
+    while (el.firstChild) {
+        el.removeChild(el.firstChild);
+    }
+}
+
+/**
+ * Updates the Node Inspector detail card with attributes of the selected node.
+ */
+function updateNodeDetailCard(node) {
+    if (!nodeDetailCard) return;
+
+    if (!node) {
+        if (nodeDetailId) nodeDetailId.textContent = '—';
+        if (nodeDetailType) nodeDetailType.textContent = '—';
+        if (nodeDetailDepth) nodeDetailDepth.textContent = '—';
+        if (nodeDetailEntries) nodeDetailEntries.textContent = '—';
+        if (nodeDetailBounds) {
+            nodeDetailBounds.textContent = '—';
+            nodeDetailBounds.title = '';
+        }
+        if (nodeDetailEntities) {
+            nodeDetailEntities.textContent = '—';
+            nodeDetailEntities.title = '';
+        }
+        if (btnClearSelection) btnClearSelection.disabled = true;
+        return;
+    }
+
+    if (nodeDetailId) nodeDetailId.textContent = node.id;
+    if (nodeDetailType) nodeDetailType.textContent = node.type.toUpperCase();
+    if (nodeDetailDepth) nodeDetailDepth.textContent = String(node.depth);
+    if (nodeDetailEntries) {
+        nodeDetailEntries.textContent = node.type === 'entity' ? '0' : String(node.children ? node.children.length : 0);
+    }
+    if (nodeDetailBounds) {
+        const b = node.bounds;
+        const bStr = `[${b[0].toFixed(2)}, ${b[1].toFixed(2)}, ${b[2].toFixed(2)}, ${b[3].toFixed(2)}]`;
+        nodeDetailBounds.textContent = bStr;
+        nodeDetailBounds.title = bStr;
+    }
+    if (nodeDetailEntities) {
+        if (node.type === 'entity') {
+            const eStr = `#${node.entityId}`;
+            nodeDetailEntities.textContent = eStr;
+            nodeDetailEntities.title = `Entity ID: ${node.entityId}`;
+        } else if (node.type === 'leaf' || node.isLeaf) {
+            const ids = (node.children || []).map(c => '#' + c.entityId);
+            const displayStr = ids.join(', ') || 'None';
+            nodeDetailEntities.textContent = displayStr;
+            nodeDetailEntities.title = ids.join(', ');
+        } else {
+            // Root or internal directory: collect all descendant entity IDs
+            const ids = [];
+            function collectEntities(curr) {
+                if (!curr) return;
+                if (curr.type === 'entity') {
+                    ids.push('#' + curr.entityId);
+                } else if (curr.children) {
+                    for (let i = 0; i < curr.children.length; i++) {
+                        collectEntities(curr.children[i]);
+                    }
+                }
+            }
+            collectEntities(node);
+            const total = ids.length;
+            const preview = ids.slice(0, 8).join(', ');
+            const displayStr = total > 8 ? `${preview} ... (${total} total)` : (preview || 'None');
+            nodeDetailEntities.textContent = displayStr;
+            nodeDetailEntities.title = ids.join(', ');
+        }
+    }
+    if (btnClearSelection) btnClearSelection.disabled = false;
+}
+
+/**
+ * Selects a node in the hierarchy tree and synchronizes inspector details.
+ */
+function selectHierarchyNode(nodeId) {
+    if (!nodeId) return;
+    const hierarchy = getHierarchyState();
+    if (!hierarchy || !hierarchy.nodeMap) return;
+
+    const node = hierarchy.nodeMap.get(nodeId);
+    if (!node) return;
+
+    // Deselect previously selected row
+    if (hierarchyTree) {
+        const prevSelected = hierarchyTree.querySelector('.tree-node-row.selected');
+        if (prevSelected) {
+            prevSelected.classList.remove('selected');
+            const parentItem = prevSelected.closest('.tree-item');
+            if (parentItem) parentItem.removeAttribute('aria-selected');
+        }
+    }
+
+    selectedNodeId = nodeId;
+
+    // Apply selection in DOM
+    if (hierarchyTree) {
+        const safeId = hierarchyDomId(nodeId);
+        const item = document.getElementById(safeId) || hierarchyTree.querySelector(`[data-node-id="${CSS.escape(nodeId)}"]`);
+        if (item) {
+            const row = item.querySelector(':scope > .tree-node-row');
+            if (row) {
+                row.classList.add('selected');
+                item.setAttribute('aria-selected', 'true');
+            }
+        }
+    }
+
+    updateNodeDetailCard(node);
+    requestRender();
+
+    // A manual selection pauses an auto-advancing replay so the hierarchy
+    // panel and the traversal replay do not fight over the selection.
+    if (!replayDrivingSelection && replay.playing) {
+        stopReplayTimer();
+        updateReplayUi();
+    }
+}
+
+/**
+ * Clears current hierarchy node selection.
+ */
+function clearHierarchySelection() {
+    selectedNodeId = null;
+    if (hierarchyTree) {
+        const prevSelected = hierarchyTree.querySelector('.tree-node-row.selected');
+        if (prevSelected) {
+            prevSelected.classList.remove('selected');
+            const parentItem = prevSelected.closest('.tree-item');
+            if (parentItem) parentItem.removeAttribute('aria-selected');
+        }
+    }
+    updateNodeDetailCard(null);
+    requestRender();
+}
+
+/**
+ * Returns the projected screen-space bounding box { x, y, w, h }
+ * for the currently selected hierarchy node, or null if no node is selected.
+ */
+function getSelectedNodeBox() {
+    if (!selectedNodeId || !currentHierarchy || !currentHierarchy.nodeMap) return null;
+    const node = currentHierarchy.nodeMap.get(selectedNodeId);
+    if (!node || !node.bounds) return null;
+    return projectBox(node.bounds);
+}
+
+/**
+ * Toggles expand/collapse state on a tree item without re-rendering or resetting map state.
+ */
+function toggleNodeExpanded(treeItem) {
+    if (!treeItem) return;
+    const nodeId = treeItem.dataset.nodeId;
+    if (!nodeId) return;
+
+    const isCollapsed = treeItem.classList.contains('collapsed');
+    const toggleBtn = treeItem.querySelector(':scope > .tree-node-row > .tree-toggle');
+
+    if (isCollapsed) {
+        treeItem.classList.remove('collapsed');
+        treeItem.classList.add('expanded');
+        treeItem.setAttribute('aria-expanded', 'true');
+        collapsedNodeIds.delete(nodeId);
+        if (toggleBtn) toggleBtn.setAttribute('aria-label', 'Collapse ' + nodeId);
+    } else {
+        treeItem.classList.remove('expanded');
+        treeItem.classList.add('collapsed');
+        treeItem.setAttribute('aria-expanded', 'false');
+        collapsedNodeIds.add(nodeId);
+        if (toggleBtn) toggleBtn.setAttribute('aria-label', 'Expand ' + nodeId);
+    }
+}
+
+/**
+ * Recursively creates a tree item DOM element using safe DOM APIs.
+ */
+function createTreeNodeElement(node) {
+    const li = document.createElement('li');
+    li.className = 'tree-item tree-item-' + node.type;
+    li.setAttribute('role', 'treeitem');
+    li.dataset.nodeId = node.id;
+    li.id = hierarchyDomId(node.id);
+
+    const row = document.createElement('div');
+    row.className = 'tree-node-row';
+    row.setAttribute('tabindex', '0');
+    row.dataset.nodeId = node.id;
+    if (selectedNodeId === node.id) {
+        row.classList.add('selected');
+        li.setAttribute('aria-selected', 'true');
+    }
+
+    const hasChildren = node.children && node.children.length > 0;
+
+    if (hasChildren) {
+        const isCollapsed = collapsedNodeIds.has(node.id);
+        li.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+        li.classList.add(isCollapsed ? 'collapsed' : 'expanded');
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'tree-toggle';
+        toggleBtn.setAttribute('aria-label', (isCollapsed ? 'Expand ' : 'Collapse ') + node.id);
+
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'tree-toggle-icon');
+        svg.setAttribute('viewBox', '0 0 16 16');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('aria-hidden', 'true');
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M6 3l5 5-5 5');
+        svg.appendChild(path);
+        toggleBtn.appendChild(svg);
+        row.appendChild(toggleBtn);
+    } else {
+        const spacer = document.createElement('span');
+        spacer.className = 'tree-toggle-spacer';
+        if (node.type === 'entity') {
+            const bullet = document.createElement('span');
+            bullet.className = 'tree-leaf-bullet';
+            bullet.setAttribute('aria-hidden', 'true');
+            spacer.appendChild(bullet);
+        }
+        row.appendChild(spacer);
+    }
+
+    // Type Badge
+    const badge = document.createElement('span');
+    badge.className = 'tree-type-badge ' + node.type;
+    badge.textContent = node.type === 'internal' ? 'DIR' : (node.type === 'entity' ? 'ENT' : node.type.toUpperCase());
+    row.appendChild(badge);
+
+    // Node ID
+    const idSpan = document.createElement('span');
+    idSpan.className = 'tree-node-id';
+    idSpan.textContent = node.type === 'entity' ? `#${node.entityId}` : node.id;
+    idSpan.title = node.id;
+    row.appendChild(idSpan);
+
+    // Node Meta
+    const metaSpan = document.createElement('span');
+    metaSpan.className = 'tree-node-meta';
+    if (node.type === 'entity') {
+        metaSpan.textContent = `[${node.bounds[0].toFixed(1)}, ${node.bounds[1].toFixed(1)}]`;
+    } else {
+        const count = node.children ? node.children.length : 0;
+        metaSpan.textContent = `${count} ${count === 1 ? 'entry' : 'entries'}`;
+    }
+    row.appendChild(metaSpan);
+
+    li.appendChild(row);
+
+    // Children
+    if (hasChildren) {
+        const ul = document.createElement('ul');
+        ul.className = 'tree-children';
+        ul.setAttribute('role', 'group');
+        for (let i = 0; i < node.children.length; i++) {
+            ul.appendChild(createTreeNodeElement(node.children[i]));
+        }
+        li.appendChild(ul);
+    }
+
+    return li;
+}
+
+/**
+ * Renders the R-tree hierarchy tree and updates inspector/empty state.
+ * Never called inside the 60fps canvas render loop.
+ */
+function renderHierarchyTree(hierarchy) {
+    if (!hierarchyTree || !hierarchyEmptyState) return;
+
+    // Clear previously rendered tree nodes safely
+    clearElementChildren(hierarchyTree);
+
+    if (!hierarchy || hierarchy.status === 'unavailable') {
+        hierarchyEmptyState.classList.remove('is-hidden');
+        hierarchyEmptyState.style.display = 'flex';
+        if (hierarchyEmptyTitle) hierarchyEmptyTitle.textContent = 'Hierarchy Unavailable';
+        if (hierarchyEmptyDesc) {
+            hierarchyEmptyDesc.textContent = 'This dataset uses a legacy format without hierarchy data. Map layers (MBRs & entities) remain fully operational.';
+        }
+        hierarchyTree.style.display = 'none';
+        hierarchyTree.setAttribute('aria-hidden', 'true');
+        if (hierarchyBadge) {
+            hierarchyBadge.textContent = 'LEGACY';
+            hierarchyBadge.className = 'panel-badge';
+        }
+        clearHierarchySelection();
+        return;
+    }
+
+    if (hierarchy.status === 'invalid') {
+        hierarchyEmptyState.classList.remove('is-hidden');
+        hierarchyEmptyState.style.display = 'flex';
+        if (hierarchyEmptyTitle) hierarchyEmptyTitle.textContent = 'Hierarchy Corrupted';
+        if (hierarchyEmptyDesc) {
+            hierarchyEmptyDesc.textContent = `Invalid hierarchy structure (${hierarchy.error}). Map layers remain operational.`;
+        }
+        hierarchyTree.style.display = 'none';
+        hierarchyTree.setAttribute('aria-hidden', 'true');
+        if (hierarchyBadge) {
+            hierarchyBadge.textContent = 'INVALID';
+            hierarchyBadge.className = 'panel-badge badge-error';
+        }
+        clearHierarchySelection();
+        return;
+    }
+
+    if (hierarchy.status === 'empty' && !hierarchy.root) {
+        hierarchyEmptyState.classList.remove('is-hidden');
+        hierarchyEmptyState.style.display = 'flex';
+        if (hierarchyEmptyTitle) hierarchyEmptyTitle.textContent = 'R-Tree Is Empty';
+        if (hierarchyEmptyDesc) {
+            hierarchyEmptyDesc.textContent = 'The spatial index currently contains no nodes or entities.';
+        }
+        hierarchyTree.style.display = 'none';
+        hierarchyTree.setAttribute('aria-hidden', 'true');
+        if (hierarchyBadge) {
+            hierarchyBadge.textContent = 'EMPTY';
+            hierarchyBadge.className = 'panel-badge';
+        }
+        clearHierarchySelection();
+        return;
+    }
+
+    // Render valid hierarchy (or valid empty root leaf)
+    hierarchyEmptyState.classList.add('is-hidden');
+    hierarchyEmptyState.style.display = 'none';
+    hierarchyTree.style.display = 'flex';
+    hierarchyTree.setAttribute('aria-hidden', 'false');
+
+    if (hierarchyBadge) {
+        const count = hierarchy.totalNodes;
+        hierarchyBadge.textContent = `${count} ${count === 1 ? 'NODE' : 'NODES'}`;
+        hierarchyBadge.className = 'panel-badge';
+    }
+
+    if (hierarchy.root) {
+        const rootElement = createTreeNodeElement(hierarchy.root);
+        hierarchyTree.appendChild(rootElement);
+    }
+
+    // If previously selected node still exists in tree, re-apply selection; otherwise clear stale selection
+    if (selectedNodeId && hierarchy.nodeMap && hierarchy.nodeMap.has(selectedNodeId)) {
+        selectHierarchyNode(selectedNodeId);
+    } else {
+        clearHierarchySelection();
+    }
+}
+
+/**
+ * Keyboard navigation handler for hierarchy tree nodes.
+ */
+function handleTreeKeydown(e) {
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        clearHierarchySelection();
+        return;
+    }
+
+    const row = e.target.closest('.tree-node-row');
+    if (!row) return;
+    const item = row.closest('.tree-item');
+    if (!item) return;
+
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const nodeId = row.dataset.nodeId;
+        if (nodeId) selectHierarchyNode(nodeId);
+    } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const hasChildren = item.querySelector(':scope > .tree-children');
+        if (hasChildren) {
+            if (item.classList.contains('collapsed')) {
+                toggleNodeExpanded(item);
+            } else {
+                const firstChildRow = item.querySelector(':scope > .tree-children > .tree-item > .tree-node-row');
+                if (firstChildRow) firstChildRow.focus();
+            }
+        }
+    } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const hasChildren = item.querySelector(':scope > .tree-children');
+        if (hasChildren && item.classList.contains('expanded')) {
+            toggleNodeExpanded(item);
+        } else {
+            const parentItem = item.parentElement && item.parentElement.closest('.tree-item');
+            if (parentItem) {
+                const parentRow = parentItem.querySelector(':scope > .tree-node-row');
+                if (parentRow) parentRow.focus();
+            }
+        }
+    } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (hierarchyTree) {
+            const allVisibleRows = Array.from(hierarchyTree.querySelectorAll('.tree-node-row')).filter(r => r.offsetParent !== null);
+            const idx = allVisibleRows.indexOf(row);
+            if (idx >= 0 && idx < allVisibleRows.length - 1) {
+                allVisibleRows[idx + 1].focus();
+            }
+        }
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (hierarchyTree) {
+            const allVisibleRows = Array.from(hierarchyTree.querySelectorAll('.tree-node-row')).filter(r => r.offsetParent !== null);
+            const idx = allVisibleRows.indexOf(row);
+            if (idx > 0) {
+                allVisibleRows[idx - 1].focus();
+            }
+        }
     }
 }
 
@@ -1340,22 +2378,60 @@ function handleLoadedState(state, source = 'file') {
             emptyFeedback.className = 'empty-state-feedback error';
             emptyFeedbackText.textContent = 'Invalid State Format: JSON root is not an object.';
         }
+        currentHierarchy = null;
+        clearHierarchySelection();
+        renderHierarchyTree(null);
+        installTraceForState(null);
         return;
     }
 
     currentState = state;
+
+    // Validate and normalize hierarchy once per state load (never inside 60fps render loop)
+    currentHierarchy = validateAndNormalizeHierarchy(state);
+    state.rtreeHierarchy = currentHierarchy;
+
+    // Check if previously selected node still exists in newly loaded hierarchy; clear stale selection safely
+    const prevSelectedId = selectedNodeId;
+    if (prevSelectedId && currentHierarchy && currentHierarchy.nodeMap && currentHierarchy.nodeMap.has(prevSelectedId)) {
+        selectedNodeId = prevSelectedId;
+    } else {
+        selectedNodeId = null;
+    }
+
+    collapsedNodeIds.clear();
+    renderHierarchyTree(currentHierarchy);
+
+    // The recorded traversal belongs to this scene and this query. Any trace
+    // held for the previous scene is discarded before the new one is
+    // installed, so a stale trace can never be replayed.
+    installTraceForState(state);
+
     if (emptyStateOverlay) emptyStateOverlay.classList.add('is-hidden');
     if (emptyFeedback) emptyFeedback.style.display = 'none';
 
-    // Any trace held for the previous scene is discarded before the trace of
-    // the new scene is installed, so a stale trace can never be replayed.
-    installTraceForState(state);
+    const entityCount = Array.isArray(state.entities) ? state.entities.length : 0;
+    const matchCount = (state.query && Array.isArray(state.query.results)) ? state.query.results.length : 0;
 
-    const entityCount = state.entities ? state.entities.length : 0;
-    const matchCount = (state.query && state.query.results) ? state.query.results.length : 0;
+    let hierMsg = '';
+    if (currentHierarchy.status === 'valid') {
+        hierMsg = ` | Tree: ${currentHierarchy.totalNodes} nodes (depth ${currentHierarchy.maxDepth})`;
+    } else if (currentHierarchy.status === 'empty') {
+        hierMsg = ' | Tree: empty';
+    } else if (currentHierarchy.status === 'unavailable') {
+        hierMsg = ' | Tree: unavailable';
+    } else if (currentHierarchy.status === 'invalid') {
+        hierMsg = ` | Tree: invalid (${currentHierarchy.error})`;
+        console.warn(`[KESTREL Hierarchy] ${currentHierarchy.error}`);
+    }
 
-    setStatus(`Loaded ${entityCount} entities (${matchCount} matched query) from ${source}`, 'success');
-    if (missionClock) missionClock.textContent = `SYNC: OK (${entityCount} ENTITIES)`;
+    setStatus(`Loaded ${entityCount} entities (${matchCount} matched query)${hierMsg} from ${source}`, 'success');
+    if (missionClock) {
+        const treeTag = currentHierarchy.status === 'valid'
+            ? ` | TREE: ${currentHierarchy.totalNodes} NODES`
+            : (currentHierarchy.status === 'invalid' ? ' | TREE: INVALID' : '');
+        missionClock.textContent = `SYNC: OK (${entityCount} ENTITIES${treeTag})`;
+    }
 
     fitAll(true);
     drawState(currentState);
@@ -1450,16 +2526,20 @@ if (typeof document !== 'undefined') {
     }
 
     if (canvas) {
-        // Pointer event navigation (drag-to-pan)
         canvas.addEventListener('pointerdown', (e) => {
             if (e.button !== 0) return;
             viewport.isPanning = true;
             viewport.panStartX = e.clientX;
             viewport.panStartY = e.clientY;
+            activePointerId = e.pointerId;
+            hasActiveCapture = false;
             canvas.classList.add('panning');
             try {
                 canvas.setPointerCapture(e.pointerId);
-            } catch (_) {}
+                hasActiveCapture = canvas.hasPointerCapture ? canvas.hasPointerCapture(e.pointerId) : true;
+            } catch (_) {
+                hasActiveCapture = false;
+            }
         });
 
         canvas.addEventListener('pointermove', (e) => {
@@ -1468,6 +2548,10 @@ if (typeof document !== 'undefined') {
             const sy = e.clientY - rect.top;
 
             if (viewport.isPanning) {
+                if (typeof e.buttons === 'number' && (e.buttons & 1) === 0) {
+                    endPan(e);
+                    return;
+                }
                 const dx = e.clientX - viewport.panStartX;
                 const dy = e.clientY - viewport.panStartY;
                 viewport.panStartX = e.clientX;
@@ -1488,24 +2572,23 @@ if (typeof document !== 'undefined') {
             }
         });
 
-        const endPan = (e) => {
-            if (viewport.isPanning) {
-                viewport.isPanning = false;
-                canvas.classList.remove('panning');
-                try {
-                    canvas.releasePointerCapture(e.pointerId);
-                } catch (_) {}
-            }
-        };
-
         canvas.addEventListener('pointerup', endPan);
         canvas.addEventListener('pointercancel', endPan);
+        canvas.addEventListener('lostpointercapture', endPan);
 
-        canvas.addEventListener('pointerleave', () => {
+        canvas.addEventListener('pointerleave', (e) => {
             if (!viewport.isPanning && valCoords) {
                 valCoords.textContent = '—';
+            } else if (viewport.isPanning && !hasActiveCapture) {
+                // If pointer capture is not holding, leaving the canvas terminates the pan
+                endPan(e);
+                if (valCoords) valCoords.textContent = '—';
             }
         });
+
+        // Global fallback listeners registered ONCE to catch pointer release/cancel outside canvas
+        window.addEventListener('pointerup', endPan);
+        window.addEventListener('pointercancel', endPan);
 
         // Cursor-centered mouse-wheel zoom
         canvas.addEventListener('wheel', (e) => {
@@ -1535,12 +2618,14 @@ if (typeof document !== 'undefined') {
     }
     if (btnTracePrev) {
         btnTracePrev.addEventListener('click', () => {
+            if (!replay.trace) return;
             stopReplayTimer();
             setReplayIndex(replay.index - 1);
         });
     }
     if (btnTraceNext) {
         btnTraceNext.addEventListener('click', () => {
+            if (!replay.trace) return;
             stopReplayTimer();
             setReplayIndex(replay.index + 1);
         });
@@ -1558,6 +2643,7 @@ if (typeof document !== 'undefined') {
     }
     if (btnTraceRestart) {
         btnTraceRestart.addEventListener('click', () => {
+            if (!replay.trace) return;
             stopReplayTimer();
             setReplayIndex(0);
         });
@@ -1579,6 +2665,7 @@ if (typeof document !== 'undefined') {
 
     window.addEventListener('keydown', (e) => {
         if (isEditable(e.target) || isEditable(document.activeElement)) return;
+        if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.hierarchy-dock')) return;
         if (e.ctrlKey || e.metaKey || e.altKey) return;
 
         if (e.code === 'Space' || e.key === ' ') {
@@ -1598,11 +2685,10 @@ if (typeof document !== 'undefined') {
             resetView();
         } else if (e.key === 'R') {
             // Shift+R restarts the traversal replay.
+            if (!replay.trace) return;
             e.preventDefault();
-            if (replay.trace) {
-                stopReplayTimer();
-                setReplayIndex(0);
-            }
+            stopReplayTimer();
+            setReplayIndex(0);
         } else if (e.key === 'n' || e.key === 'N') {
             // Next recorded traversal event.
             if (!replay.trace) return;
@@ -1660,6 +2746,7 @@ if (typeof document !== 'undefined') {
     window.addEventListener('blur', () => {
         isSpaceHeld = false;
         if (canvas) canvas.classList.remove('space-pan-active');
+        endPan();
     });
 
     // Layer toggle handlers — preserves existing viewport
@@ -1671,6 +2758,30 @@ if (typeof document !== 'undefined') {
         }
     });
 
+    // R-Tree Hierarchy Tree interaction events
+    if (hierarchyTree) {
+        hierarchyTree.addEventListener('click', (e) => {
+            const toggleBtn = e.target.closest('.tree-toggle');
+            if (toggleBtn) {
+                e.stopPropagation();
+                const treeItem = toggleBtn.closest('.tree-item');
+                if (treeItem) toggleNodeExpanded(treeItem);
+                return;
+            }
+            const nodeRow = e.target.closest('.tree-node-row');
+            if (nodeRow) {
+                const nodeId = nodeRow.dataset.nodeId;
+                if (nodeId) selectHierarchyNode(nodeId);
+            }
+        });
+
+        hierarchyTree.addEventListener('keydown', handleTreeKeydown);
+    }
+
+    if (btnClearSelection) {
+        btnClearSelection.addEventListener('click', clearHierarchySelection);
+    }
+
     // Window and container resizing
     window.addEventListener('resize', resizeCanvas);
     if (typeof ResizeObserver !== 'undefined' && canvas) {
@@ -1679,6 +2790,31 @@ if (typeof document !== 'undefined') {
         });
         ro.observe(canvas.parentElement || canvas);
     }
+
+    // Dynamic DPR / browser zoom change listener
+    let dprMediaQuery = null;
+    const onDprChange = () => {
+        setupDprListener();
+        resizeCanvas();
+    };
+    function setupDprListener() {
+        if (typeof window === 'undefined' || !window.matchMedia) return;
+        if (dprMediaQuery) {
+            if (dprMediaQuery.removeEventListener) {
+                dprMediaQuery.removeEventListener('change', onDprChange);
+            } else if (dprMediaQuery.removeListener) {
+                dprMediaQuery.removeListener(onDprChange);
+            }
+        }
+        const curDpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+        dprMediaQuery = window.matchMedia(`(resolution: ${curDpr}dppx)`);
+        if (dprMediaQuery.addEventListener) {
+            dprMediaQuery.addEventListener('change', onDprChange);
+        } else if (dprMediaQuery.addListener) {
+            dprMediaQuery.addListener(onDprChange);
+        }
+    }
+    setupDprListener();
 
     // Initial startup
     const startApp = () => {
@@ -1694,6 +2830,39 @@ if (typeof document !== 'undefined') {
     }
 }
 
+if (typeof window !== 'undefined') {
+    window.resizeCanvas = resizeCanvas;
+    window.fitAll = fitAll;
+    window.resetView = resetView;
+    window.drawBackgroundGrid = drawBackgroundGrid;
+    window.drawState = drawState;
+    window.endPan = endPan;
+    window.validateAndNormalizeHierarchy = validateAndNormalizeHierarchy;
+    window.getHierarchyState = getHierarchyState;
+    window.renderHierarchyTree = renderHierarchyTree;
+    window.selectHierarchyNode = selectHierarchyNode;
+    window.clearHierarchySelection = clearHierarchySelection;
+    window.toggleNodeExpanded = toggleNodeExpanded;
+    window.updateNodeDetailCard = updateNodeDetailCard;
+    window.getSelectedNodeId = getSelectedNodeId;
+    window.getSelectedNodeBox = getSelectedNodeBox;
+    window.getCollapsedNodeIds = getCollapsedNodeIds;
+    window.hierarchyDomId = hierarchyDomId;
+    window.getReplayState = getReplayState;
+    window.extractTrace = extractTrace;
+    window.describeTraceEvent = describeTraceEvent;
+    window.isValidTraceEvent = isValidTraceEvent;
+    window.traceAcceptedIds = traceAcceptedIds;
+    window.boundsEqual = boundsEqual;
+    window.setReplayIndex = setReplayIndex;
+    window.stopReplayTimer = stopReplayTimer;
+    window.startReplayPlayback = startReplayPlayback;
+    window.installTraceForState = installTraceForState;
+    window.clearReplayTrace = clearReplayTrace;
+    window.resolveTraceFocusNode = resolveTraceFocusNode;
+    window.focusHierarchyNode = focusHierarchyNode;
+}
+
 // Module exports for unit testing in Node/CommonJS environments if present
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -1705,17 +2874,35 @@ if (typeof module !== 'undefined' && module.exports) {
         zoomAt,
         fitAll,
         resetView,
+        resizeCanvas,
+        drawBackgroundGrid,
+        drawState,
+        endPan,
         calcOverlapArea,
-        replay,
-        boundsEqual,
-        traceAcceptedIds,
+        validateAndNormalizeHierarchy,
+        getHierarchyState,
+        handleLoadedState,
+        renderHierarchyTree,
+        selectHierarchyNode,
+        clearHierarchySelection,
+        toggleNodeExpanded,
+        updateNodeDetailCard,
+        getSelectedNodeId,
+        getSelectedNodeBox,
+        getCollapsedNodeIds,
+        hierarchyDomId,
+        getReplayState,
         extractTrace,
         describeTraceEvent,
-        recomputeReplayAccumulation,
+        isValidTraceEvent,
+        traceAcceptedIds,
+        boundsEqual,
         setReplayIndex,
         stopReplayTimer,
         startReplayPlayback,
         installTraceForState,
-        clearReplayTrace
+        clearReplayTrace,
+        resolveTraceFocusNode,
+        focusHierarchyNode
     };
 }

@@ -242,16 +242,39 @@ def export_and_validate_state() -> bool:
         entities = data.get("entities", [])
         rtree = data.get("rtree", {})
         query = data.get("query", {})
+        trace = data.get("trace", {})
 
         leaf_mbrs = rtree.get("leaf_mbrs", [])
         internal_mbrs = rtree.get("internal_mbrs", [])
         query_results = query.get("results", [])
-        trace = data.get("trace", {})
         trace_events = trace.get("events", []) if isinstance(trace, dict) else []
 
         if not isinstance(entities, list) or len(entities) == 0:
             log_err("State validation failed: entities list is empty or invalid.")
             return False
+
+        # The hierarchy is the authoritative scene structure and must be present.
+        if "root" not in rtree:
+            log_err("State validation failed: rtree.root hierarchy is missing.")
+            return False
+
+        # The traversal trace must belong to the exported scene and query.
+        if trace_events:
+            if trace.get("scene_id") != data.get("scene_id"):
+                log_err("State validation failed: trace scene_id does not match the scene.")
+                return False
+            if trace.get("query_id") != query.get("query_id"):
+                log_err("State validation failed: trace query_id does not match the query.")
+                return False
+            if trace.get("query_bounds") != query.get("bounds"):
+                log_err("State validation failed: trace query bounds do not match the query.")
+                return False
+            accepted = sorted(
+                e.get("entity_id") for e in trace_events if e.get("type") == "entity_accepted"
+            )
+            if accepted != sorted(query_results):
+                log_err("State validation failed: trace results disagree with the query results.")
+                return False
 
         log(
             "VALIDATE",

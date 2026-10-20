@@ -32,7 +32,8 @@ struct RTreeNode {
     std::vector<RTreeEntry> entries;
 
     // Stable identifier used to reference this node from traversal traces.
-    // Zero means "not assigned" (only possible for manually constructed nodes).
+    // Identifiers are 1-based; zero is reserved as "no reference" and is only
+    // possible for manually constructed nodes that were never installed in a tree.
     std::size_t id;
 
     explicit RTreeNode(bool leaf, RTreeNode* p = nullptr, std::size_t node_id = 0)

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KESTREL — Traversal Replay Tests</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0e17;
+            color: #f0f4fc;
+            padding: 30px;
+            margin: 0;
+        }
+        h1 { font-size: 20px; margin-bottom: 8px; color: #00b0ff; }
+        p { color: #9ab0d3; font-size: 13px; margin-bottom: 24px; }
+        .summary-card {
+            background: #121826; border: 1px solid #24344d; border-radius: 8px;
+            padding: 16px 20px; margin-bottom: 24px; display: inline-flex; gap: 30px;
+        }
+        .stat { display: flex; flex-direction: column; gap: 4px; }
+        .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #5e7399; }
+        .stat-val { font-size: 22px; font-weight: 700; font-family: monospace; }
+        .stat-val.passed { color: #00e676; }
+        .stat-val.failed { color: #ff1744; }
+        table {
+            width: 100%; max-width: 900px; border-collapse: collapse;
+            background: #121826; border: 1px solid #24344d; border-radius: 8px; overflow: hidden;
+        }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #1d2a3f; font-size: 12.5px; }
+        th { background: #0e1524; color: #5e7399; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge { font-weight: 700; font-size: 11px; }
+        .badge.pass { color: #00e676; }
+        .badge.fail { color: #ff1744; }
+    </style>
+</head>
+<body>
+    <h1>KESTREL — Traversal Replay Test Suite</h1>
+    <p>Validates the recorded R-tree traversal replay: trace validation, step-through controls,
+       hierarchy synchronisation and stale-trace rejection.</p>
+
+    <div class="summary-card">
+        <div class="stat"><span class="stat-label">Total</span><span class="stat-val" id="totalCount">0</span></div>
+        <div class="stat"><span class="stat-label">Passed</span><span class="stat-val passed" id="passCount">0</span></div>
+        <div class="stat"><span class="stat-label">Failed</span><span class="stat-val failed" id="failCount">0</span></div>
+    </div>
+
+    <!-- Hidden DOM elements that satisfy the app.js requirements -->
+    <div style="display:none;">
+        <canvas id="radar" width="800" height="600"></canvas>
+        <span id="status"></span><span id="statusDot"></span><span id="missionClock"></span>
+        <button id="btnLoad"></button><button id="btnBrowse"></button><input type="file" id="fileInput">
+        <button id="btnZoomIn"></button><button id="btnZoomOut"></button>
+        <button id="btnFitAll"></button><button id="btnResetView"></button>
+        <span id="valZoom"></span><span id="valCoords"></span>
+        <input type="checkbox" id="layerEntities" checked>
+        <input type="checkbox" id="layerResults" checked>
+        <input type="checkbox" id="layerLeaf" checked>
+        <input type="checkbox" id="layerInternal" checked>
+        <input type="checkbox" id="layerQuery" checked>
+        <span id="valEntities"></span><span id="valResults"></span>
+        <span id="valLeaf"></span><span id="valInternal"></span>
+        <div id="hierarchyDock"></div><span id="hierarchyBadge"></span>
+        <div id="hierarchyTreeContainer"><ul id="hierarchyTree"></ul></div>
+        <div id="hierarchyEmptyState"></div><span id="hierarchyEmptyTitle"></span><span id="hierarchyEmptyDesc"></span>
+        <div id="nodeDetailCard"></div><button id="btnClearSelection"></button>
+        <span id="nodeDetailId"></span><span id="nodeDetailType"></span><span id="nodeDetailDepth"></span>
+        <span id="nodeDetailEntries"></span><span id="nodeDetailBounds"></span><span id="nodeDetailEntities"></span>
+        <span id="traceBadge"></span><span id="traceStatus"></span><span id="traceStep"></span>
+        <span id="traceProgressFill"></span><span id="traceEventTag"></span><span id="traceEventText"></span>
+        <ol id="traceLog"></ol>
+        <button id="btnTraceStart"></button><button id="btnTracePrev"></button><button id="btnTraceNext"></button>
+        <button id="btnTracePlay"></button><button id="btnTracePause"></button>
+        <button id="btnTraceRestart"></button><button id="btnTraceClear"></button>
+    </div>
+
+    <table>
+        <thead><tr><th style="width:50px;">#</th><th>Test Case Description</th><th style="width:100px;">Status</th><th>Details</th></tr></thead>
+        <tbody id="testTableBody"></tbody>
+    </table>
+
+    <script src="app.js"></script>
+    <script>
+        const results = [];
+        let passed = 0;
+        let failed = 0;
+
+        function assert(desc, condition, details = '') {
+            const ok = Boolean(condition);
+            if (ok) passed++; else failed++;
+            results.push({ desc, ok, details });
+        }
+
+        // --- Fixtures ---------------------------------------------------------
+        // A scene with a nested hierarchy (node_0 -> node_1, node_2) and a
+        // recorded traversal that visits the root, prunes node_1 and accepts
+        // entity 42.
+        function buildScene() {
+            return {
+                scene_id: 777,
+                entities: [
+                    { id: 42, bounds: [0, 0, 10, 10] },
+                    { id: 43, bounds: [50, 50, 60, 60] }
+                ],
+                rtree: {
+                    height: 2,
+                    size: 2,
+                    internal_mbrs: [[0, 0, 60, 60]],
+                    leaf_mbrs: [[0, 0, 10, 10], [50, 50, 60, 60]],
+                    root: {
+                        id: 'node_0', parent_id: null, type: 'root', is_root: true, is_leaf: false,
+                        depth: 0, bounds: [0, 0, 60, 60],
+                        children: [
+                            {
+                                id: 'node_1', parent_id: 'node_0', type: 'leaf', is_root: false, is_leaf: true,
+                                depth: 1, bounds: [0, 0, 10, 10],
+                                children: [
+                                    { id: 'entity_42', parent_id: 'node_1', entity_id: 42, type: 'entity',
+                                      bounds: [0, 0, 10, 10] }
+                                ]
+                            },
+                            {
+                                id: 'node_2', parent_id: 'node_0', type: 'leaf', is_root: false, is_leaf: true,
+                                depth: 1, bounds: [50, 50, 60, 60],
+                                children: [
+                                    { id: 'entity_43', parent_id: 'node_2', entity_id: 43, type: 'entity',
+                                      bounds: [50, 50, 60, 60] }
+                                ]
+                            }
+                        ]
+                    }
+                },
+                query: { query_id: 9, bounds: [0, 0, 20, 20], results: [42] },
+                trace: {
+                    scene_id: 777,
+                    query_id: 9,
+                    query_bounds: [0, 0, 20, 20],
+                    truncated: false,
+                    total_events: 7,
+                    events: [
+                        { type: 'node_visited', node_id: 'node_0', child_node_id: null, entity_id: -1,
+                          mbr: [0, 0, 60, 60], intersects: true },
+                        { type: 'mbr_tested', node_id: 'node_0', child_node_id: 'node_1', entity_id: -1,
+                          mbr: [0, 0, 10, 10], intersects: true },
+                        { type: 'child_entered', node_id: 'node_0', child_node_id: 'node_1', entity_id: -1,
+                          mbr: [0, 0, 10, 10], intersects: true },
+                        { type: 'mbr_tested', node_id: 'node_0', child_node_id: 'node_2', entity_id: -1,
+                          mbr: [50, 50, 60, 60], intersects: false },
+                        { type: 'branch_pruned', node_id: 'node_0', child_node_id: 'node_2', entity_id: -1,
+                          mbr: [50, 50, 60, 60], intersects: false },
+                        { type: 'node_visited', node_id: 'node_1', child_node_id: null, entity_id: -1,
+                          mbr: [0, 0, 10, 10], intersects: true },
+                        { type: 'mbr_tested', node_id: 'node_1', child_node_id: null, entity_id: 42,
+                          mbr: [0, 0, 10, 10], intersects: true },
+                        { type: 'leaf_entry_examined', node_id: 'node_1', child_node_id: null, entity_id: 42,
+                          mbr: [0, 0, 10, 10], intersects: true },
+                        { type: 'entity_accepted', node_id: 'node_1', child_node_id: null, entity_id: 42,
+                          mbr: [0, 0, 10, 10], intersects: true },
+                        { type: 'traversal_completed', node_id: null, child_node_id: null, entity_id: -1,
+                          mbr: [0, 0, 0, 0], intersects: false }
+                    ]
+                }
+            };
+        }
+
+        const scene = buildScene();
+
+        // --- Test 1: canonical identity helpers ------------------------------
+        assert('hierarchyDomId produces the canonical DOM id for a node',
+            hierarchyDomId('node_0') === 'rtree-item-node_0', hierarchyDomId('node_0'));
+        assert('hierarchyDomId produces the canonical DOM id for an entity',
+            hierarchyDomId('entity_42') === 'rtree-item-entity_42', hierarchyDomId('entity_42'));
+
+        // --- Test 2: trace validation ---------------------------------------
+        assert('extractTrace accepts a matching trace', extractTrace(scene) !== null);
+        assert('extractTrace rejects a state without a trace', extractTrace({ scene_id: 777 }) === null);
+        assert('extractTrace rejects a trace with no events',
+            extractTrace({ scene_id: 777, trace: { scene_id: 777, events: [] } }) === null);
+
+        const staleScene = buildScene();
+        staleScene.scene_id = 888;
+        assert('extractTrace rejects a trace of another scene', extractTrace(staleScene) === null);
+
+        const staleQuery = buildScene();
+        staleQuery.trace.query_id = 1234;
+        assert('extractTrace rejects a trace of another query', extractTrace(staleQuery) === null);
+
+        const staleBounds = buildScene();
+        staleBounds.trace.query_bounds = [1, 1, 2, 2];
+        assert('extractTrace rejects a trace with different query bounds', extractTrace(staleBounds) === null);
+
+        const wrongResults = buildScene();
+        wrongResults.query.results = [42, 43];
+        assert('extractTrace rejects a trace whose results disagree with the query',
+            extractTrace(wrongResults) === null);
+
+        const malformed = buildScene();
+        malformed.trace.events[0].mbr = 'not-a-box';
+        assert('extractTrace rejects a malformed event', extractTrace(malformed) === null);
+
+        const badType = buildScene();
+        badType.trace.events[0].type = 'fabricated_event';
+        assert('extractTrace rejects an unknown event type', extractTrace(badType) === null);
+
+        // --- Test 3: event validation ---------------------------------------
+        assert('isValidTraceEvent accepts a well formed event',
+            isValidTraceEvent(scene.trace.events[0]) === true);
+        assert('isValidTraceEvent rejects a non-finite coordinate',
+            isValidTraceEvent({ type: 'node_visited', mbr: [NaN, 0, 1, 1], node_id: 'node_0',
+                child_node_id: null, entity_id: -1, intersects: true }) === false);
+        assert('isValidTraceEvent rejects inverted bounds',
+            isValidTraceEvent({ type: 'node_visited', mbr: [10, 0, 1, 1], node_id: 'node_0',
+                child_node_id: null, entity_id: -1, intersects: true }) === false);
+
+        // --- Test 4: explanations --------------------------------------------
+        assert('a node visit is explained with the canonical id',
+            describeTraceEvent(scene.trace.events[0]) === 'Visiting node_0.',
+            describeTraceEvent(scene.trace.events[0]));
+        assert('a pruned branch is explained',
+            describeTraceEvent(scene.trace.events[4]) === 'The MBR does not intersect the query; this branch is pruned.');
+        assert('a descended branch is explained',
+            describeTraceEvent(scene.trace.events[2]) === 'The MBR intersects the query; traversal continues into its children.');
+        assert('a leaf match is explained',
+            describeTraceEvent(scene.trace.events[7]) === 'This leaf entry matches the query.');
+        assert('an accepted entity is explained',
+            describeTraceEvent(scene.trace.events[8]) === 'Entity #42 accepted as a query result.');
+        assert('the completion marker is explained',
+            describeTraceEvent(scene.trace.events[9]) === 'Traversal completed.');
+
+        // --- Test 5: installation and step-through --------------------------
+        handleLoadedState(scene, 'test');
+        let replayState = getReplayState();
+        assert('the trace is installed for the loaded scene', replayState.hasTrace === true);
+        assert('the first event is selected', replayState.index === 0, String(replayState.index));
+        assert('the total event count is reported', replayState.total === scene.trace.events.length);
+        assert('the recorded results match the query results',
+            traceAcceptedIds(scene.trace.events).join(',') === scene.query.results.join(','));
+
+        setReplayIndex(3);
+        replayState = getReplayState();
+        assert('stepping forward advances the index', replayState.index === 3, String(replayState.index));
+        assert('the visited node is accumulated', replayState.visited.length === 1);
+        assert('the entered branch is accumulated', replayState.entered.length === 1);
+        assert('no branch is pruned before the prune event', replayState.pruned.length === 0);
+
+        setReplayIndex(4);
+        replayState = getReplayState();
+        assert('the pruned branch is accumulated after the prune event', replayState.pruned.length === 1);
+        assert('a pruned branch is not counted as a visited node',
+            replayState.visited.every(v => v.nodeId !== 'node_2'));
+        assert('a pruned branch is not counted as an entered branch',
+            replayState.entered.every(e => e.nodeId !== 'node_2'));
+
+        setReplayIndex(scene.trace.events.length - 1);
+        replayState = getReplayState();
+        assert('the accepted entity is accumulated', replayState.accepted.length === 1);
+        assert('the accepted entity is the query result', replayState.accepted[0].entityId === 42);
+
+        // --- Test 6: hierarchy synchronisation ------------------------------
+        setReplayIndex(1);
+        assert('the hierarchy selection follows the traversal event',
+            getSelectedNodeId() === 'node_1', String(getSelectedNodeId()));
+        assert('the node inspector shows the traversal node',
+            document.getElementById('nodeDetailId').textContent === 'node_1');
+
+        setReplayIndex(8);
+        assert('an accepted entity is linked to its hierarchy entity node',
+            getSelectedNodeId() === 'entity_42', String(getSelectedNodeId()));
+
+        // --- Test 7: clamping and clearing ----------------------------------
+        setReplayIndex(-10);
+        assert('the index is clamped at the first event', getReplayState().index === 0);
+        setReplayIndex(9999);
+        assert('the index is clamped at the last event',
+            getReplayState().index === scene.trace.events.length - 1);
+
+        clearReplayTrace();
+        replayState = getReplayState();
+        assert('clear discards the trace', replayState.hasTrace === false);
+        assert('clear resets the index', replayState.index === -1);
+        assert('clear removes the accumulated highlights',
+            replayState.visited.length === 0 && replayState.pruned.length === 0 && replayState.accepted.length === 0);
+
+        // --- Test 8: a new scene invalidates the previous trace --------------
+        handleLoadedState(buildScene(), 'test');
+        assert('a new scene installs its own trace', getReplayState().hasTrace === true);
+        handleLoadedState({ scene_id: 777, entities: [], query: { query_id: 9, bounds: [0, 0, 20, 20], results: [] } }, 'test');
+        assert('a scene without a trace clears the replay', getReplayState().hasTrace === false);
+        assert('a scene without a trace resets the step index', getReplayState().index === -1);
+
+        // --- Render Test Table ----------------------------------------------
+        document.getElementById('totalCount').textContent = results.length;
+        document.getElementById('passCount').textContent = passed;
+        document.getElementById('failCount').textContent = failed;
+
+        const tbody = document.getElementById('testTableBody');
+        results.forEach((res, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td>${res.desc}</td>
+                <td><span class="badge ${res.ok ? 'pass' : 'fail'}">${res.ok ? 'PASS' : 'FAIL'}</span></td>
+                <td style="color: ${res.ok ? '#5e7399' : '#ff1744'}; font-family: monospace; font-size: 11px;">${res.details || 'OK'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        console.log(`[KESTREL TRAVERSAL TEST SUITE] Complete: ${passed} passed, ${failed} failed out of ${results.length}.`);
+
+        if (typeof dump === 'function') {
+            dump('\n=== KESTREL TRAVERSAL TEST RESULTS ===\n');
+            results.forEach((r, idx) => {
+                dump(`[${r.ok ? 'PASS' : 'FAIL'}] #${idx + 1} ${r.desc} - ${r.details || 'OK'}\n`);
+            });
+            dump(`=== TOTAL: ${results.length}, PASSED: ${passed}, FAILED: ${failed} ===\n\n`);
+        }
+    </script>
+</body>
+</html>

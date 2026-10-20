@@ -27,6 +27,8 @@ struct RTreeTraceEvent {
     RTreeTraceEventType type = RTreeTraceEventType::TraversalCompleted;
 
     // Node whose entries were being examined when the event was recorded.
+    // Zero means "no reference" — node identifiers are 1-based, so zero is
+    // never a valid node identifier.
     std::size_t node_id = 0;
 
     // Child node referenced by the tested entry (0 when the entry is a leaf entry).

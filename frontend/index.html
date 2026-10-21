@@ -275,6 +275,85 @@
                     </div>
                 </section>
 
+                <!-- Structural Region: Traversal Replay (Step-Through Debugger) -->
+                <section class="traversal-region" aria-label="R-tree Traversal Replay">
+                    <div class="panel-header">
+                        <span class="panel-title">Traversal Replay</span>
+                        <span class="panel-badge" id="traceBadge">NO TRACE</span>
+                    </div>
+
+                    <div class="trace-status" id="traceStatus" role="status">
+                        No recorded traversal for this scene.
+                    </div>
+
+                    <div class="trace-transport" role="group" aria-label="Traversal Step Controls">
+                        <button type="button" class="btn-nav trace-btn" id="btnTraceStart" title="Start the replay from the first recorded event" disabled>
+                            <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3.2v9.6l6.4-4.8z"/><path d="M12.6 3.2v9.6"/></svg>
+                            <span>Start</span>
+                        </button>
+                        <button type="button" class="btn-nav trace-btn" id="btnTracePrev" title="Previous recorded event (B key)" disabled>
+                            <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 3.2v9.6L5 8z"/></svg>
+                            <span>Prev</span>
+                        </button>
+                        <button type="button" class="btn-nav trace-btn" id="btnTraceNext" title="Next recorded event (N key)" disabled>
+                            <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 3.2v9.6L11 8z"/></svg>
+                            <span>Next</span>
+                        </button>
+                        <button type="button" class="btn-nav trace-btn" id="btnTracePlay" title="Auto-advance through the recorded events (P key)" disabled>
+                            <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 3.2v9.6L12 8z"/></svg>
+                            <span>Play</span>
+                        </button>
+                        <button type="button" class="btn-nav trace-btn" id="btnTracePause" title="Stop auto-advance" disabled>
+                            <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.4 3.4v9.2M9.6 3.4v9.2"/></svg>
+                            <span>Pause</span>
+                        </button>
+                        <button type="button" class="btn-nav trace-btn" id="btnTraceRestart" title="Return to the first recorded event (Shift+R key)" disabled>
+                            <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.6 8a5.4 5.4 0 1 0 1.7-4"/><path d="M2.6 3.6v4.4H7"/></svg>
+                            <span>Restart</span>
+                        </button>
+                        <button type="button" class="btn-nav trace-btn trace-btn-wide" id="btnTraceClear" title="Discard the recorded trace and stop the replay" disabled>
+                            <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.4 4.4l7.2 7.2M11.6 4.4l-7.2 7.2"/></svg>
+                            <span>Clear Trace</span>
+                        </button>
+                    </div>
+
+                    <div class="trace-progress">
+                        <span class="trace-progress-label">STEP</span>
+                        <span class="trace-progress-value" id="traceStep">— / —</span>
+                        <span class="trace-progress-track" aria-hidden="true"><span class="trace-progress-fill" id="traceProgressFill"></span></span>
+                    </div>
+
+                    <div class="trace-explanation" id="traceExplanation">
+                        <span class="trace-event-tag" id="traceEventTag">IDLE</span>
+                        <span class="trace-event-text" id="traceEventText">No traversal event selected.</span>
+                    </div>
+
+                    <ul class="trace-legend" aria-label="Traversal event legend">
+                        <li class="trace-legend-item">
+                            <span class="trace-legend-swatch trace-legend-visited" aria-hidden="true"><span class="trace-legend-glyph">●</span></span>
+                            <span class="trace-legend-label">Visited node</span>
+                        </li>
+                        <li class="trace-legend-item">
+                            <span class="trace-legend-swatch trace-legend-descend" aria-hidden="true"><span class="trace-legend-glyph">▼</span></span>
+                            <span class="trace-legend-label">Branch entered</span>
+                        </li>
+                        <li class="trace-legend-item">
+                            <span class="trace-legend-swatch trace-legend-pruned" aria-hidden="true"><span class="trace-legend-glyph">✕</span></span>
+                            <span class="trace-legend-label">Pruned branch</span>
+                        </li>
+                        <li class="trace-legend-item">
+                            <span class="trace-legend-swatch trace-legend-accepted" aria-hidden="true"><span class="trace-legend-glyph">✓</span></span>
+                            <span class="trace-legend-label">Accepted result</span>
+                        </li>
+                        <li class="trace-legend-item">
+                            <span class="trace-legend-swatch trace-legend-active" aria-hidden="true"><span class="trace-legend-glyph">◆</span></span>
+                            <span class="trace-legend-label">Current event</span>
+                        </li>
+                    </ul>
+
+                    <ol class="trace-log" id="traceLog" aria-label="Recorded traversal events"></ol>
+                </section>
+
                 <!-- Structural Region: Contextual Telemetry Region -->
                 <section class="telemetry-region" aria-label="Contextual Spatial Telemetry">
                     <!-- Query Performance Section -->

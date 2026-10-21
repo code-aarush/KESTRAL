@@ -23,6 +23,11 @@ target_link_libraries(test_rtree_query PRIVATE kestrel_rtree kestrel_geometry)
 
 add_test(NAME test_rtree_query COMMAND test_rtree_query)
 
+add_executable(test_rtree_trace test_rtree_trace.cpp)
+target_link_libraries(test_rtree_trace PRIVATE kestrel_mission kestrel_entity kestrel_rtree kestrel_geometry)
+
+add_test(NAME test_rtree_trace COMMAND test_rtree_trace)
+
 add_executable(test_rtree_delete test_rtree_delete.cpp)
 target_link_libraries(test_rtree_delete PRIVATE kestrel_rtree kestrel_geometry)
 
@@ -47,3 +52,9 @@ target_compile_definitions(test_export PRIVATE KESTREL_NO_MAIN)
 target_include_directories(test_export PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 target_link_libraries(test_export PRIVATE kestrel_mission kestrel_entity kestrel_rtree kestrel_geometry)
 add_test(NAME test_export COMMAND test_export)
+
+add_executable(test_export_trace test_export_trace.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../src/export.cpp)
+target_compile_definitions(test_export_trace PRIVATE KESTREL_NO_MAIN)
+target_include_directories(test_export_trace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+target_link_libraries(test_export_trace PRIVATE kestrel_mission kestrel_entity kestrel_rtree kestrel_geometry)
+add_test(NAME test_export_trace COMMAND test_export_trace)

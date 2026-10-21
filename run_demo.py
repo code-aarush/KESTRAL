@@ -51,6 +51,7 @@ DEMO_EXE = BUILD_DIR / "src" / f"kestrel_demo{EXE_EXT}"
 EXPORT_EXE = BUILD_DIR / "src" / f"kestrel_export{EXE_EXT}"
 STATE_JSON_BUILD = BUILD_DIR / "state.json"
 STATE_JSON_ROOT = REPO_ROOT / "state.json"
+STATE_JSON_FRONTEND = FRONTEND_DIR / "state.json"
 
 
 def log(stage: str, msg: str):
@@ -223,6 +224,11 @@ def export_and_validate_state() -> bool:
         # Also sync to repo root state.json for fallback compatibility
         shutil.copyfile(str(STATE_JSON_BUILD), str(STATE_JSON_ROOT))
 
+        # The visualizer resolves "./state.json" relative to the page first, so
+        # the copy that ships next to index.html must carry the same scene
+        # (including the recorded traversal trace).
+        shutil.copyfile(str(STATE_JSON_BUILD), str(STATE_JSON_FRONTEND))
+
         # Validate JSON content
         with open(STATE_JSON_BUILD, "r", encoding="utf-8") as fp:
             data = json.load(fp)
@@ -236,20 +242,46 @@ def export_and_validate_state() -> bool:
         entities = data.get("entities", [])
         rtree = data.get("rtree", {})
         query = data.get("query", {})
+        trace = data.get("trace", {})
 
         leaf_mbrs = rtree.get("leaf_mbrs", [])
         internal_mbrs = rtree.get("internal_mbrs", [])
         query_results = query.get("results", [])
+        trace_events = trace.get("events", []) if isinstance(trace, dict) else []
 
         if not isinstance(entities, list) or len(entities) == 0:
             log_err("State validation failed: entities list is empty or invalid.")
             return False
 
+        # The hierarchy is the authoritative scene structure and must be present.
+        if "root" not in rtree:
+            log_err("State validation failed: rtree.root hierarchy is missing.")
+            return False
+
+        # The traversal trace must belong to the exported scene and query.
+        if trace_events:
+            if trace.get("scene_id") != data.get("scene_id"):
+                log_err("State validation failed: trace scene_id does not match the scene.")
+                return False
+            if trace.get("query_id") != query.get("query_id"):
+                log_err("State validation failed: trace query_id does not match the query.")
+                return False
+            if trace.get("query_bounds") != query.get("bounds"):
+                log_err("State validation failed: trace query bounds do not match the query.")
+                return False
+            accepted = sorted(
+                e.get("entity_id") for e in trace_events if e.get("type") == "entity_accepted"
+            )
+            if accepted != sorted(query_results):
+                log_err("State validation failed: trace results disagree with the query results.")
+                return False
+
         log(
             "VALIDATE",
             f"State JSON verified: {len(entities)} active entities, "
             f"{len(leaf_mbrs)} leaf MBRs, {len(internal_mbrs)} internal MBRs, "
-            f"{len(query_results)} query matches."
+            f"{len(query_results)} query matches, "
+            f"{len(trace_events)} recorded traversal events."
         )
         return True
 

@@ -6,9 +6,9 @@ namespace kestrel {
 MissionControl::MissionControl(const RTree& rtree, const EntityStore& store)
     : rtree_(rtree), store_(store) {}
 
-std::vector<int> MissionControl::region_scan(const BoundingBox& region, MissionMetrics* metrics) const {
+std::vector<int> MissionControl::region_scan(const BoundingBox& region, MissionMetrics* metrics, RTreeTrace* trace) const {
     RTree::QueryMetrics m;
-    auto results = rtree_.search(region, m);
+    auto results = rtree_.search(region, m, trace);
     if (metrics) metrics->nodes_visited = m.nodes_visited;
     return results;
 }

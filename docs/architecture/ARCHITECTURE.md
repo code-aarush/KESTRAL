@@ -196,6 +196,45 @@ An interactive 2D display of the simulation state and query results.
 - R-tree node MBRs (internal and leaf levels).
 - Query regions and query results.
 - Trajectory corridors and hazard candidates.
+- A step-through replay of the recorded R-tree range-query traversal (Traversal Replay).
+
+**Scene contract (`state.json`):**
+
+| Key | Meaning |
+|-----|---------|
+| `scene_id` | Content fingerprint of the scene and its query; changes whenever either changes. |
+| `entities[]` | Active entities with their bounding boxes. |
+| `rtree.height`, `rtree.size` | Tree topology summary. |
+| `rtree.internal_mbrs[]`, `rtree.leaf_mbrs[]` | Legacy flat MBR arrays (kept for existing consumers). |
+| `rtree.root` | **Authoritative** nested hierarchy: `id`, `parent_id`, `type`, `is_root`, `is_leaf`, `depth`, `bounds`, `children`. |
+| `query` | `query_id`, `bounds`, `results` (the returned entity IDs). |
+| `trace` | `scene_id`, `query_id`, `query_bounds`, `truncated`, `total_events`, `events[]`. |
+
+**Canonical identity strategy**
+
+The scene uses exactly two identifier forms, and both are produced by the exporter
+(`src/export.cpp`, helpers `hierarchy_node_id()` / `hierarchy_entity_id()`):
+
+| Identifier | Form | Used by |
+|------------|------|---------|
+| Node | `node_<index>` — assigned by the exporter in DFS pre-order | `rtree.root` hierarchy, hierarchy panel, node inspector, `trace.events[].node_id` / `child_node_id` |
+| Entity | numeric entity id | `entities[].id`, `query.results[]`, `trace.events[].entity_id` |
+
+The hierarchy node carries the entity view as `entity_<id>` in its own `id` field plus the numeric
+`entity_id`; the trace uses the numeric form, which is the identifier shared with `query.results`.
+
+The R-tree's internal node identifier (1-based, used by the traversal recorder) is **not** exported.
+While the hierarchy is written, the exporter resolves every internal identifier to its canonical
+`node_<index>` identifier, so a trace event always refers to the node that was actually exported.
+The frontend therefore resolves a traversal event with a single lookup
+(`hierarchy.nodeMap.get(event.node_id)`) — no format conversion, no ambiguity.
+
+**Trace validation**
+
+The frontend only replays a trace when its `scene_id`, `query_id` and query bounds match the loaded
+scene, when every event is well formed, and when the recorded results agree with `query.results`.
+Loading a new scene always clears the previous replay, so a trace can never be reused for a different
+scene or query.
 
 **Constraints:**
 - Technology stack must be selected and approved by the owner at Gate 10.
@@ -285,6 +324,82 @@ namespace kestrel {
     };
 }
 ```
+
+### Traversal Trace (Traversal Replay feature)
+
+`RTree::search` has an optional tracing overload. The trace is produced inside the search loop at
+the exact decision points; it is never reconstructed from the result set. The untraced overload
+delegates to the traced one with a `nullptr` trace, so both share one implementation and therefore
+one result set.
+
+```cpp
+namespace kestrel {
+    enum class RTreeTraceEventType {
+        NodeVisited, MbrTested, BranchPruned, ChildEntered,
+        LeafEntryExamined, EntityAccepted, TraversalCompleted
+    };
+
+    struct RTreeTraceEvent {
+        RTreeTraceEventType type;
+        std::size_t node_id;       // internal node id (1-based); 0 = no reference
+        std::size_t child_node_id; // internal child node id (0 = none)
+        int entity_id;             // entity referenced by the tested entry (-1 = none)
+        BoundingBox mbr;           // bounding box that was tested
+        bool intersects;            // outcome of the intersection test
+    };
+
+    struct RTreeTrace {
+        std::vector<RTreeTraceEvent> events;
+        std::size_t max_events = 20000;  // bound: the trace is flagged truncated beyond it
+        bool truncated = false;
+    };
+
+    std::vector<int> search(const BoundingBox& query, QueryMetrics& metrics, RTreeTrace* trace) const;
+}
+```
+
+The `node_id` / `child_node_id` fields hold the R-tree's **internal** node identifiers. They are
+translated to the canonical `node_<index>` hierarchy identifiers by the exporter; they are never
+exported as-is.
+
+`MissionControl::region_scan(region, metrics, trace)` forwards the trace so the recorded traversal
+belongs to the query that was actually executed.
+
+### Exporter Interface
+
+The exporter is a library (`src/export.h` / `src/export.cpp`) with a `main()` guarded by
+`KESTREL_NO_MAIN`, so the export format can be unit tested without producing a second `main()`.
+
+```cpp
+namespace kestrel {
+    // Canonical identifiers — the single source of truth for scene identifiers.
+    std::string hierarchy_node_id(int index);        // "node_<index>"
+    std::string hierarchy_entity_id(int entity_id);  // "entity_<id>"
+
+    // Maps the internal R-tree node id to the canonical hierarchy identifier.
+    using CanonicalNodeIdMap = std::map<std::size_t, std::string>;
+
+    void export_node_hierarchy(const RTreeNode* node, std::ostream& out, int indent_level,
+                               int& next_node_id, const std::string& parent_id, int depth,
+                               bool is_root, CanonicalNodeIdMap* canonical_ids = nullptr);
+
+    void export_simulation_state(const RTree& rtree, const EntityStore& store,
+                                 const BoundingBox& query_box, const std::vector<int>& query_results,
+                                 std::ostream& out, const RTreeTrace* trace = nullptr,
+                                 std::uint64_t query_id = 1);
+}
+```
+
+The optional arguments keep every existing caller valid: `export_node_hierarchy` can still be
+called with seven arguments and `export_simulation_state` with five.
+
+**Invariants:**
+- The traced and untraced searches return the same entity IDs in the same order.
+- A `branch_pruned` event always refers to an MBR that does not intersect the query region.
+- A `child_entered` event always refers to an MBR that does intersect the query region.
+- Every node reference written into the trace resolves to a node of the exported hierarchy.
+- The trace's accepted entity IDs equal the exported `query.results`.
+- The last recorded event is always `traversal_completed`, including for truncated traces.
 
 ---
 

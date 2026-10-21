@@ -6,19 +6,43 @@
 
 namespace kestrel {
 
-RTree::RTree(std::size_t M, std::size_t m) : M_(M), m_(m) {
+const char* to_string(RTreeTraceEventType type) {
+    switch (type) {
+        case RTreeTraceEventType::NodeVisited:       return "node_visited";
+        case RTreeTraceEventType::MbrTested:         return "mbr_tested";
+        case RTreeTraceEventType::BranchPruned:      return "branch_pruned";
+        case RTreeTraceEventType::ChildEntered:      return "child_entered";
+        case RTreeTraceEventType::LeafEntryExamined: return "leaf_entry_examined";
+        case RTreeTraceEventType::EntityAccepted:    return "entity_accepted";
+        case RTreeTraceEventType::TraversalCompleted: return "traversal_completed";
+    }
+    return "unknown";
+}
+
+RTree::RTree(std::size_t M, std::size_t m) : M_(M), m_(m), next_node_id_(1) {
     if (M_ < 2) {
         throw std::invalid_argument("M must be at least 2");
     }
     if (m_ > M_ / 2) {
         throw std::invalid_argument("m must be <= floor(M/2)");
     }
-    root_ = std::make_unique<RTreeNode>(true, nullptr);
+    root_ = make_node(true, nullptr);
+}
+
+std::unique_ptr<RTreeNode> RTree::make_node(bool leaf, RTreeNode* parent) {
+    return std::make_unique<RTreeNode>(leaf, parent, next_node_id_++);
+}
+
+void RTree::set_root(std::unique_ptr<RTreeNode> new_root) {
+    if (new_root && new_root->id == 0) {
+        new_root->id = next_node_id_++;
+    }
+    root_ = std::move(new_root);
 }
 
 void RTree::insert(BoundingBox bounds, int entity_id) {
     if (!root_) {
-        root_ = std::make_unique<RTreeNode>(true, nullptr);
+        root_ = make_node(true, nullptr);
     }
 
     RTreeNode* leaf = choose_leaf(bounds);
@@ -115,7 +139,7 @@ bool RTree::remove(const BoundingBox& bounds, int entity_id) {
         root_ = std::move(root_->entries[0].child);
     }
     if (root_->entries.empty()) {
-        root_ = std::make_unique<RTreeNode>(true, nullptr);
+        root_ = make_node(true, nullptr);
     }
     
     for (const auto& item : reinsert_list) {
@@ -134,9 +158,37 @@ bool RTree::update(const BoundingBox& old_bounds, const BoundingBox& new_bounds,
 }
 
 std::vector<int> RTree::search(const BoundingBox& query, QueryMetrics& metrics) const {
+    return search(query, metrics, nullptr);
+}
+
+std::vector<int> RTree::search(const BoundingBox& query, QueryMetrics& metrics, RTreeTrace* trace) const {
     std::vector<int> result;
-    if (!root_) return result;
-    
+
+    // Each trace describes exactly one query: start from a clean slate.
+    if (trace) trace->clear();
+
+    // The recorder keeps one slot free so the terminal completion event is
+    // always present, even for very large traversals.
+    const std::size_t limit = trace ? std::max<std::size_t>(trace->max_events, 2) : 0;
+
+    auto record = [&](RTreeTraceEvent event) {
+        if (!trace) return;
+        if (trace->events.size() + 1 >= limit) {
+            trace->truncated = true;
+            return;
+        }
+        trace->events.push_back(std::move(event));
+    };
+
+    if (!root_) {
+        if (trace) {
+            RTreeTraceEvent completed;
+            completed.type = RTreeTraceEventType::TraversalCompleted;
+            trace->events.push_back(completed);
+        }
+        return result;
+    }
+
     std::vector<const RTreeNode*> stack;
     stack.push_back(root_.get());
     
@@ -145,18 +197,87 @@ std::vector<int> RTree::search(const BoundingBox& query, QueryMetrics& metrics) 
         stack.pop_back();
         
         metrics.nodes_visited++;
-        
+
+        RTreeTraceEvent visited;
+        visited.type = RTreeTraceEventType::NodeVisited;
+        visited.node_id = current->id;
+        visited.mbr = current->compute_mbr();
+        visited.intersects = intersects(query, visited.mbr);
+        record(visited);
+
         for (const auto& entry : current->entries) {
-            if (intersects(query, entry.mbr)) {
-                if (current->is_leaf) {
-                    result.push_back(entry.entity_id);
-                } else {
-                    stack.push_back(entry.child.get());
+            const bool hit = intersects(query, entry.mbr);
+
+            RTreeTraceEvent tested;
+            tested.type = RTreeTraceEventType::MbrTested;
+            tested.node_id = current->id;
+            tested.mbr = entry.mbr;
+            tested.intersects = hit;
+
+            if (current->is_leaf) {
+                tested.entity_id = entry.entity_id;
+                record(tested);
+
+                if (!hit) {
+                    // The leaf entry misses the query region: nothing is collected.
+                    continue;
                 }
+
+                RTreeTraceEvent examined;
+                examined.type = RTreeTraceEventType::LeafEntryExamined;
+                examined.node_id = current->id;
+                examined.entity_id = entry.entity_id;
+                examined.mbr = entry.mbr;
+                examined.intersects = true;
+                record(examined);
+
+                RTreeTraceEvent accepted;
+                accepted.type = RTreeTraceEventType::EntityAccepted;
+                accepted.node_id = current->id;
+                accepted.entity_id = entry.entity_id;
+                accepted.mbr = entry.mbr;
+                accepted.intersects = true;
+                record(accepted);
+
+                result.push_back(entry.entity_id);
+            } else {
+                tested.child_node_id = entry.child->id;
+                record(tested);
+
+                if (!hit) {
+                    RTreeTraceEvent pruned;
+                    pruned.type = RTreeTraceEventType::BranchPruned;
+                    pruned.node_id = current->id;
+                    pruned.child_node_id = entry.child->id;
+                    pruned.mbr = entry.mbr;
+                    pruned.intersects = false;
+                    record(pruned);
+                    continue;
+                }
+
+                RTreeTraceEvent entered;
+                entered.type = RTreeTraceEventType::ChildEntered;
+                entered.node_id = current->id;
+                entered.child_node_id = entry.child->id;
+                entered.mbr = entry.mbr;
+                entered.intersects = true;
+                record(entered);
+
+                stack.push_back(entry.child.get());
             }
         }
     }
-    
+
+    if (trace) {
+        RTreeTraceEvent completed;
+        completed.type = RTreeTraceEventType::TraversalCompleted;
+        completed.node_id = 0;
+        completed.entity_id = -1;
+        completed.mbr = BoundingBox{0, 0, 0, 0};
+        completed.intersects = false;
+        trace->events.push_back(completed);
+    }
+
     return result;
 }
 
@@ -223,7 +344,7 @@ std::unique_ptr<RTreeNode> RTree::split_node(RTreeNode* node, RTreeEntry&& new_e
         }
     }
 
-    auto new_node = std::make_unique<RTreeNode>(node->is_leaf, node->parent);
+    auto new_node = make_node(node->is_leaf, node->parent);
     
     node->entries.push_back(std::move(all_entries[seed1]));
     if (!node->is_leaf) node->entries.back().child->parent = node;
@@ -347,7 +468,7 @@ void RTree::adjust_tree(RTreeNode* node, std::unique_ptr<RTreeNode> split_node) 
     }
 
     if (NN) {
-        auto new_root = std::make_unique<RTreeNode>(false, nullptr);
+        auto new_root = make_node(false, nullptr);
         
         BoundingBox mbr1 = root_->compute_mbr();
         BoundingBox mbr2 = NN->compute_mbr();

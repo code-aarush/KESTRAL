@@ -27,7 +27,10 @@ public:
     };
 
     // GATE-08-AC-01
-    std::vector<int> region_scan(const BoundingBox& region, MissionMetrics* metrics = nullptr) const;
+    // When trace is non-null the actual R-tree traversal is recorded into it.
+    std::vector<int> region_scan(const BoundingBox& region,
+                                 MissionMetrics* metrics = nullptr,
+                                 RTreeTrace* trace = nullptr) const;
 
     // GATE-08-AC-02
     std::vector<int> nearby_objects(const BoundingBox& target, double threshold, MissionMetrics* metrics = nullptr) const;

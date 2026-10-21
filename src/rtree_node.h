@@ -2,6 +2,7 @@
 #define KESTREL_RTREE_NODE_H
 
 #include "geometry.h"
+#include <cstddef>
 #include <vector>
 #include <memory>
 
@@ -30,8 +31,13 @@ struct RTreeNode {
     RTreeNode* parent;
     std::vector<RTreeEntry> entries;
 
-    explicit RTreeNode(bool leaf, RTreeNode* p = nullptr) 
-        : is_leaf(leaf), parent(p) {}
+    // Stable identifier used to reference this node from traversal traces.
+    // Identifiers are 1-based; zero is reserved as "no reference" and is only
+    // possible for manually constructed nodes that were never installed in a tree.
+    std::size_t id;
+
+    explicit RTreeNode(bool leaf, RTreeNode* p = nullptr, std::size_t node_id = 0)
+        : is_leaf(leaf), parent(p), id(node_id) {}
     
     // Computes the MBR of this node based on its entries
     BoundingBox compute_mbr() const;

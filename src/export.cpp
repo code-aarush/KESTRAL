@@ -1,5 +1,6 @@
 #include "export.h"
 #include "mission.h"
+#include "scene.h"
 #include "simulator.h"
 #include "rtree.h"
 #include "entity_store.h"
@@ -100,39 +101,6 @@ void export_node_hierarchy(const RTreeNode* node, std::ostream& out, int indent_
 
 namespace {
 
-// FNV-1a over a canonical text rendering of the scene.
-// The result is masked to 53 bits so it survives a JSON round trip through
-// JavaScript without losing precision.
-std::uint64_t fnv1a64(const std::string& text) {
-    std::uint64_t hash = 1469598103934665603ULL;
-    for (unsigned char c : text) {
-        hash ^= static_cast<std::uint64_t>(c);
-        hash *= 1099511628211ULL;
-    }
-    return hash & ((1ULL << 53) - 1);
-}
-
-// Canonical, order-independent description of the scene plus the query.
-std::string canonical_scene_text(const EntityStore& store, const BoundingBox& query) {
-    std::vector<int> ids;
-    ids.reserve(store.size());
-    for (auto it = store.begin(); it != store.end(); ++it) {
-        ids.push_back(it->first);
-    }
-    std::sort(ids.begin(), ids.end());
-
-    std::ostringstream os;
-    os << std::setprecision(17);
-    for (int id : ids) {
-        const Entity& e = store.get(id);
-        os << id << ':' << e.bounds.min_x << ',' << e.bounds.min_y << ','
-           << e.bounds.max_x << ',' << e.bounds.max_y << ';';
-    }
-    os << "q:" << query.min_x << ',' << query.min_y << ','
-       << query.max_x << ',' << query.max_y;
-    return os.str();
-}
-
 // Writes a canonical node reference (JSON string) or null when the recorded
 // node has no counterpart in the exported hierarchy.
 void write_node_ref(std::ostream& out, const CanonicalNodeIdMap& ids, std::size_t internal_id) {
@@ -147,13 +115,18 @@ void write_node_ref(std::ostream& out, const CanonicalNodeIdMap& ids, std::size_
 } // namespace
 
 void export_simulation_state(const RTree& rtree, const EntityStore& store, const BoundingBox& query_box, const std::vector<int>& query_results, std::ostream& out, const RTreeTrace* trace, std::uint64_t query_id) {
-    const std::uint64_t scene_id = fnv1a64(canonical_scene_text(store, query_box));
+    const std::uint64_t scene_identifier = scene_id(store, query_box);
 
     out << "{\n";
     out << std::setprecision(17);
 
     // Scene identity: changes whenever the scene content or the query changes.
-    out << "  \"scene_id\": " << scene_id << ",\n";
+    out << "  \"scene_id\": " << scene_identifier << ",\n";
+
+    // Query independent identity of the scene contents. A backend that holds
+    // the same scene reports the same key, so a client can prove that a query
+    // result belongs to the scene it is displaying.
+    out << "  \"scene_key\": " << scene_key(store) << ",\n";
 
     // Entities
     out << "  \"entities\": [\n";
@@ -220,7 +193,7 @@ void export_simulation_state(const RTree& rtree, const EntityStore& store, const
     }
 
     out << "  \"trace\": {\n";
-    out << "    \"scene_id\": " << scene_id << ",\n";
+    out << "    \"scene_id\": " << scene_identifier << ",\n";
     out << "    \"query_id\": " << query_id << ",\n";
     out << "    \"query_bounds\": [" << query_box.min_x << ", " << query_box.min_y << ", " << query_box.max_x << ", " << query_box.max_y << "],\n";
     out << "    \"truncated\": " << (trace->truncated ? "true" : "false") << ",\n";
@@ -259,12 +232,10 @@ int main(int argc, char* argv[]) {
 
     EntityStore store;
     RTree rtree(4, 2);
-    Simulator sim(store, rtree, 42, 800.0, 600.0, 0.5, 0.05);
 
-    // Run some steps
-    for (int i = 0; i < 50; ++i) {
-        sim.step();
-    }
+    // The scene is built through the shared helper so that the interactive
+    // query service observes exactly the same tree.
+    build_demo_scene(store, rtree);
 
     // Set up a query. The traversal is recorded while this exact query runs,
     // so the exported trace always belongs to the exported query.

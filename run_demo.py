@@ -30,6 +30,8 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
+import query_api
+
 # Ensure line-buffered UTF-8 console output
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -49,6 +51,7 @@ EXE_EXT = ".exe" if IS_WINDOWS else ""
 
 DEMO_EXE = BUILD_DIR / "src" / f"kestrel_demo{EXE_EXT}"
 EXPORT_EXE = BUILD_DIR / "src" / f"kestrel_export{EXE_EXT}"
+QUERY_EXE = BUILD_DIR / "src" / f"kestrel_query{EXE_EXT}"
 STATE_JSON_BUILD = BUILD_DIR / "state.json"
 STATE_JSON_ROOT = REPO_ROOT / "state.json"
 STATE_JSON_FRONTEND = FRONTEND_DIR / "state.json"
@@ -65,7 +68,7 @@ def log_err(msg: str):
     sys.stderr.flush()
 
 
-class NoCacheHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
+class NoCacheHTTPRequestHandler(query_api.QueryApiMixin, http.server.SimpleHTTPRequestHandler):
     """HTTP handler with no-cache headers to ensure state.json updates reflect immediately."""
 
     def __init__(self, *args, **kwargs):
@@ -122,10 +125,10 @@ def preflight_check() -> bool:
 
 def check_stale_build() -> bool:
     """Determine whether executables are missing or older than any source file."""
-    if not DEMO_EXE.exists() or not EXPORT_EXE.exists():
+    if not DEMO_EXE.exists() or not EXPORT_EXE.exists() or not QUERY_EXE.exists():
         return True
 
-    exe_mtime = min(DEMO_EXE.stat().st_mtime, EXPORT_EXE.stat().st_mtime)
+    exe_mtime = min(DEMO_EXE.stat().st_mtime, EXPORT_EXE.stat().st_mtime, QUERY_EXE.stat().st_mtime)
 
     # Check all C++ source and header files in src/
     for src_file in SRC_DIR.glob("**/*"):
@@ -137,34 +140,34 @@ def check_stale_build() -> bool:
 
 
 def build_targets(force_rebuild: bool = False) -> bool:
-    """Configure and build CMake demo and export executables."""
+    """Configure and build CMake demo, export and query executables."""
     needs_build = force_rebuild or check_stale_build()
     if not needs_build:
         log("BUILD", "Executables are up-to-date. Skipping build stage.")
         return True
 
-    log("BUILD", "Configuring and building CMake targets (kestrel_demo, kestrel_export)...")
+    log("BUILD", "Configuring and building CMake targets (kestrel_demo, kestrel_export, kestrel_query)...")
     BUILD_DIR.mkdir(exist_ok=True)
 
-    # 1. CMake Configure if not already configured
-    cmake_cache = BUILD_DIR / "CMakeCache.txt"
-    if not cmake_cache.exists() or force_rebuild:
-        configure_cmd = ["cmake", "-B", str(BUILD_DIR)]
-        if IS_WINDOWS:
-            if shutil.which("mingw32-make") or shutil.which("g++"):
-                configure_cmd.extend(["-G", "MinGW Makefiles"])
-        log("BUILD", f"Running: {' '.join(configure_cmd)}")
-        try:
-            res = subprocess.run(configure_cmd, cwd=str(REPO_ROOT), capture_output=True, text=True)
-            if res.returncode != 0:
-                log_err(f"CMake configuration failed:\n{res.stderr or res.stdout}")
-                return False
-        except Exception as e:
-            log_err(f"Failed to execute cmake configure: {e}")
+    # 1. CMake Configure. The configure step is always executed: it is cheap
+    # and it is the only way a newly added target reaches an existing build
+    # directory.
+    configure_cmd = ["cmake", "-B", str(BUILD_DIR)]
+    if IS_WINDOWS:
+        if shutil.which("mingw32-make") or shutil.which("g++"):
+            configure_cmd.extend(["-G", "MinGW Makefiles"])
+    log("BUILD", f"Running: {' '.join(configure_cmd)}")
+    try:
+        res = subprocess.run(configure_cmd, cwd=str(REPO_ROOT), capture_output=True, text=True)
+        if res.returncode != 0:
+            log_err(f"CMake configuration failed:\n{res.stderr or res.stdout}")
             return False
+    except Exception as e:
+        log_err(f"Failed to execute cmake configure: {e}")
+        return False
 
     # 2. CMake Build targets
-    build_cmd = ["cmake", "--build", str(BUILD_DIR), "--target", "kestrel_demo", "kestrel_export"]
+    build_cmd = ["cmake", "--build", str(BUILD_DIR), "--target", "kestrel_demo", "kestrel_export", "kestrel_query"]
     log("BUILD", f"Running: {' '.join(build_cmd)}")
     try:
         res = subprocess.run(build_cmd, cwd=str(REPO_ROOT), capture_output=True, text=True)
@@ -175,8 +178,11 @@ def build_targets(force_rebuild: bool = False) -> bool:
         log_err(f"Failed to execute cmake build: {e}")
         return False
 
-    if not DEMO_EXE.exists() or not EXPORT_EXE.exists():
-        log_err(f"Build succeeded but executables not found:\n  {DEMO_EXE}\n  {EXPORT_EXE}")
+    if not DEMO_EXE.exists() or not EXPORT_EXE.exists() or not QUERY_EXE.exists():
+        log_err(
+            "Build succeeded but executables not found:\n"
+            f"  {DEMO_EXE}\n  {EXPORT_EXE}\n  {QUERY_EXE}"
+        )
         return False
 
     log("BUILD", "Build completed successfully with 0 errors.")
@@ -293,6 +299,42 @@ def export_and_validate_state() -> bool:
         return False
 
 
+def start_query_service() -> "query_api.QueryWorker | None":
+    """Start the C++ query service and hand it to the HTTP handler.
+
+    The service builds the demonstration scene once and keeps the R-tree in
+    memory, so every user query is answered by the very same tree.
+    """
+    log("QUERY", f"Starting C++ query service ({QUERY_EXE.name})...")
+    worker = query_api.start_query_worker(QUERY_EXE)
+    if worker is None:
+        log_err("Failed to start the C++ query service. User defined queries will be unavailable.")
+        query_api.QueryApiMixin.worker = None
+        return None
+
+    # Ask the service for its scene identity so that a broken service is
+    # detected before the browser connects.
+    answer = worker.request('{"op":"scene"}')
+    if answer is None:
+        log_err("The C++ query service did not answer its scene request. User defined queries will be unavailable.")
+        worker.stop()
+        query_api.QueryApiMixin.worker = None
+        return None
+
+    try:
+        scene = json.loads(answer)
+    except ValueError:
+        scene = {}
+
+    query_api.QueryApiMixin.worker = worker
+    log(
+        "QUERY",
+        f"Query service ready: scene key {scene.get('scene_key')} "
+        f"({scene.get('entity_count')} entities). Endpoint: POST /api/query",
+    )
+    return worker
+
+
 def is_port_in_use(host: str, port: int) -> bool:
     """Check if a TCP port is in use."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -395,19 +437,32 @@ def main():
         log("COMPLETE", "Simulation, export, and validation completed (--once specified).")
         return
 
-    # 5. Validate port range
+    # 5. Start the C++ query service
+    query_worker = start_query_service()
+
+    # 6. Validate port range
     if not (1 <= args.port <= 65535):
         log_err(f"Invalid port: {args.port}. Port must be between 1 and 65535.")
+        if query_worker:
+            query_worker.stop()
         sys.exit(1)
 
-    # 6. Serve
+    # 7. Serve
     server, effective_port, is_reused = start_server(args.host, args.port)
     if server is None and not is_reused:
+        if query_worker:
+            query_worker.stop()
         sys.exit(1)
+
+    if is_reused and query_worker:
+        # The reused server runs its own query service.
+        log("QUERY", "Reusing an existing server: its query service is used.")
+        query_worker.stop()
+        query_worker = None
 
     frontend_url = f"http://{args.host}:{effective_port}/frontend/index.html"
 
-    # 6. Open Browser
+    # 8. Open Browser
     if not args.no_browser:
         log("BROWSER", f"Launching Mission Control in default browser: {frontend_url}")
         webbrowser.open(frontend_url)
@@ -437,6 +492,9 @@ def main():
             print("[SHUTDOWN] Server stopped cleanly. Goodbye.", flush=True)
         else:
             print("\n[SHUTDOWN] Launcher exited cleanly. (Background server remains intact)", flush=True)
+    finally:
+        if query_worker:
+            query_worker.stop()
 
 
 if __name__ == "__main__":

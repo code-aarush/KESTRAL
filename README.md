@@ -31,10 +31,19 @@ The simulation models fictional Kepler Belt entities (asteroids, probes, navigat
 - 🌲 **Native C++17 R-Tree Core:** Complete node splitting (quadratic algorithm), area/perimeter minimization, recursive MBR propagation, dynamic insertion, deletion with underflow re-insertion, and window pruning.
 - ☄️ **Two-Phase Hazard Assessment Pipeline:** Broad-phase spatial candidate retrieval combined with narrow-phase geometric checks (corridors, distance radii, region bounds).
 - 🪐 **Deterministic Simulation Engine:** Kepler Belt orbital motion model with seeded deterministic pseudo-random entity lifecycles.
-- ✅ **Rigorous Verification:** 9 automated CTest regression suites (100% pass rate) covering geometry, node structure, insertions, splits, deletions, stress loads, and full pipeline integration.
+- ✅ **Rigorous Verification:** 12 automated CTest regression suites (100% pass rate) covering geometry, node structure, insertions, splits, deletions, stress loads, full pipeline integration, and the user query service.
 - 📊 **Empirical Benchmarking Engine:** Scalability evaluation comparing R-tree queries against linear brute-force baseline across entity scales ($N = 100$ to $100{,}000$).
 - 🖥️ **Mission Control Frontend:** A decoupled HTML5 Canvas visualizer rendering radar grids, entity markers, dynamic leaf/internal MBR hierarchies, query windows, and glowing hazard alerts.
+- 🎯 **User Defined Spatial Queries:** Draw a query region and show the backend results.
 - 🔬 **Traversal Replay (Step-Through Debugger):** Mission Control can step through the *actual* recorded C++ R-tree range-query traversal — node visits, MBR tests, pruning decisions, leaf matches and accepted results — with synchronised map highlighting and per-event explanations.
+
+### New Features
+- 🌌 **Interactive Spatial Map:** Smooth pan & zoom, entity inspection tooltips, and viewport navigation.
+- 🪐 **R-Tree Hierarchy Visualizer:** Level-by-level filtering, subtree highlighting, and node selection.
+- 🎯 **Custom Dynamic Spatial Queries:** User-drawn query windows and trajectory corridor generation.
+- 🔬 **Traversal & Pruning Step-Through Mode:** Visual branch-and-bound debugger with node visit, prune, and result highlights.
+- 📊 **Real-Time Query Performance Dashboard:** Telemetry overlay showing candidates evaluated, pruning efficiency, and execution metrics.
+- 🎛️ **Configurable Simulation Environment:** Live parameter controls for entity density, velocity ranges, and hazard generation frequencies.
 - 🚀 **Single-Command Demo Orchestrator (`run_demo.py`):** An end-to-end Python launcher that verifies the toolchain, builds stale targets, runs the simulation, exports the R-tree state to JSON, hosts a local server, and launches Mission Control in the browser.
 
 
@@ -163,7 +172,35 @@ cmake --build build
 cd build && ctest --output-on-failure
 ```
 
-*Expected output: `100% tests passed, 0 tests failed out of 12`.*
+*Expected output: `100% tests passed, 0 tests failed out of 12`.
+
+### New Features
+
+### 1. Interactive Spatial Map
+- **Smooth Pan & Zoom:** Canvas navigation with mouse-drag panning, pinch-to-zoom, and mini-map navigation.
+- **Entity Inspection Tooltips:** Hover over and click asteroids, probes, or debris to inspect real-time position, velocity vectors, entity IDs, and bounding coordinates.
+
+### 2. R-Tree Hierarchy Visualizer
+- **Level-by-Level Filtering:** Toggle visibility of specific tree depths (Root → Internal Levels → Leaf MBRs).
+- **Subtree Highlighting:** Click any bounding box to isolate and highlight its parent-child lineage and enclosed entities.
+
+### 3. Custom Dynamic Spatial Queries
+- **User-Drawn Query Windows:** Click-and-drag bounding rectangles directly on the radar grid to trigger live range queries.
+- **Trajectory Corridor Generation:** Define origin and destination waypoints to dynamically visualize swept corridors and hazard intersections.
+
+### 4. Traversal & Pruning Step-Through Mode
+- **Visual Branch-and-Bound Debugger:** Step-by-step visual animation demonstrating how the R-tree searches for hazards.
+
+### 5. Real-Time Query Performance & Metrics Dashboard
+- **Telemetry Overlay:** Real-time HUD showing:
+  - Candidates evaluated vs. total entity count.
+  - Pruning efficiency percentage ($rac{	ext{Pruned Nodes}}{	ext{Total Nodes}} 	imes 100$).
+  - Broad-phase vs. narrow-phase execution time breakdown.
+  - Theoretical speedup factor over naive $O(N)$ linear scan.
+
+### 6. Configurable Simulation Environment
+- **Live Parameter Controls:** UI sliders to adjust entity density ($N = 10$ to $10{,}000$), velocity ranges, and hazard generation frequencies without recompilation.
+- **Interactive Hazard Injection:** Manual placement of high-risk obstacles into trajectory paths to test real-time avoidance responses.*
 
 ### 3. Run Scaling Benchmarks
 
@@ -253,6 +290,34 @@ Hardcoded Simulation Seed     ─────────────>  Configur
 > **Delivered since this roadmap was written:** *Interactive Dynamic Spatial Map* (pan / zoom / fit)
 > and *Interactive Traversal & Pruning Step-Through* are now implemented. The traversal debugger is
 > described in [Traversal Replay](#traversal-replay-step-through-debugger) below.
+
+### New Features
+
+### 1. Interactive Spatial Map
+- **Smooth Pan & Zoom:** Canvas navigation with mouse-drag panning, pinch-to-zoom, and mini-map navigation.
+- **Entity Inspection Tooltips:** Hover over and click asteroids, probes, or debris to inspect real-time position, velocity vectors, entity IDs, and bounding coordinates.
+
+### 2. R-Tree Hierarchy Visualizer
+- **Level-by-Level Filtering:** Toggle visibility of specific tree depths (Root → Internal Levels → Leaf MBRs).
+- **Subtree Highlighting:** Click any bounding box to isolate and highlight its parent-child lineage and enclosed entities.
+
+### 3. Custom Dynamic Spatial Queries
+- **User-Drawn Query Windows:** Click-and-drag bounding rectangles directly on the radar grid to trigger live range queries.
+- **Trajectory Corridor Generation:** Define origin and destination waypoints to dynamically visualize swept corridors and hazard intersections.
+
+### 4. Traversal & Pruning Step-Through Mode
+- **Visual Branch-and-Bound Debugger:** Step-by-step visual animation demonstrating how the R-tree searches for hazards.
+
+### 5. Real-Time Query Performance & Metrics Dashboard
+- **Telemetry Overlay:** Real-time HUD showing:
+  - Candidates evaluated vs. total entity count.
+  - Pruning efficiency percentage ($rac{	ext{Pruned Nodes}}{	ext{Total Nodes}} 	imes 100$).
+  - Broad-phase vs. narrow-phase execution time breakdown.
+  - Theoretical speedup factor over naive $O(N)$ linear scan.
+
+### 6. Configurable Simulation Environment
+- **Live Parameter Controls:** UI sliders to adjust entity density ($N = 10$ to $10{,}000$), velocity ranges, and hazard generation frequencies without recompilation.
+- **Interactive Hazard Injection:** Manual placement of high-risk obstacles into trajectory paths to test real-time avoidance responses.
 
 ### 1. Interactive Spatial Map
 - **Smooth Pan & Zoom:** Canvas navigation with mouse-drag panning, pinch-to-zoom, and mini-map navigation.

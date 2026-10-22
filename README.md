@@ -5,7 +5,7 @@
 ### **K**epler **E**xploration — **S**patial **T**ree for **R**isk **E**valuation and **L**ocalization
 
 [![Language: C++17](https://img.shields.io/badge/Language-C%2B%2B17-blue.svg)](https://en.cppreference.com/w/cpp/17)
-[![Tests: 13/13 Passing](https://img.shields.io/badge/Tests-13%2F13%20Passing-brightgreen.svg)](tests/)
+[![Tests: 12/12 Passing](https://img.shields.io/badge/Tests-12%2F12%20Passing-brightgreen.svg)](tests/)
 [![Status: MVP Complete](https://img.shields.io/badge/Status-MVP%20Complete-success.svg)](PROJECT_SSOT.md)
 
 An academic C++17 project investigating a custom, dynamically updated two-dimensional R-tree for spatial indexing and hazard assessment in a simulated deep-space environment.
@@ -31,20 +31,11 @@ The simulation models fictional Kepler Belt entities (asteroids, probes, navigat
 - 🌲 **Native C++17 R-Tree Core:** Complete node splitting (quadratic algorithm), area/perimeter minimization, recursive MBR propagation, dynamic insertion, deletion with underflow re-insertion, and window pruning.
 - ☄️ **Two-Phase Hazard Assessment Pipeline:** Broad-phase spatial candidate retrieval combined with narrow-phase geometric checks (corridors, distance radii, region bounds).
 - 🪐 **Deterministic Simulation Engine:** Kepler Belt orbital motion model with seeded deterministic pseudo-random entity lifecycles.
-- ✅ **Rigorous Verification:** 13 automated CTest regression suites (100% pass rate) covering geometry, node structure, insertions, splits, deletions, stress loads, full pipeline integration, and the user query service.
+- ✅ **Rigorous Verification:** 9 automated CTest regression suites (100% pass rate) covering geometry, node structure, insertions, splits, deletions, stress loads, and full pipeline integration.
 - 📊 **Empirical Benchmarking Engine:** Scalability evaluation comparing R-tree queries against linear brute-force baseline across entity scales ($N = 100$ to $100{,}000$).
 - 🖥️ **Mission Control Frontend:** A decoupled HTML5 Canvas visualizer rendering radar grids, entity markers, dynamic leaf/internal MBR hierarchies, query windows, and glowing hazard alerts.
-- 🎯 **User Defined Spatial Queries:** Draw a query region and show the backend results.
 - 🔬 **Traversal Replay (Step-Through Debugger):** Mission Control can step through the *actual* recorded C++ R-tree range-query traversal — node visits, MBR tests, pruning decisions, leaf matches and accepted results — with synchronised map highlighting and per-event explanations.
-- 🚀 **Single-Command Demo Orchestrator (`run_demo.py`):** An end-to-end Python launcher that verifies the toolchain, builds stale targets, runs the simulation, exports the R-tree state to JSON, starts the C++ query service, hosts a local server, and launches Mission Control in the browser.
-
-### New Features
-- 🌌 **Interactive Spatial Map:** Smooth pan & zoom, entity inspection tooltips, and viewport navigation.
-- 🪐 **R-Tree Hierarchy Visualizer:** Level-by-level filtering, subtree highlighting, and node selection.
-- 🎯 **Custom Dynamic Spatial Queries:** User-drawn query windows and trajectory corridor generation.
-- 🔬 **Traversal & Pruning Step-Through Mode:** Visual branch-and-bound debugger with node visit, prune, and result highlights.
-- 📊 **Real-Time Query Performance Dashboard:** Telemetry overlay showing candidates evaluated, pruning efficiency, and execution metrics.
-- 🎛️ **Configurable Simulation Environment:** Live parameter controls for entity density, velocity ranges, and hazard generation.
+- 🚀 **Single-Command Demo Orchestrator (`run_demo.py`):** An end-to-end Python launcher that verifies the toolchain, builds stale targets, runs the simulation, exports the R-tree state to JSON, hosts a local server, and launches Mission Control in the browser.
 
 
 ---
@@ -172,7 +163,7 @@ cmake --build build
 cd build && ctest --output-on-failure
 ```
 
-*Expected output: `100% tests passed, 0 tests failed out of 13`.*
+*Expected output: `100% tests passed, 0 tests failed out of 12`.*
 
 ### 3. Run Scaling Benchmarks
 
@@ -195,7 +186,6 @@ cd build && ctest --output-on-failure
 ```text
 KESTREL/
 |-- run_demo.py                   # Automated single-command demo orchestrator
-|-- query_api.py                  # Local query API: forwards a region query to the C++ service
 |-- CMakeLists.txt                # Root CMake project configuration
 |-- PROJECT_SSOT.md               # Single Source of Truth & gate governance
 |-- AGENTS.md                     # Agent operating guidelines and entry point
@@ -212,8 +202,6 @@ KESTREL/
 |   |-- simulator.h / .cpp        # Deterministic orbital motion simulation & entity lifecycle
 |   |-- mission.h / .cpp          # Broad-phase/narrow-phase corridor & hazard queries
 |   |-- main.cpp                  # CLI simulation demonstration executable (kestrel_demo)
-|   |-- scene.h / .cpp            # Shared demonstration scene builder and scene fingerprints
-|   |-- query_service.h / .cpp    # User query service: validation, R-tree execution, JSON contract
 |   +-- export.cpp                # JSON state exporter executable (kestrel_export)
 |
 |-- tests/                        # Deterministic Regression Test Suites
@@ -222,9 +210,7 @@ KESTREL/
 |   |-- test_rtree_insert.cpp     # Insertion correctness and quadratic split validation
 |   |-- test_rtree_query.cpp      # Spatial range queries and pruning verification
 |   |-- test_rtree_trace.cpp      # Recorded traversal trace: ordering, pruning, result parity
-|   |-- test_export_trace.cpp     # Exported trace + hierarchy share one canonical identity
-|   |-- test_query_service.cpp    # User query service: contract, validation, inclusive boundaries
-|   +-- test_query_api.py         # Query service, HTTP API and browser harness tests
+|   +-- test_export_trace.cpp     # Exported trace + hierarchy share one canonical identity
 |   |-- test_rtree_delete.cpp     # Deletion, node underflow, and re-insertion tests
 |   |-- test_simulator.cpp        # Deterministic simulation physics and reproducibility
 |   |-- test_mission.cpp          # Region, nearby, and corridor hazard assessment
@@ -239,12 +225,10 @@ KESTREL/
 |   |-- test_hierarchy.html       # Browser harness: hierarchy validation/selection
 |   |-- test_viewport.html        # Browser harness: viewport/coordinate maths
 |   |-- test_traversal.html       # Browser harness: traversal replay behaviour
-|   |-- test_query.html           # Browser harness: user defined spatial query behaviour
 |   +-- css/style.css             # Glassmorphism dark-mode mission dashboard styling
 |
 +-- docs/                         # Specifications, Decisions, and Academic Reports
     |-- architecture/             # ARCHITECTURE.md (detailed subsystem blueprints)
-    |-- api/                      # QUERY_API.md (user query request/response contract)
     |-- decisions/                # Architecture Decision Records (ADR-001 through ADR-005)
     |-- gates/                    # Gate evidence files (GATE-00 through GATE-11)
     +-- reports/                  # BENCHMARK-REPORT.md, FINAL-VERIFICATION-REPORT.md, DEFENCE-PREPARATION.md
@@ -279,7 +263,7 @@ Hardcoded Simulation Seed     ─────────────>  Configur
 - **Subtree Highlighting:** Click any bounding box to isolate and highlight its parent-child lineage and enclosed entities.
 
 ### 3. Custom Dynamic Spatial Queries
-- **User-Drawn Query Windows:** Click-and-drag bounding rectangles directly on the radar grid to trigger live range queries. *(Region queries are implemented — see [User Defined Spatial Queries](#user-defined-spatial-queries).)*
+- **User-Drawn Query Windows:** Click-and-drag bounding rectangles directly on the radar grid to trigger live range queries.
 - **Trajectory Corridor Generation:** Define origin and destination waypoints to dynamically visualize swept corridors and hazard intersections.
 
 ### 4. Traversal & Pruning Step-Through Mode
@@ -298,72 +282,6 @@ Hardcoded Simulation Seed     ─────────────>  Configur
 ### 6. Configurable Simulation Environment
 - **Live Parameter Controls:** UI sliders to adjust entity density ($N = 10$ to $10{,}000$), velocity ranges, and hazard generation frequencies without recompilation.
 - **Interactive Hazard Injection:** Manual placement of high-risk obstacles into trajectory paths to test real-time avoidance responses.
-
----
-
-## User Defined Spatial Queries
-
-Mission Control can execute a **region query drawn by the user** against the real C++ R-tree.
-The browser never computes a result set: it draws the region, converts it into world coordinates
-and asks the C++ query service, which answers with the entity ids the R-tree actually returned.
-
-### How it works
-
-```
-browser  ──POST /api/query──▶  run_demo.py (query_api.py)  ──stdin/stdout──▶  kestrel_query (C++)
-                                    │                                            │
-                                    └──────────── response ────────────────────┘
-```
-
-* **`kestrel_query`** (`src/query_service.cpp`) is a long lived C++ process. It builds the
-  demonstration scene **once** and keeps that R-tree in memory, so every query is answered by the
-  very same tree instance and the simulation is never regenerated per query.
-* **`query_api.py`** is the HTTP layer. It performs no geometry and no filtering — it forwards the
-  request to the service and returns its answer.
-* **`run_demo.py`** starts the service, serves the frontend and hosts the endpoints.
-
-### Using it
-
-1. Press **Load state.json** (the scene must be loaded first).
-2. Press **Draw Query** in the toolbar, then drag a rectangle on the map.
-3. The region is executed on release; the matching entities are highlighted and their ids are
-   listed in the **Spatial Query** panel.
-4. Drag again to replace the region, or press **Clear Query** / `Esc` to discard it.
-
-While the drawing mode is armed, the map does not pan — a drag always defines a region.
-
-### Request and response contract
-
-`POST /api/query` with `{"bounds": [min_x, min_y, max_x, max_y]}` (world coordinates):
-
-| Outcome | HTTP | Response |
-|---------|------|----------|
-| Match | 200 | `{"status":"ok","scene_key":…,"query":{"bounds":[…]},"results":[…],"metrics":{"nodes_visited":N}}` |
-| No match | 200 | `{"status":"empty", …, "results":[]}` |
-| Invalid input | 400 | `{"status":"invalid","message":"…"}` |
-| Execution failure | 500 | `{"status":"error","message":"…"}` |
-| Service unavailable | 503 | `{"status":"unavailable","message":"…"}` |
-
-`GET /api/scene` reports the identity of the scene the service holds.
-
-Only metrics the implementation actually produces are returned (`nodes_visited`). No execution
-time, no traversal count and no result id is ever invented. The full contract is documented in
-[docs/api/QUERY_API.md](docs/api/QUERY_API.md).
-
-### Scene consistency
-
-`scene_key` is a fingerprint of the scene contents that does not depend on the query. The exporter
-writes it into `state.json`, and the service reports the same value for the same scene. A result
-is only displayed when the two match, so a result of a different scene can never be mistaken for a
-fresh one, and loading another scene discards the previous region and its results.
-
-### Geometry semantics
-
-The query runs through the existing `MissionControl::region_scan`, so it inherits the documented
-geometry contract: boundaries are **closed / inclusive** (a region that only touches an entity
-includes it), degenerate point and line regions are valid, and non-finite coordinates are rejected
-before the tree is touched. The drawn region covers every pixel the drag touched, so a region that
-visually touches an entity also touches it in world space.
 
 ---
 

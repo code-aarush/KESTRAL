@@ -168,51 +168,6 @@ A linear scan over the entity store that answers the same spatial queries as the
 Used exclusively for differential correctness testing.
 
 
-### 5. Interactive Query Service (User Defined Spatial Queries)
-
-The Mission Control frontend can execute a user defined region scan. The
-authoritative result set is always produced by the C++ implementation: the
-browser draws the region, converts it into world coordinates and asks the
-query service, which runs the existing `MissionControl::region_scan`.
-
-**Runtime shape:**
-
-```
-frontend (browser)  ──HTTP/JSON──▶  run_demo.py (query_api.py)
-                                        │
-                                        └──stdin/stdout──▶  kestrel_query (C++ process)
-```
-
-* `src/query_service.cpp` — the service. It parses and validates the request,
-  runs the R-tree range query and answers with the entity ids and the
-  traversal statistics the implementation actually produced. The pure function
-  `handle_query_request()` is unit tested without any I/O.
-* `src/scene.cpp` — the shared scene builder. The exporter and the service
-  build the demonstration scene through the same function, so both observe
-  exactly the same tree, and both compute the same query independent
-  `scene_key`.
-* `query_api.py` — the HTTP layer. It performs no geometry and no filtering;
-  it forwards the request body to the service and returns its answer.
-* `run_demo.py` — starts the service, serves the frontend and hosts the
-  endpoints `/api/query` and `/api/scene`.
-
-**Invariants:**
-- The service builds the scene once and keeps that R-tree in memory: the
-  simulation is never regenerated per query.
-- A request is validated before the tree is touched. A malformed body, a
-  non-finite coordinate, a wrong number of coordinates and an unordered region
-  are rejected with `status: "invalid"`.
-- The returned ids are the ids of the R-tree range query. No result id, no
-  traversal count and no execution time is ever invented.
-- A result is only displayed when its `scene_key` matches the `scene_key` of
-  the loaded scene, so a result of another scene can never be mistaken for a
-  fresh one.
-- Loading a scene discards the region and the results of the previous scene.
-
-The full request and response contract is documented in
-[docs/api/QUERY_API.md](../api/QUERY_API.md).
-
-
 ### 6. Benchmark Engine (PLANNED — Gate 09)
 
 Measures native R-tree performance under structural load.
@@ -232,7 +187,7 @@ Measures native R-tree performance under structural load.
 - Raw result files (CSV or similar) committed to `docs/reports/`.
 - Do not fabricate or extrapolate measurements.
 
-### 6. Interactive Visualization Frontend (IMPLEMENTED — Gate 10)
+### 6. 2D Visualization Frontend (PLANNED — Gate 10)
 
 An interactive 2D display of the simulation state and query results.
 
@@ -248,7 +203,6 @@ An interactive 2D display of the simulation state and query results.
 | Key | Meaning |
 |-----|---------|
 | `scene_id` | Content fingerprint of the scene and its query; changes whenever either changes. |
-| `scene_key` | Content fingerprint of the scene alone; independent of the query. A live query service reports the same value for the same scene. |
 | `entities[]` | Active entities with their bounding boxes. |
 | `rtree.height`, `rtree.size` | Tree topology summary. |
 | `rtree.internal_mbrs[]`, `rtree.leaf_mbrs[]` | Legacy flat MBR arrays (kept for existing consumers). |
@@ -274,17 +228,6 @@ While the hierarchy is written, the exporter resolves every internal identifier 
 `node_<index>` identifier, so a trace event always refers to the node that was actually exported.
 The frontend therefore resolves a traversal event with a single lookup
 (`hierarchy.nodeMap.get(event.node_id)`) — no format conversion, no ambiguity.
-
-**Frontend Features:**
-- **Smooth Pan & Zoom:** Canvas navigation with mouse-drag panning, pinch-to-zoom, and mini-map navigation.
-- **Entity Inspection Tooltips:** Hover over and click asteroids, probes, or debris to inspect real-time position, velocity vectors, entity IDs, and bounding coordinates.
-- **Level-by-Level Filtering:** Toggle visibility of specific tree depths (Root → Internal Levels → Leaf MBRs).
-- **Subtree Highlighting:** Click any bounding box to isolate and highlight its parent-child lineage and enclosed entities.
-- **User-Drawn Query Windows:** Click-and-drag bounding rectangles directly on the radar grid to trigger live range queries.
-- **Trajectory Corridor Generation:** Define origin and destination waypoints to dynamically visualize swept corridors and hazard intersections.
-- **Visual Branch-and-Bound Debugger:** Step-by-step visual animation demonstrating how the R-tree searches for hazards.
-- **Real-Time Query Metrics Dashboard:** Telemetry overlay showing candidates evaluated, pruning efficiency, and execution metrics.
-- **Configurable Simulation Environment:** Live parameter controls for entity density, velocity ranges, and hazard generation frequencies.
 
 **Trace validation**
 

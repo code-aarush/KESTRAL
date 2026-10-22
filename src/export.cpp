@@ -236,6 +236,9 @@ int main(int argc, char* argv[]) {
     // The scene is built through the shared helper so that the interactive
     // query service observes exactly the same tree.
     build_demo_scene(store, rtree);
+    
+    // Ensure the R-tree is consistent with the demo scene
+    rtree.validate_structure();
 
     // Set up a query. The traversal is recorded while this exact query runs,
     // so the exported trace always belongs to the exported query.

@@ -34,9 +34,17 @@ The simulation models fictional Kepler Belt entities (asteroids, probes, navigat
 - ✅ **Rigorous Verification:** 13 automated CTest regression suites (100% pass rate) covering geometry, node structure, insertions, splits, deletions, stress loads, full pipeline integration, and the user query service.
 - 📊 **Empirical Benchmarking Engine:** Scalability evaluation comparing R-tree queries against linear brute-force baseline across entity scales ($N = 100$ to $100{,}000$).
 - 🖥️ **Mission Control Frontend:** A decoupled HTML5 Canvas visualizer rendering radar grids, entity markers, dynamic leaf/internal MBR hierarchies, query windows, and glowing hazard alerts.
-- 🎯 **User Defined Spatial Queries:** Draw a rectangle on the map and execute it against the *actual* C++ R-tree through the local query service — the returned entity ids come from the backend, never from the browser.
+- 🎯 **User Defined Spatial Queries:** Draw a query region and show the backend results.
 - 🔬 **Traversal Replay (Step-Through Debugger):** Mission Control can step through the *actual* recorded C++ R-tree range-query traversal — node visits, MBR tests, pruning decisions, leaf matches and accepted results — with synchronised map highlighting and per-event explanations.
 - 🚀 **Single-Command Demo Orchestrator (`run_demo.py`):** An end-to-end Python launcher that verifies the toolchain, builds stale targets, runs the simulation, exports the R-tree state to JSON, starts the C++ query service, hosts a local server, and launches Mission Control in the browser.
+
+### New Features
+- 🌌 **Interactive Spatial Map:** Smooth pan & zoom, entity inspection tooltips, and viewport navigation.
+- 🪐 **R-Tree Hierarchy Visualizer:** Level-by-level filtering, subtree highlighting, and node selection.
+- 🎯 **Custom Dynamic Spatial Queries:** User-drawn query windows and trajectory corridor generation.
+- 🔬 **Traversal & Pruning Step-Through Mode:** Visual branch-and-bound debugger with node visit, prune, and result highlights.
+- 📊 **Real-Time Query Performance Dashboard:** Telemetry overlay showing candidates evaluated, pruning efficiency, and execution metrics.
+- 🎛️ **Configurable Simulation Environment:** Live parameter controls for entity density, velocity ranges, and hazard generation.
 
 
 ---

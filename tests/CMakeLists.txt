@@ -54,6 +54,10 @@ target_link_libraries(test_export PRIVATE kestrel_scene kestrel_mission kestrel_
 add_test(NAME test_export COMMAND test_export)
 
 add_executable(test_export_trace test_export_trace.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../src/export.cpp)
+    target_compile_definitions(test_export_trace PRIVATE KESTREL_NO_MAIN)
+    target_include_directories(test_export_trace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+    target_link_libraries(test_export_trace PRIVATE kestrel_scene kestrel_mission kestrel_entity kestrel_rtree kestrel_geometry)
+    add_test(NAME test_export_trace COMMAND test_export_trace)
 target_compile_definitions(test_export_trace PRIVATE KESTREL_NO_MAIN)
 target_include_directories(test_export_trace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 target_link_libraries(test_export_trace PRIVATE kestrel_scene kestrel_mission kestrel_entity kestrel_rtree kestrel_geometry)

@@ -232,7 +232,7 @@ Measures native R-tree performance under structural load.
 - Raw result files (CSV or similar) committed to `docs/reports/`.
 - Do not fabricate or extrapolate measurements.
 
-### 6. 2D Visualization Frontend (PLANNED — Gate 10)
+### 6. Interactive Visualization Frontend (IMPLEMENTED — Gate 10)
 
 An interactive 2D display of the simulation state and query results.
 
@@ -274,6 +274,17 @@ While the hierarchy is written, the exporter resolves every internal identifier 
 `node_<index>` identifier, so a trace event always refers to the node that was actually exported.
 The frontend therefore resolves a traversal event with a single lookup
 (`hierarchy.nodeMap.get(event.node_id)`) — no format conversion, no ambiguity.
+
+**Frontend Features:**
+- **Smooth Pan & Zoom:** Canvas navigation with mouse-drag panning, pinch-to-zoom, and mini-map navigation.
+- **Entity Inspection Tooltips:** Hover over and click asteroids, probes, or debris to inspect real-time position, velocity vectors, entity IDs, and bounding coordinates.
+- **Level-by-Level Filtering:** Toggle visibility of specific tree depths (Root → Internal Levels → Leaf MBRs).
+- **Subtree Highlighting:** Click any bounding box to isolate and highlight its parent-child lineage and enclosed entities.
+- **User-Drawn Query Windows:** Click-and-drag bounding rectangles directly on the radar grid to trigger live range queries.
+- **Trajectory Corridor Generation:** Define origin and destination waypoints to dynamically visualize swept corridors and hazard intersections.
+- **Visual Branch-and-Bound Debugger:** Step-by-step visual animation demonstrating how the R-tree searches for hazards.
+- **Real-Time Query Metrics Dashboard:** Telemetry overlay showing candidates evaluated, pruning efficiency, and execution metrics.
+- **Configurable Simulation Environment:** Live parameter controls for entity density, velocity ranges, and hazard generation frequencies.
 
 **Trace validation**
 

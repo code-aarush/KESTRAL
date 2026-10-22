@@ -143,7 +143,8 @@ const CANDIDATE_URLS = [
     '/build/state.json',
     'build/state.json',
     '../state.json',
-    '/state.json'
+    '/state.json',
+    'api/state.json'
 ];
 
 function setStatus(text, type = 'normal') {

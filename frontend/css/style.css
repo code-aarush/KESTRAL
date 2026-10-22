@@ -5,12 +5,12 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. Typography Declarations (@font-face with local system stacks)
-   -------------------------------------------------------------------------- */
+    1. Typography Declarations (@font-face with local system stacks)
+    -------------------------------------------------------------------------- */
 
 @font-face {
     font-family: 'Roboto';
-    src: local('Roboto'), local('Roboto Regular'), local('Roboto-Regular');
+    src: local('Roboto'), local('Roboto Regular'), local('Roboto-Regular'), url('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu51xFIzIXKHg.ttf') format('truetype');
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -18,7 +18,7 @@
 
 @font-face {
     font-family: 'Roboto';
-    src: local('Roboto Medium'), local('Roboto-Medium');
+    src: local('Roboto Medium'), local('Roboto-Medium'), url('https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmEU9fBBc3.ttf') format('truetype');
     font-weight: 500;
     font-style: normal;
     font-display: swap;
@@ -26,7 +26,7 @@
 
 @font-face {
     font-family: 'Roboto';
-    src: local('Roboto Bold'), local('Roboto-Bold');
+    src: local('Roboto Bold'), local('Roboto-Bold'), url('https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmEU9fBBc3.ttf') format('truetype');
     font-weight: 700;
     font-style: normal;
     font-display: swap;

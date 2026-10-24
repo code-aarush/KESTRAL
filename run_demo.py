@@ -38,6 +38,8 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
+import query_api
+
 # Paths relative to this script
 REPO_ROOT = Path(__file__).resolve().parent
 BUILD_DIR = REPO_ROOT / "build"
@@ -49,6 +51,7 @@ EXE_EXT = ".exe" if IS_WINDOWS else ""
 
 DEMO_EXE = BUILD_DIR / "src" / f"kestrel_demo{EXE_EXT}"
 EXPORT_EXE = BUILD_DIR / "src" / f"kestrel_export{EXE_EXT}"
+QUERY_EXE = BUILD_DIR / "src" / f"kestrel_query{EXE_EXT}"
 STATE_JSON_BUILD = BUILD_DIR / "state.json"
 STATE_JSON_ROOT = REPO_ROOT / "state.json"
 STATE_JSON_FRONTEND = FRONTEND_DIR / "state.json"
@@ -65,8 +68,8 @@ def log_err(msg: str):
     sys.stderr.flush()
 
 
-class NoCacheHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
-    """HTTP handler with no-cache headers to ensure state.json updates reflect immediately."""
+class NoCacheHTTPRequestHandler(query_api.QueryApiMixin, http.server.SimpleHTTPRequestHandler):
+    """HTTP handler with no-cache headers, query API forwarding, and safe state serving."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(REPO_ROOT), **kwargs)
@@ -76,6 +79,28 @@ class NoCacheHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Pragma", "no-cache")
         self.send_header("Expires", "0")
         super().end_headers()
+
+    def do_GET(self):
+        path = self.path.split("?")[0]
+        if path == "/api/scene":
+            self._forward('{"op":"scene"}')
+            return
+
+        # Serve freshly generated build state when state.json is requested
+        if path in ("/state.json", "/frontend/state.json") and STATE_JSON_BUILD.exists():
+            try:
+                with open(STATE_JSON_BUILD, "rb") as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+                return
+            except OSError:
+                pass
+
+        super().do_GET()
 
     def log_message(self, format, *args):
         # Suppress routine GET logging to keep console clean
@@ -122,10 +147,10 @@ def preflight_check() -> bool:
 
 def check_stale_build() -> bool:
     """Determine whether executables are missing or older than any source file."""
-    if not DEMO_EXE.exists() or not EXPORT_EXE.exists():
+    if not DEMO_EXE.exists() or not EXPORT_EXE.exists() or not QUERY_EXE.exists():
         return True
 
-    exe_mtime = min(DEMO_EXE.stat().st_mtime, EXPORT_EXE.stat().st_mtime)
+    exe_mtime = min(DEMO_EXE.stat().st_mtime, EXPORT_EXE.stat().st_mtime, QUERY_EXE.stat().st_mtime)
 
     # Check all C++ source and header files in src/
     for src_file in SRC_DIR.glob("**/*"):
@@ -164,7 +189,7 @@ def build_targets(force_rebuild: bool = False) -> bool:
             return False
 
     # 2. CMake Build targets
-    build_cmd = ["cmake", "--build", str(BUILD_DIR), "--target", "kestrel_demo", "kestrel_export"]
+    build_cmd = ["cmake", "--build", str(BUILD_DIR), "--target", "kestrel_demo", "kestrel_export", "kestrel_query"]
     log("BUILD", f"Running: {' '.join(build_cmd)}")
     try:
         res = subprocess.run(build_cmd, cwd=str(REPO_ROOT), capture_output=True, text=True)
@@ -175,8 +200,8 @@ def build_targets(force_rebuild: bool = False) -> bool:
         log_err(f"Failed to execute cmake build: {e}")
         return False
 
-    if not DEMO_EXE.exists() or not EXPORT_EXE.exists():
-        log_err(f"Build succeeded but executables not found:\n  {DEMO_EXE}\n  {EXPORT_EXE}")
+    if not DEMO_EXE.exists() or not EXPORT_EXE.exists() or not QUERY_EXE.exists():
+        log_err(f"Build succeeded but executables not found:\n  {DEMO_EXE}\n  {EXPORT_EXE}\n  {QUERY_EXE}")
         return False
 
     log("BUILD", "Build completed successfully with 0 errors.")
@@ -221,13 +246,8 @@ def export_and_validate_state() -> bool:
             log_err(f"Expected export file not found: {STATE_JSON_BUILD}")
             return False
 
-        # Also sync to repo root state.json for fallback compatibility
-        shutil.copyfile(str(STATE_JSON_BUILD), str(STATE_JSON_ROOT))
-
-        # The visualizer resolves "./state.json" relative to the page first, so
-        # the copy that ships next to index.html must carry the same scene
-        # (including the recorded traversal trace).
-        shutil.copyfile(str(STATE_JSON_BUILD), str(STATE_JSON_FRONTEND))
+        # Note: Tracked state fixtures (state.json and frontend/state.json) are NEVER overwritten.
+        # Generated runtime state remains protected in build/state.json and is served directly by the server.
 
         # Validate JSON content
         with open(STATE_JSON_BUILD, "r", encoding="utf-8") as fp:
@@ -342,6 +362,12 @@ def start_server(host: str, port: int) -> tuple[ThreadingHTTPServer | None, int,
             port = alt_port
 
     try:
+        if QUERY_EXE.exists():
+            worker = query_api.start_query_worker(QUERY_EXE)
+            if worker:
+                NoCacheHTTPRequestHandler.worker = worker
+                log("SERVER", "Interactive query service worker started (kestrel_query).")
+
         server = ThreadingHTTPServer((host, port), NoCacheHTTPRequestHandler)
         t = threading.Thread(target=server.serve_forever, daemon=True)
         t.start()
@@ -432,6 +458,9 @@ def main():
     except KeyboardInterrupt:
         if server:
             print("\n[SHUTDOWN] Received Ctrl+C. Stopping demo server...", flush=True)
+            if NoCacheHTTPRequestHandler.worker:
+                NoCacheHTTPRequestHandler.worker.stop()
+                NoCacheHTTPRequestHandler.worker = None
             server.shutdown()
             server.server_close()
             print("[SHUTDOWN] Server stopped cleanly. Goodbye.", flush=True)

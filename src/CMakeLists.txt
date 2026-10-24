@@ -13,8 +13,26 @@ add_library(kestrel_mission STATIC mission.cpp)
 target_include_directories(kestrel_mission PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(kestrel_mission PUBLIC kestrel_entity kestrel_rtree kestrel_geometry)
 
+add_library(kestrel_scene STATIC scene.cpp)
+target_include_directories(kestrel_scene PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(kestrel_scene PUBLIC kestrel_entity kestrel_rtree kestrel_geometry)
+
+add_library(kestrel_export_support STATIC export.cpp)
+target_compile_definitions(kestrel_export_support PRIVATE KESTREL_NO_MAIN)
+target_include_directories(kestrel_export_support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(kestrel_export_support PUBLIC kestrel_scene kestrel_mission kestrel_entity kestrel_rtree kestrel_geometry)
+
 add_executable(kestrel_demo main.cpp)
 target_link_libraries(kestrel_demo PRIVATE kestrel_mission kestrel_entity kestrel_rtree kestrel_geometry)
 
 add_executable(kestrel_export export.cpp)
-target_link_libraries(kestrel_export PRIVATE kestrel_mission kestrel_entity kestrel_rtree kestrel_geometry)
+target_link_libraries(kestrel_export PRIVATE kestrel_scene kestrel_mission kestrel_entity kestrel_rtree kestrel_geometry)
+
+# Long lived query worker: holds one R-tree and answers query requests.
+add_library(kestrel_query_service STATIC query_service.cpp)
+target_compile_definitions(kestrel_query_service PRIVATE KESTREL_NO_MAIN)
+target_include_directories(kestrel_query_service PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(kestrel_query_service PUBLIC kestrel_export_support kestrel_scene kestrel_mission kestrel_entity kestrel_rtree kestrel_geometry)
+
+add_executable(kestrel_query query_service.cpp)
+target_link_libraries(kestrel_query PRIVATE kestrel_export_support kestrel_scene kestrel_mission kestrel_entity kestrel_rtree kestrel_geometry)

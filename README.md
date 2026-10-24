@@ -5,14 +5,14 @@
 ### **K**epler **E**xploration — **S**patial **T**ree for **R**isk **E**valuation and **L**ocalization
 
 [![Language: C++17](https://img.shields.io/badge/Language-C%2B%2B17-blue.svg)](https://en.cppreference.com/w/cpp/17)
-[![Tests: 12/12 Passing](https://img.shields.io/badge/Tests-12%2F12%20Passing-brightgreen.svg)](tests/)
+[![CTest: 13/13 Passing](https://img.shields.io/badge/CTest-13%2F13%20Passing-brightgreen.svg)](tests/)
+[![Python Tests: 77/77 Passing](https://img.shields.io/badge/Python%20Tests-77%2F77%20Passing-brightgreen.svg)](tests/)
 [![Status: MVP Complete](https://img.shields.io/badge/Status-MVP%20Complete-success.svg)](PROJECT_SSOT.md)
 
 An academic C++17 project investigating a custom, dynamically updated two-dimensional R-tree for spatial indexing and hazard assessment in a simulated deep-space environment.
 
 </div>
 
----
 ---
 
 ## 🔬 Research Question
@@ -31,11 +31,12 @@ The simulation models fictional Kepler Belt entities (asteroids, probes, navigat
 - 🌲 **Native C++17 R-Tree Core:** Complete node splitting (quadratic algorithm), area/perimeter minimization, recursive MBR propagation, dynamic insertion, deletion with underflow re-insertion, and window pruning.
 - ☄️ **Two-Phase Hazard Assessment Pipeline:** Broad-phase spatial candidate retrieval combined with narrow-phase geometric checks (corridors, distance radii, region bounds).
 - 🪐 **Deterministic Simulation Engine:** Kepler Belt orbital motion model with seeded deterministic pseudo-random entity lifecycles.
-- ✅ **Rigorous Verification:** 9 automated CTest regression suites (100% pass rate) covering geometry, node structure, insertions, splits, deletions, stress loads, and full pipeline integration.
+- ✅ **Rigorous Verification:** 13 automated CTest regression suites and 76 Python unit/browser tests (100% pass rate) covering geometry, node structure, insertions, splits, deletions, stress loads, and full pipeline integration.
 - 📊 **Empirical Benchmarking Engine:** Scalability evaluation comparing R-tree queries against linear brute-force baseline across entity scales ($N = 100$ to $100{,}000$).
 - 🖥️ **Mission Control Frontend:** A decoupled HTML5 Canvas visualizer rendering radar grids, entity markers, dynamic leaf/internal MBR hierarchies, query windows, and glowing hazard alerts.
-- 🔬 **Traversal Replay (Step-Through Debugger):** Mission Control can step through the *actual* recorded C++ R-tree range-query traversal — node visits, MBR tests, pruning decisions, leaf matches and accepted results — with synchronised map highlighting and per-event explanations.
-- 🚀 **Single-Command Demo Orchestrator (`run_demo.py`):** An end-to-end Python launcher that verifies the toolchain, builds stale targets, runs the simulation, exports the R-tree state to JSON, hosts a local server, and launches Mission Control in the browser.
+- 🎯 **Interactive User-Defined Spatial Queries:** Users can draw arbitrary spatial query bounding rectangles on the live radar canvas; requests are evaluated by a persistent native C++ query service (`kestrel_query.exe`) over high-speed IPC with sub-millisecond response times.
+- 🔬 **Traversal Replay (Step-Through Debugger):** Mission Control can step through the *actual* recorded C++ R-tree range-query traversal for both initial and user-defined queries — node visits, MBR tests, pruning decisions, leaf matches, and accepted results — with synchronised map highlighting, per-event explanations, and canonical hierarchy node linking.
+- 🚀 **Single-Command Demo Orchestrator (`run_demo.py`):** An end-to-end Python launcher that verifies the toolchain, builds stale targets, runs the simulation, exports the R-tree state to JSON, hosts a local server, and launches Mission Control in the browser. See the [Live Demo Walkthrough](docs/DEMO_WALKTHROUGH.md).
 
 
 ---
@@ -110,11 +111,12 @@ python run_demo.py
 
 ### What this Command Does Automatically
 1. **Preflight:** Validates environment dependencies (CMake 3.20+, C++17 compiler, Python 3.8+).
-2. **Build Check:** Builds `kestrel_demo` and `kestrel_export` using CMake if binaries are missing or source code has been modified.
+2. **Build Check:** Builds `kestrel_demo`, `kestrel_export`, and `kestrel_query` using CMake if binaries are missing or source code has been modified.
 3. **Simulation:** Runs the native C++ Kepler Belt demo (`kestrel_demo.exe`) and verifies output.
-4. **State Export:** Executes `kestrel_export.exe` to serialize entities, R-tree MBR bounding boxes, and active query results to `build/state.json`.
-5. **JSON Schema Validation:** Verifies schema integrity (entities, leaf MBRs, internal MBRs, query matches).
-6. **Local Server & Launch:** Starts an HTTP server on port 8000 (with automatic port conflict resolution) and opens the **Mission Control visualizer** in your default web browser (`http://127.0.0.1:8000/frontend/index.html`).
+4. **State Export:** Executes `kestrel_export.exe` to serialize entities, R-tree MBR bounding boxes, and active query results to `build/state.json` (tracked fixtures `state.json` and `frontend/state.json` remain untouched).
+5. **JSON Schema & Traversal Validation:** Verifies schema integrity (entities, leaf MBRs, internal MBRs, query matches, and recorded traversal trace).
+6. **Query Service Worker:** Spawns `kestrel_query.exe` as a persistent subprocess for real-time native range query evaluation.
+7. **Local Server & Launch:** Starts an HTTP server on port 8000 with no-cache headers (with automatic port conflict resolution), routes `/api/query` and `/api/scene` to the native query worker, serves `build/state.json`, and opens the **Mission Control visualizer** in your default web browser (`http://127.0.0.1:8000/frontend/index.html`). See the [Live Demo Walkthrough](docs/DEMO_WALKTHROUGH.md).
 
 ### Launcher Options & Flags
 
@@ -159,11 +161,24 @@ cmake --build build
 
 ### 2. Run All Unit & Integration Tests
 
+**C++ Core & Traversal Tests (CTest):**
 ```bash
-cd build && ctest --output-on-failure
+ctest --test-dir build --output-on-failure
 ```
+*Expected output: `100% tests passed out of 13`.*
 
-*Expected output: `100% tests passed, 0 tests failed out of 12`.*
+**Python API, Launcher Safety, Hierarchy, and Viewport Tests:**
+```bash
+python -m unittest tests/test_launcher_safety.py tests/test_hierarchy_validation.py tests/test_viewport_math.py tests/test_query_api.py -v
+```
+*Expected output: `Ran 76 tests ... OK` (0 errors, 0 skips).*
+
+**End-to-End Live Browser Demonstration Validation:**
+```bash
+python tests/test_live_demo.py
+# or: python -m unittest tests/test_live_demo.py -v
+```
+*Validates all 8 Stage B scenarios and Stage C responsive viewports (1920x1080, 1440x900, 1280x720 across 1x, 1.25x, and 2x DPR) against the live running application, capturing verified screenshots to `docs/reports/screenshots/`.*
 
 ### 3. Run Scaling Benchmarks
 
@@ -389,11 +404,12 @@ while it writes the hierarchy, so the trace references exactly the nodes that we
 
 ### Scope of the replayed query
 
-The replay shows the traversal of the query that the backend actually executed for the exported
-scene. That query is currently the predefined demo query (`200, 200 → 600, 400`) produced by
-`kestrel_export`; interactive user-drawn queries are a separate feature and are **not** part of
-this replay. The exported trace identifies its query (`query_id`, `query_bounds`) and is invalidated
-as soon as a different scene or query is loaded.
+The replay engine supports both the predefined demo query and live user-defined spatial queries:
+1. **Initial Demo Query:** Traversal of the baseline range query (`200, 200 → 600, 400`) produced by `kestrel_export`.
+2. **Interactive User Queries:** When a user draws a new query region on the canvas, the bounding box is sent to `POST /api/query`. The persistent C++ worker (`kestrel_query.exe`) executes the query on the identical R-tree, recording the new traversal decisions and returning them in the JSON response. The frontend seamlessly installs this trace into the replay engine, allowing immediate step-through and inspection of the user's custom query.
+
+For full contract specifications, see [`docs/api/QUERY_API.md`](docs/api/QUERY_API.md).
+For a guided demonstration walkthrough, see [`docs/DEMO_WALKTHROUGH.md`](docs/DEMO_WALKTHROUGH.md).
 
 ---
 

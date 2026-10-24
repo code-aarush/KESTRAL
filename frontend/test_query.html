@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KESTREL — User Defined Spatial Query Tests</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0e17;
+            color: #f0f4fc;
+            padding: 30px;
+            margin: 0;
+        }
+        h1 { font-size: 20px; margin-bottom: 8px; color: #22d3ee; }
+        p { color: #9ab0d3; font-size: 13px; margin-bottom: 24px; }
+        .summary-card {
+            background: #121826; border: 1px solid #24344d; border-radius: 8px;
+            padding: 16px 20px; margin-bottom: 24px; display: inline-flex; gap: 30px;
+        }
+        .stat { display: flex; flex-direction: column; gap: 4px; }
+        .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #5e7399; }
+        .stat-val { font-size: 22px; font-weight: 700; font-family: monospace; }
+        .stat-val.passed { color: #00e676; }
+        .stat-val.failed { color: #ff1744; }
+        table {
+            width: 100%; max-width: 900px; border-collapse: collapse;
+            background: #121826; border: 1px solid #24344d; border-radius: 8px; overflow: hidden;
+        }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #1d2a3f; font-size: 12.5px; }
+        th { background: #0e1524; color: #5e7399; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge { font-weight: 700; font-size: 11px; }
+        .badge.pass { color: #00e676; }
+        .badge.fail { color: #ff1744; }
+    </style>
+</head>
+<body>
+    <h1>KESTREL — User Defined Spatial Query Test Suite</h1>
+    <p>Validates the draw-query interaction: screen to world conversion, request construction,
+       response handling, result rendering, empty state and scene consistency.</p>
+
+    <div class="summary-card">
+        <div class="stat"><span class="stat-label">Total</span><span class="stat-val" id="totalCount">0</span></div>
+        <div class="stat"><span class="stat-label">Passed</span><span class="stat-val passed" id="passCount">0</span></div>
+        <div class="stat"><span class="stat-label">Failed</span><span class="stat-val failed" id="failCount">0</span></div>
+    </div>
+
+    <!-- Hidden DOM elements that satisfy the app.js requirements -->
+    <div style="display:none;">
+        <canvas id="radar" width="800" height="600"></canvas>
+        <span id="status"></span><span id="statusDot"></span><span id="missionClock"></span>
+        <button id="btnLoad"></button><button id="btnBrowse"></button><input type="file" id="fileInput">
+        <button id="btnZoomIn"></button><button id="btnZoomOut"></button>
+        <button id="btnFitAll"></button><button id="btnResetView"></button>
+        <span id="valZoom"></span><span id="valCoords"></span>
+        <input type="checkbox" id="layerEntities" checked>
+        <input type="checkbox" id="layerResults" checked>
+        <input type="checkbox" id="layerLeaf" checked>
+        <input type="checkbox" id="layerInternal" checked>
+        <input type="checkbox" id="layerQuery" checked>
+        <span id="valEntities"></span><span id="valResults"></span>
+        <span id="valLeaf"></span><span id="valInternal"></span>
+        <div id="hierarchyDock"></div><span id="hierarchyBadge"></span>
+        <div id="hierarchyTreeContainer"><ul id="hierarchyTree"></ul></div>
+        <div id="hierarchyEmptyState"></div><span id="hierarchyEmptyTitle"></span><span id="hierarchyEmptyDesc"></span>
+        <div id="nodeDetailCard"></div><button id="btnClearSelection"></button>
+        <span id="nodeDetailId"></span><span id="nodeDetailType"></span><span id="nodeDetailDepth"></span>
+        <span id="nodeDetailEntries"></span><span id="nodeDetailBounds"></span><span id="nodeDetailEntities"></span>
+        <span id="traceBadge"></span><span id="traceStatus"></span><span id="traceStep"></span>
+        <span id="traceProgressFill"></span><span id="traceEventTag"></span><span id="traceEventText"></span>
+        <ol id="traceLog"></ol>
+        <button id="btnTraceStart"></button><button id="btnTracePrev"></button><button id="btnTraceNext"></button>
+        <button id="btnTracePlay"></button><button id="btnTracePause"></button>
+        <button id="btnTraceRestart"></button><button id="btnTraceClear"></button>
+        <button id="btnDrawQuery"></button><button id="btnClearQuery"></button>
+        <span id="queryBadge"></span><span id="queryStatus"></span><span id="queryBounds"></span>
+        <span id="queryMetrics"></span><span id="queryEmptyState"></span><span id="queryError"></span>
+        <div id="queryResults"></div>
+    </div>
+
+    <table>
+        <thead><tr><th style="width:50px;">#</th><th>Test Case Description</th><th style="width:100px;">Status</th><th>Details</th></tr></thead>
+        <tbody id="testTableBody"></tbody>
+    </table>
+
+    <script src="app.js"></script>
+    <script>
+        const results = [];
+        let passed = 0;
+        let failed = 0;
+
+        function assert(desc, condition, details = '') {
+            const ok = Boolean(condition);
+            if (ok) passed++; else failed++;
+            results.push({ desc, ok, details });
+        }
+
+        // --- Fixtures ---------------------------------------------------------
+        const SCENE_KEY = 4242;
+
+        function buildScene(withSceneKey = true) {
+            const scene = {
+                scene_id: 99,
+                entities: [
+                    { id: 1, bounds: [0, 0, 10, 10] },
+                    { id: 2, bounds: [50, 50, 60, 60] }
+                ],
+                rtree: {
+                    height: 1,
+                    size: 2,
+                    internal_mbrs: [],
+                    leaf_mbrs: [[0, 0, 10, 10], [50, 50, 60, 60]],
+                    root: {
+                        id: 'node_0', parent_id: null, type: 'root', is_root: true, is_leaf: true,
+                        depth: 0, bounds: [0, 0, 60, 60],
+                        children: [
+                            { id: 'entity_1', parent_id: 'node_0', entity_id: 1, type: 'entity',
+                              bounds: [0, 0, 10, 10] },
+                            { id: 'entity_2', parent_id: 'node_0', entity_id: 2, type: 'entity',
+                              bounds: [50, 50, 60, 60] }
+                        ]
+                    }
+                },
+                query: { query_id: 1, bounds: [0, 0, 60, 60], results: [1, 2] },
+                trace: null
+            };
+            if (withSceneKey) scene.scene_key = SCENE_KEY;
+            return scene;
+        }
+
+        // --- Stubbed backend --------------------------------------------------
+        // The harness replaces fetch with a stub so that the frontend logic can
+        // be verified without a running C++ service. The real end to end
+        // behaviour against the C++ service is verified separately.
+        const calls = [];
+        let nextResponse = null;
+        let nextFailure = null;
+
+        window.fetch = function (url, options) {
+            calls.push({ url: url, options: options });
+            if (nextFailure) {
+                const failure = nextFailure;
+                nextFailure = null;
+                return Promise.reject(failure);
+            }
+            const payload = nextResponse;
+            nextResponse = null;
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: function () { return Promise.resolve(payload); }
+            });
+        };
+
+        // --- Test 1: screen to world conversion --------------------------------
+        viewport.scale = 1;
+        viewport.tx = 0;
+        viewport.ty = 0;
+
+        const bounds = worldBoundsFromScreenRect({ x: 100, y: 50 }, { x: 200, y: 150 });
+        assert('a drawn rectangle is converted into world bounds',
+            Array.isArray(bounds) && bounds.length === 4, JSON.stringify(bounds));
+        assert('the converted region contains the dragged pixels',
+            bounds[0] <= 100 && bounds[1] <= 50 && bounds[2] >= 200 && bounds[3] >= 150,
+            JSON.stringify(bounds));
+        assert('a reversed drag produces an ordered region',
+            (function () {
+                const b = worldBoundsFromScreenRect({ x: 200, y: 150 }, { x: 100, y: 50 });
+                return b[0] <= b[2] && b[1] <= b[3];
+            })(), '');
+        assert('the viewport transformation is honoured',
+            (function () {
+                viewport.scale = 2; viewport.tx = 10; viewport.ty = 20;
+                const b = worldBoundsFromScreenRect({ x: 10, y: 20 }, { x: 30, y: 40 });
+                viewport.scale = 1; viewport.tx = 0; viewport.ty = 0;
+                // world = (screen - translation) / scale, pixel coverage included
+                return Math.abs(b[0] - 0) < 1e-9 && Math.abs(b[2] - 10.5) < 1e-9 &&
+                       Math.abs(b[1] - 0) < 1e-9 && Math.abs(b[3] - 10.5) < 1e-9;
+            })(), '');
+        assert('a degenerate region is converted as well',
+            (function () {
+                const b = worldBoundsFromScreenRect({ x: 10, y: 10 }, { x: 10, y: 10 });
+                return Array.isArray(b) && b[0] <= b[2] && b[1] <= b[3];
+            })(), '');
+
+        // --- Test 2: loading a scene ------------------------------------------
+        handleLoadedState(buildScene(), 'test');
+        assert('loading a scene clears a previous user query',
+            getUserQueryState().bounds === null && getUserQueryState().results.length === 0, '');
+        assert('the draw button becomes available',
+            document.getElementById('btnDrawQuery').disabled === false, '');
+
+        // --- Test 3: a successful query ---------------------------------------
+        calls.length = 0;
+        nextResponse = {
+            status: 'ok',
+            scene_key: SCENE_KEY,
+            query: { bounds: [0, 0, 20, 20] },
+            results: [1, 7],
+            metrics: { nodes_visited: 3 }
+        };
+
+        let pending = runUserQuery([0, 0, 20, 20]);
+        assert('the query is sent to the local query service',
+            calls.length === 1 && calls[0].options.method === 'POST',
+            calls.length ? calls[0].url : 'no call');
+        assert('the request carries the world bounds',
+            calls.length === 1 && calls[0].options.body === JSON.stringify({ bounds: [0, 0, 20, 20] }),
+            calls.length ? calls[0].options.body : 'no body');
+
+        pending.then(function () {
+            const state = getUserQueryState();
+            assert('a successful query reports its results',
+                state.status === 'results' && state.results.join(',') === '1,7', state.status);
+            assert('the displayed ids come from the backend',
+                document.getElementById('queryResults').textContent.indexOf('#1') !== -1 &&
+                document.getElementById('queryResults').textContent.indexOf('#7') !== -1,
+                document.getElementById('queryResults').textContent);
+            assert('the backend metrics are shown',
+                document.getElementById('queryMetrics').textContent === '3',
+                document.getElementById('queryMetrics').textContent);
+            assert('the query region is reported',
+                document.getElementById('queryBounds').textContent === '0.0, 0.0, 20.0, 20.0',
+                document.getElementById('queryBounds').textContent);
+            assert('a user query replaces the exported results',
+                activeResultIds().join(',') === '1,7', activeResultIds().join(','));
+
+            // --- Test 4: an empty result ---------------------------------------
+            calls.length = 0;
+            nextResponse = {
+                status: 'empty',
+                scene_key: SCENE_KEY,
+                query: { bounds: [900, 900, 950, 950] },
+                results: [],
+                metrics: { nodes_visited: 1 }
+            };
+            return runUserQuery([900, 900, 950, 950]).then(function () {
+                const emptyState = getUserQueryState();
+                assert('an empty query is reported as empty', emptyState.status === 'empty', emptyState.status);
+                assert('an empty query shows no result chip',
+                    document.getElementById('queryResults').textContent.trim() === '',
+                    document.getElementById('queryResults').textContent);
+                assert('an empty query highlights nothing', activeResultIds().length === 0);
+
+                // --- Test 5: an invalid request --------------------------------
+                calls.length = 0;
+                nextResponse = { status: 'invalid', message: 'bounds are not a valid bounding box' };
+                return runUserQuery([10, 10, 0, 0]).then(function () {
+                    const invalidState = getUserQueryState();
+                    assert('an invalid request is reported as an error',
+                        invalidState.status === 'error', invalidState.status);
+                    assert('an invalid request shows the backend message',
+                        invalidState.message.indexOf('not a valid bounding box') !== -1, invalidState.message);
+                    assert('an invalid request keeps the previous results out',
+                        invalidState.results.length === 0 && invalidState.executed === false);
+
+                    // --- Test 6: a backend failure --------------------------------
+                    calls.length = 0;
+                    nextFailure = new Error('network down');
+                    return runUserQuery([0, 0, 10, 10]).then(function () {
+                        const failureState = getUserQueryState();
+                        assert('an unreachable service is reported as an error',
+                            failureState.status === 'error', failureState.status);
+                        assert('an unreachable service explains itself',
+                            failureState.message.indexOf('could not be reached') !== -1, failureState.message);
+
+                        // --- Test 7: a result of another scene --------------------
+                        calls.length = 0;
+                        nextResponse = {
+                            status: 'ok',
+                            scene_key: SCENE_KEY + 1,
+                            query: { bounds: [0, 0, 10, 10] },
+                            results: [1, 2],
+                            metrics: { nodes_visited: 2 }
+                        };
+                        return runUserQuery([0, 0, 10, 10]).then(function () {
+                            const foreign = getUserQueryState();
+                            assert('a result of a different scene is refused',
+                                foreign.status === 'error' && foreign.results.length === 0, foreign.status);
+                            assert('a result of a different scene explains itself',
+                                foreign.message.indexOf('different scene') !== -1, foreign.message);
+
+                            // --- Test 8: a scene without a scene key --------------
+                            handleLoadedState(buildScene(false), 'test');
+                            calls.length = 0;
+                            nextResponse = {
+                                status: 'ok',
+                                scene_key: SCENE_KEY,
+                                query: { bounds: [0, 0, 10, 10] },
+                                results: [1],
+                                metrics: { nodes_visited: 1 }
+                            };
+                            return runUserQuery([0, 0, 10, 10]).then(function () {
+                                const unsupported = getUserQueryState();
+                                assert('a scene without a scene key cannot be queried',
+                                    unsupported.status === 'error', unsupported.status);
+                                assert('an unqueryable scene explains itself',
+                                    unsupported.message.indexOf('not exported by the KESTREL backend') !== -1,
+                                    unsupported.message);
+
+                                // --- Test 9: clearing -------------------------------
+                                handleLoadedState(buildScene(), 'test');
+                                calls.length = 0;
+                                nextResponse = {
+                                    status: 'ok',
+                                    scene_key: SCENE_KEY,
+                                    query: { bounds: [0, 0, 10, 10] },
+                                    results: [5],
+                                    metrics: { nodes_visited: 1 }
+                                };
+                                return runUserQuery([0, 0, 10, 10]).then(function () {
+                                    clearUserQuery();
+                                    const cleared = getUserQueryState();
+                                    assert('clearing removes the region and the results',
+                                        cleared.bounds === null && cleared.results.length === 0 &&
+                                        cleared.status === 'idle', JSON.stringify(cleared));
+                                    assert('clearing restores the exported results as the highlight set',
+                                        activeResultIds().join(',') === '1,2', activeResultIds().join(','));
+
+                                    // --- Test 10: the drawing mode ---------------------
+                                    const armed = setQueryDrawMode(true);
+                                    assert('the drawing mode can be armed', armed === true, '');
+                                    assert('the drawing mode is reported',
+                                        getUserQueryState().mode === true, '');
+                                    const disarmed = setQueryDrawMode(false);
+                                    assert('the drawing mode can be left', disarmed === false, '');
+
+                                    render();
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        }).catch(function (err) {
+            assert('the query flow completed without an exception', false, String(err));
+            render();
+        });
+
+        // --- Render Test Table ------------------------------------------------
+        function render() {
+            document.getElementById('totalCount').textContent = results.length;
+            document.getElementById('passCount').textContent = passed;
+            document.getElementById('failCount').textContent = failed;
+
+            const tbody = document.getElementById('testTableBody');
+            tbody.innerHTML = '';
+            results.forEach((res, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${i + 1}</td>
+                    <td>${res.desc}</td>
+                    <td><span class="badge ${res.ok ? 'pass' : 'fail'}">${res.ok ? 'PASS' : 'FAIL'}</span></td>
+                    <td style="color: ${res.ok ? '#5e7399' : '#ff1744'}; font-family: monospace; font-size: 11px;">${res.details || 'OK'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            console.log(`[KESTREL QUERY TEST SUITE] Complete: ${passed} passed, ${failed} failed out of ${results.length}.`);
+
+            if (typeof dump === 'function') {
+                dump('\n=== KESTREL QUERY TEST RESULTS ===\n');
+                results.forEach((r, idx) => {
+                    dump(`[${r.ok ? 'PASS' : 'FAIL'}] #${idx + 1} ${r.desc} - ${r.details || 'OK'}\n`);
+                });
+                dump(`=== TOTAL: ${results.length}, PASSED: ${passed}, FAILED: ${failed} ===\n\n`);
+            }
+        }
+    </script>
+</body>
+</html>

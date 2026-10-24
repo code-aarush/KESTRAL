@@ -6,6 +6,8 @@
 #include <iostream>
 #include <random>
 #include <vector>
+#include <limits>
+#include <cmath>
 
 using namespace kestrel;
 
@@ -332,6 +334,106 @@ void test_node_identifiers_are_unique() {
     }
 }
 
+void test_invalid_query_bounds_trace() {
+    RTree tree = build_clustered_tree();
+
+    const double nan_val = std::numeric_limits<double>::quiet_NaN();
+    const double pos_inf = std::numeric_limits<double>::infinity();
+    const double neg_inf = -std::numeric_limits<double>::infinity();
+
+    std::vector<BoundingBox> invalid_queries = {
+        // Inverted
+        BoundingBox{50.0, 10.0, 20.0, 60.0},
+        BoundingBox{10.0, 60.0, 50.0, 20.0},
+        BoundingBox{80.0, 80.0, 20.0, 20.0},
+        // NaN in each position
+        BoundingBox{nan_val, 0.0, 10.0, 10.0},
+        BoundingBox{0.0, nan_val, 10.0, 10.0},
+        BoundingBox{0.0, 0.0, nan_val, 10.0},
+        BoundingBox{0.0, 0.0, 10.0, nan_val},
+        // Inf in each position
+        BoundingBox{pos_inf, 0.0, 10.0, 10.0},
+        BoundingBox{0.0, pos_inf, 10.0, 10.0},
+        BoundingBox{0.0, 0.0, pos_inf, 10.0},
+        BoundingBox{0.0, 0.0, 10.0, pos_inf},
+        BoundingBox{neg_inf, 0.0, 10.0, 10.0},
+        BoundingBox{0.0, neg_inf, 10.0, 10.0},
+        BoundingBox{0.0, 0.0, neg_inf, 10.0},
+        BoundingBox{0.0, 0.0, 10.0, neg_inf},
+        // Multiple invalid coordinates
+        BoundingBox{nan_val, nan_val, nan_val, nan_val},
+        BoundingBox{neg_inf, neg_inf, pos_inf, pos_inf}
+    };
+
+    for (const auto& inv_query : invalid_queries) {
+        RTree::QueryMetrics metrics;
+        metrics.nodes_visited = 55; // Non-zero initial state to test reset
+        RTreeTrace trace;
+        auto results = tree.search(inv_query, metrics, &trace);
+
+        assert(results.empty());
+        assert(metrics.nodes_visited == 0);
+        assert(trace.events.size() == 1);
+        assert(trace.events.front().type == RTreeTraceEventType::TraversalCompleted);
+        assert(trace.truncated == false);
+        assert(count_type(trace, RTreeTraceEventType::NodeVisited) == 0);
+        assert(count_type(trace, RTreeTraceEventType::MbrTested) == 0);
+        assert(count_type(trace, RTreeTraceEventType::BranchPruned) == 0);
+        assert(count_type(trace, RTreeTraceEventType::ChildEntered) == 0);
+        assert(count_type(trace, RTreeTraceEventType::LeafEntryExamined) == 0);
+        assert(count_type(trace, RTreeTraceEventType::EntityAccepted) == 0);
+    }
+}
+
+void test_trace_and_metrics_reuse() {
+    RTree tree = build_clustered_tree();
+
+    RTree::QueryMetrics metrics;
+    RTreeTrace trace;
+
+    // 1. Run valid query that produces multiple events
+    const BoundingBox query1{-1, -1, 10, 10};
+    auto res1 = tree.search(query1, metrics, &trace);
+    assert(!res1.empty());
+    assert(metrics.nodes_visited > 0);
+    assert(trace.events.size() > 1);
+    assert(!trace.truncated);
+    const std::size_t initial_events = trace.events.size();
+
+    // 2. Reuse the same metrics and trace on an invalid query
+    const BoundingBox invalid_query{50.0, 10.0, 20.0, 60.0};
+    auto res2 = tree.search(invalid_query, metrics, &trace);
+    assert(res2.empty());
+    assert(metrics.nodes_visited == 0); // Stale metrics must not survive
+    assert(trace.events.size() == 1);   // Stale events must not survive
+    assert(trace.events.front().type == RTreeTraceEventType::TraversalCompleted);
+    assert(!trace.truncated);
+
+    // 3. Make trace truncated with max_events = 5
+    trace.max_events = 5;
+    const BoundingBox query3{-10, -10, 200, 200}; // Covers everything
+    auto res3 = tree.search(query3, metrics, &trace);
+    assert(!res3.empty());
+    assert(trace.truncated == true);
+    assert(trace.events.size() <= 5);
+
+    // 4. Reuse truncated trace on an invalid query
+    auto res4 = tree.search(invalid_query, metrics, &trace);
+    assert(res4.empty());
+    assert(metrics.nodes_visited == 0);
+    assert(trace.events.size() == 1);
+    assert(trace.events.front().type == RTreeTraceEventType::TraversalCompleted);
+    assert(trace.truncated == false); // Truncation flag must be reset
+
+    // 5. Restore max_events and run valid query again
+    trace.max_events = RTreeTrace::kDefaultMaxEvents;
+    auto res5 = tree.search(query1, metrics, &trace);
+    assert(res5 == res1);
+    assert(metrics.nodes_visited > 0);
+    assert(trace.events.size() == initial_events);
+    assert(!trace.truncated);
+}
+
 int main() {
     test_trace_records_actual_traversal();
     test_trace_decisions_match_geometry();
@@ -342,6 +444,8 @@ int main() {
     test_trace_is_bounded();
     test_mission_region_scan_exposes_trace();
     test_node_identifiers_are_unique();
+    test_invalid_query_bounds_trace();
+    test_trace_and_metrics_reuse();
     std::cout << "All R-tree traversal trace tests passed." << std::endl;
     return 0;
 }

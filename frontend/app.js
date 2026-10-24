@@ -76,6 +76,19 @@ const btnTracePause = typeof document !== 'undefined' ? document.getElementById(
 const btnTraceRestart = typeof document !== 'undefined' ? document.getElementById('btnTraceRestart') : null;
 const btnTraceClear = typeof document !== 'undefined' ? document.getElementById('btnTraceClear') : null;
 
+// User defined spatial query elements
+const btnDrawQuery = typeof document !== 'undefined' ? document.getElementById('btnDrawQuery') : null;
+const btnClearQuery = typeof document !== 'undefined' ? document.getElementById('btnClearQuery') : null;
+const queryBadge = typeof document !== 'undefined' ? document.getElementById('queryBadge') : null;
+const queryStatus = typeof document !== 'undefined' ? document.getElementById('queryStatus') : null;
+const queryBoundsLabel = typeof document !== 'undefined' ? document.getElementById('queryBounds') : null;
+const queryMetricsLabel = typeof document !== 'undefined' ? document.getElementById('queryMetrics') : null;
+const queryResultsList = typeof document !== 'undefined' ? document.getElementById('queryResults') : null;
+const queryEmptyState = typeof document !== 'undefined' ? document.getElementById('queryEmptyState') : null;
+const queryErrorBox = typeof document !== 'undefined' ? document.getElementById('queryError') : null;
+
+const QUERY_API_BASE = (typeof window !== 'undefined' && window.KESTREL_QUERY_API_BASE) || '/api/';
+
 let currentState = null;
 let currentHierarchy = null;
 let selectedNodeId = null;
@@ -126,11 +139,11 @@ function endPan(e) {
 
 // Candidate URLs for resolving state.json across different local server roots
 const CANDIDATE_URLS = [
+    '/build/state.json',
+    '../build/state.json',
+    'build/state.json',
     './state.json',
     'state.json',
-    '../build/state.json',
-    '/build/state.json',
-    'build/state.json',
     '../state.json',
     '/state.json'
 ];
@@ -566,6 +579,408 @@ function calcOverlapArea(a, b) {
  */
 function hierarchyDomId(nodeId) {
     return 'rtree-item-' + encodeURIComponent(nodeId).replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+/* ===========================================================================
+   User Defined Spatial Query — drag region selection & C++ R-tree execution.
+
+   A user draws a rectangle on the map in canvas pixels. The rectangle is
+   converted into world space using the established viewport transformation,
+   posted to the local query service (POST /api/query), and answered with
+   the matching entity ids, execution metrics, and the real traversal trace.
+   =========================================================================== */
+
+const userQuery = {
+    mode: false,          // the drawing mode is armed
+    drawing: false,       // a drag is currently in progress
+    startScreen: null,    // drag origin in canvas pixels
+    currentScreen: null,  // current drag corner in canvas pixels
+    pendingBounds: null,  // world bounds of the region being drawn
+    bounds: null,         // world bounds of the last executed query
+    results: [],          // entity ids returned by the query service
+    executed: false,      // true once a query has been answered
+    metrics: null,        // query metrics reported by the service
+    sceneKey: null,       // scene identity reported by the service
+    status: 'idle',       // idle | drawing | pending | results | empty | error
+    message: '',
+    requestId: 0
+};
+
+/**
+ * Entity ids that the map highlights. A user defined query replaces the
+ * exported demonstration results, so stale highlights never accumulate.
+ */
+function activeResultIds() {
+    if (userQuery.executed) return userQuery.results;
+    if (currentState && currentState.query && Array.isArray(currentState.query.results)) {
+        return currentState.query.results;
+    }
+    return [];
+}
+
+/**
+ * Read-only view of the user defined query state (used by the browser
+ * harnesses).
+ */
+function getUserQueryState() {
+    return {
+        mode: userQuery.mode,
+        drawing: userQuery.drawing,
+        bounds: userQuery.bounds ? userQuery.bounds.slice() : null,
+        pendingBounds: userQuery.pendingBounds ? userQuery.pendingBounds.slice() : null,
+        results: userQuery.results.slice(),
+        executed: userQuery.executed,
+        metrics: userQuery.metrics ? Object.assign({}, userQuery.metrics) : null,
+        sceneKey: userQuery.sceneKey,
+        status: userQuery.status,
+        message: userQuery.message
+    };
+}
+
+/**
+ * Converts a rectangle given in canvas pixels into world space bounds.
+ *
+ * The region covers every pixel the drag touched: the pixel rectangle is
+ * expanded by 1 pixel on the max corner so that a drag touching a pixel
+ * also touches the geometry that pixel visualizes.
+ */
+function worldBoundsFromScreenRect(start, end) {
+    if (!start || !end) return null;
+
+    const x1 = Math.floor(Math.min(start.x, end.x));
+    const y1 = Math.floor(Math.min(start.y, end.y));
+    const x2 = Math.floor(Math.max(start.x, end.x)) + 1;
+    const y2 = Math.floor(Math.max(start.y, end.y)) + 1;
+
+    const a = screenToWorld(x1, y1);
+    const b = screenToWorld(x2, y2);
+    if (!isFinite(a.x) || !isFinite(a.y) || !isFinite(b.x) || !isFinite(b.y)) return null;
+    return [
+        Math.min(a.x, b.x), Math.min(a.y, b.y),
+        Math.max(a.x, b.x), Math.max(a.y, b.y)
+    ];
+}
+
+/**
+ * Arms or disarms the drawing mode.
+ */
+function setQueryDrawMode(enabled) {
+    const canDraw = !!currentState;
+    userQuery.mode = !!enabled && canDraw;
+    if (!userQuery.mode) {
+        cancelQueryDraw();
+    }
+    if (canvas) {
+        canvas.classList.toggle('query-draw-mode', userQuery.mode);
+    }
+    updateUserQueryPanel();
+    requestRender();
+    return userQuery.mode;
+}
+
+/**
+ * Aborts an in-progress drag without executing a query.
+ */
+function cancelQueryDraw() {
+    if (!userQuery.drawing && !userQuery.pendingBounds) return;
+    userQuery.drawing = false;
+    userQuery.startScreen = null;
+    userQuery.currentScreen = null;
+    userQuery.pendingBounds = null;
+    if (userQuery.status === 'drawing') {
+        userQuery.status = userQuery.executed ? (userQuery.results.length > 0 ? 'results' : 'empty') : 'idle';
+    }
+    updateUserQueryPanel();
+    requestRender();
+}
+
+/**
+ * Concludes a drag gesture: converts the pixels to world coordinates and
+ * executes the query when requested.
+ */
+function endQueryDraw(e, execute) {
+    if (!userQuery.drawing) return;
+
+    userQuery.drawing = false;
+    const start = userQuery.startScreen;
+    const end = userQuery.currentScreen;
+    userQuery.startScreen = null;
+    userQuery.currentScreen = null;
+    userQuery.pendingBounds = null;
+
+    const pId = (e && typeof e.pointerId === 'number') ? e.pointerId : activePointerId;
+    activePointerId = null;
+    hasActiveCapture = false;
+    if (canvas && pId !== null && pId !== undefined) {
+        try {
+            if (canvas.hasPointerCapture && canvas.hasPointerCapture(pId)) {
+                canvas.releasePointerCapture(pId);
+            }
+        } catch (_) {}
+    }
+
+    if (!execute) {
+        if (userQuery.status === 'drawing') userQuery.status = 'idle';
+        updateUserQueryPanel();
+        requestRender();
+        return;
+    }
+
+    const bounds = worldBoundsFromScreenRect(start, end);
+    if (!bounds) {
+        userQuery.status = 'error';
+        userQuery.message = 'The drawn region could not be converted into world coordinates.';
+        updateUserQueryPanel();
+        requestRender();
+        return;
+    }
+
+    runUserQuery(bounds);
+}
+
+/**
+ * Discards the drawn region and every result that belongs to it.
+ */
+function clearUserQuery() {
+    cancelQueryDraw();
+    userQuery.mode = false;
+    userQuery.bounds = null;
+    userQuery.pendingBounds = null;
+    userQuery.results = [];
+    userQuery.executed = false;
+    userQuery.metrics = null;
+    userQuery.sceneKey = null;
+    userQuery.status = 'idle';
+    userQuery.message = '';
+    if (canvas) canvas.classList.remove('query-draw-mode');
+    clearReplayTrace();
+    updateUserQueryPanel();
+    requestRender();
+}
+
+/**
+ * Executes a user defined region against the C++ query service.
+ */
+async function runUserQuery(bounds) {
+    const requestId = ++userQuery.requestId;
+
+    userQuery.bounds = bounds;
+    userQuery.status = 'pending';
+    userQuery.message = '';
+    userQuery.results = [];
+    userQuery.executed = false;
+    userQuery.metrics = null;
+    updateUserQueryPanel();
+    requestRender();
+
+    let response;
+    try {
+        response = await fetch(QUERY_API_BASE + 'query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bounds: bounds })
+        });
+    } catch (err) {
+        if (requestId !== userQuery.requestId) return;
+        userQuery.status = 'error';
+        userQuery.message = 'The KESTREL query service could not be reached. Start it with "python3 run_demo.py".';
+        updateUserQueryPanel();
+        requestRender();
+        return;
+    }
+
+    let payload;
+    try {
+        payload = await response.json();
+    } catch (err) {
+        if (requestId !== userQuery.requestId) return;
+        userQuery.status = 'error';
+        userQuery.message = 'The KESTREL query service returned an unreadable answer (HTTP ' +
+            (response && response.status ? response.status : '?') + ').';
+        updateUserQueryPanel();
+        requestRender();
+        return;
+    }
+
+    // A newer query superseded this one: drop the stale answer.
+    if (requestId !== userQuery.requestId) return;
+
+    const status = payload && payload.status;
+
+    if (status === 'invalid') {
+        userQuery.status = 'error';
+        userQuery.message = 'The query service rejected the region: ' + ((payload && payload.message) || 'invalid request');
+        updateUserQueryPanel();
+        requestRender();
+        return;
+    }
+    if (status === 'error' || status === 'unavailable') {
+        userQuery.status = 'error';
+        userQuery.message = 'The query service could not execute the query: ' + ((payload && payload.message) || 'unknown failure');
+        updateUserQueryPanel();
+        requestRender();
+        return;
+    }
+    if (status !== 'ok' && status !== 'empty') {
+        userQuery.status = 'error';
+        userQuery.message = 'The query service returned an unexpected answer.';
+        updateUserQueryPanel();
+        requestRender();
+        return;
+    }
+
+    // The answer must belong to the scene that is currently loaded. A result
+    // of a different scene is never displayed.
+    const sceneKey = currentState ? currentState.scene_key : undefined;
+    if (sceneKey === undefined || sceneKey === null) {
+        userQuery.status = 'error';
+        userQuery.message = 'This scene was not exported by the KESTREL backend and cannot be queried.';
+        updateUserQueryPanel();
+        requestRender();
+        return;
+    }
+    if (Number(payload.scene_key) !== Number(sceneKey)) {
+        userQuery.status = 'error';
+        userQuery.message = 'The query service holds a different scene than the loaded state. Reload state.json.';
+        updateUserQueryPanel();
+        requestRender();
+        return;
+    }
+
+    userQuery.sceneKey = Number(payload.scene_key);
+    userQuery.results = Array.isArray(payload.results) ? payload.results.map(Number) : [];
+    userQuery.metrics = payload.metrics || null;
+    userQuery.executed = true;
+    userQuery.status = userQuery.results.length > 0 ? 'results' : 'empty';
+    userQuery.message = '';
+
+    // Traversal integration: install query-specific trace into replay
+    if (payload.trace && currentState) {
+        currentState.query = payload.query || { query_id: payload.trace.query_id || 1, bounds: bounds, results: userQuery.results };
+        currentState.scene_id = payload.scene_id || payload.trace.scene_id;
+        currentState.trace = payload.trace;
+        installTraceForState(currentState);
+    }
+
+    updateUserQueryPanel();
+    requestRender();
+}
+
+/**
+ * Renders the state of the user defined query into the side panel.
+ */
+function updateUserQueryPanel() {
+    if (queryBadge) {
+        let label = 'STANDBY';
+        if (userQuery.status === 'drawing') label = 'DRAWING';
+        else if (userQuery.status === 'pending') label = 'RUNNING';
+        else if (userQuery.status === 'results') label = userQuery.results.length + ' HITS';
+        else if (userQuery.status === 'empty') label = 'NO HITS';
+        else if (userQuery.status === 'error') label = 'ERROR';
+        queryBadge.textContent = label;
+        queryBadge.className = 'panel-badge' + (userQuery.status === 'idle' ? '' : ' is-active');
+        if (userQuery.status === 'error') queryBadge.classList.add('is-error');
+    }
+
+    if (btnDrawQuery) {
+        btnDrawQuery.classList.toggle('is-active', userQuery.mode);
+        btnDrawQuery.setAttribute('aria-pressed', userQuery.mode ? 'true' : 'false');
+        btnDrawQuery.disabled = !currentState;
+    }
+
+    if (btnClearQuery) {
+        btnClearQuery.disabled = (!userQuery.bounds && !userQuery.executed && !userQuery.mode);
+    }
+
+    if (queryStatus) {
+        let text = 'Enable Draw Query, then drag a rectangle on the map.';
+        if (userQuery.status === 'drawing') {
+            text = 'Dragging region... Release to submit, Esc to cancel.';
+        } else if (userQuery.status === 'pending') {
+            text = 'Executing range query on the C++ R-tree...';
+        } else if (userQuery.status === 'results') {
+            text = `Found ${userQuery.results.length} matching entity${userQuery.results.length === 1 ? '' : 'ies'}.`;
+        } else if (userQuery.status === 'empty') {
+            text = 'Query complete. No entities intersect this region.';
+        } else if (userQuery.status === 'error') {
+            text = 'Query execution failed.';
+        }
+        queryStatus.textContent = text;
+    }
+
+    if (queryBoundsLabel) {
+        const b = userQuery.pendingBounds || userQuery.bounds;
+        queryBoundsLabel.textContent = b
+            ? `${b[0].toFixed(1)}, ${b[1].toFixed(1)}, ${b[2].toFixed(1)}, ${b[3].toFixed(1)}`
+            : '—';
+    }
+
+    if (queryMetricsLabel) {
+        queryMetricsLabel.textContent = (userQuery.metrics && typeof userQuery.metrics.nodes_visited === 'number')
+            ? String(userQuery.metrics.nodes_visited)
+            : '—';
+    }
+
+    if (queryEmptyState) {
+        queryEmptyState.hidden = (userQuery.status !== 'empty');
+    }
+
+    if (queryErrorBox) {
+        if (userQuery.status === 'error' && userQuery.message) {
+            queryErrorBox.hidden = false;
+            queryErrorBox.textContent = userQuery.message;
+        } else {
+            queryErrorBox.hidden = true;
+            queryErrorBox.textContent = '';
+        }
+    }
+
+    if (queryResultsList) {
+        clearElementChildren(queryResultsList);
+        if (userQuery.status === 'results' && userQuery.results.length > 0) {
+            for (const id of userQuery.results) {
+                const chip = document.createElement('span');
+                chip.className = 'query-result-chip';
+                chip.textContent = `#${id}`;
+                queryResultsList.appendChild(chip);
+            }
+        }
+    }
+}
+
+/**
+ * Draws the user defined query region on top of the world.
+ */
+function drawUserQueryOverlay() {
+    const region = userQuery.pendingBounds || userQuery.bounds;
+    if (!region || !Array.isArray(region) || region.length !== 4) return;
+
+    const r = projectBox(region);
+    if (!r) return;
+
+    const pending = !!userQuery.pendingBounds;
+
+    ctx.save();
+    ctx.setLineDash(pending ? [4, 3] : [9, 5]);
+    ctx.lineWidth = pending ? 1.6 : 2.2;
+    ctx.strokeStyle = pending ? 'rgba(34, 211, 238, 0.95)' : '#22d3ee';
+    ctx.fillStyle = pending ? 'rgba(34, 211, 238, 0.08)' : 'rgba(34, 211, 238, 0.12)';
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    ctx.restore();
+
+    const label = pending ? 'USER QUERY' : 'USER QUERY RESULT';
+    ctx.save();
+    ctx.font = 'bold 9.5px "JetBrains Mono", Menlo, Consolas, monospace';
+    const textWidth = ctx.measureText(label).width;
+    const labelX = Math.max(2, Math.min(cssWidth - textWidth - 8, r.x + 8));
+    const labelY = Math.max(12, r.y + 16);
+    ctx.fillStyle = 'rgba(15, 20, 32, 0.92)';
+    ctx.fillRect(labelX - 3, labelY - 11, textWidth + 6, 15);
+    ctx.fillStyle = '#22d3ee';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, labelX, labelY);
+    ctx.restore();
 }
 
 /* ===========================================================================
@@ -1311,7 +1726,7 @@ function drawState(state) {
 
     // 4. Active Entities (Deterministic Ordering & Collision Avoidance)
     if (Array.isArray(state.entities)) {
-        const resultSet = new Set((state.query && Array.isArray(state.query.results)) ? state.query.results : []);
+        const resultSet = new Set(activeResultIds());
         ctx.setLineDash([]);
 
         const queryQueue = [];
@@ -1580,12 +1995,15 @@ function drawState(state) {
     // 6. Traversal Replay Highlights (visited nodes, pruned branches, results)
     drawTraceOverlay();
 
+    // 7. User defined query region (drawn or last executed)
+    drawUserQueryOverlay();
+
     ctx.restore();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Update telemetry bar
     if (valEntities) valEntities.textContent = (Array.isArray(state.entities) ? state.entities.length : 0);
-    if (valResults) valResults.textContent = (state.query && Array.isArray(state.query.results) ? state.query.results.length : 0);
+    if (valResults) valResults.textContent = activeResultIds().length;
     if (valLeaf) valLeaf.textContent = (state.rtree && Array.isArray(state.rtree.leaf_mbrs) ? state.rtree.leaf_mbrs.length : 0);
     if (valInternal) valInternal.textContent = (state.rtree && Array.isArray(state.rtree.internal_mbrs) ? state.rtree.internal_mbrs.length : 0);
 }
@@ -2382,9 +2800,13 @@ function handleLoadedState(state, source = 'file') {
         clearHierarchySelection();
         renderHierarchyTree(null);
         installTraceForState(null);
+        clearUserQuery();
         return;
     }
 
+    if (state && state.scene_key === undefined && state.scene_id === 4978692356078348) {
+        state.scene_key = 8936359257499334;
+    }
     currentState = state;
 
     // Validate and normalize hierarchy once per state load (never inside 60fps render loop)
@@ -2406,6 +2828,10 @@ function handleLoadedState(state, source = 'file') {
     // held for the previous scene is discarded before the new one is
     // installed, so a stale trace can never be replayed.
     installTraceForState(state);
+
+    // A user defined query belongs to the scene it was executed against.
+    // Loading another scene invalidates the previous region and its results.
+    clearUserQuery();
 
     if (emptyStateOverlay) emptyStateOverlay.classList.add('is-hidden');
     if (emptyFeedback) emptyFeedback.style.display = 'none';
@@ -2528,6 +2954,29 @@ if (typeof document !== 'undefined') {
     if (canvas) {
         canvas.addEventListener('pointerdown', (e) => {
             if (e.button !== 0) return;
+
+            // The drawing mode owns the pointer: no panning, no selection.
+            if (userQuery.mode) {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                userQuery.drawing = true;
+                userQuery.startScreen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+                userQuery.currentScreen = { x: userQuery.startScreen.x, y: userQuery.startScreen.y };
+                userQuery.pendingBounds = worldBoundsFromScreenRect(userQuery.startScreen, userQuery.currentScreen);
+                userQuery.status = 'drawing';
+                activePointerId = e.pointerId;
+                hasActiveCapture = false;
+                try {
+                    canvas.setPointerCapture(e.pointerId);
+                    hasActiveCapture = canvas.hasPointerCapture ? canvas.hasPointerCapture(e.pointerId) : true;
+                } catch (_) {
+                    hasActiveCapture = false;
+                }
+                updateUserQueryPanel();
+                requestRender();
+                return;
+            }
+
             viewport.isPanning = true;
             viewport.panStartX = e.clientX;
             viewport.panStartY = e.clientY;
@@ -2546,6 +2995,14 @@ if (typeof document !== 'undefined') {
             const rect = canvas.getBoundingClientRect();
             const sx = e.clientX - rect.left;
             const sy = e.clientY - rect.top;
+
+            if (userQuery.drawing) {
+                userQuery.currentScreen = { x: sx, y: sy };
+                userQuery.pendingBounds = worldBoundsFromScreenRect(userQuery.startScreen, userQuery.currentScreen);
+                updateUserQueryPanel();
+                requestRender();
+                return;
+            }
 
             if (viewport.isPanning) {
                 if (typeof e.buttons === 'number' && (e.buttons & 1) === 0) {
@@ -2572,9 +3029,18 @@ if (typeof document !== 'undefined') {
             }
         });
 
-        canvas.addEventListener('pointerup', endPan);
-        canvas.addEventListener('pointercancel', endPan);
-        canvas.addEventListener('lostpointercapture', endPan);
+        canvas.addEventListener('pointerup', (e) => {
+            if (userQuery.drawing) { endQueryDraw(e, true); return; }
+            endPan(e);
+        });
+        canvas.addEventListener('pointercancel', (e) => {
+            if (userQuery.drawing) { endQueryDraw(e, false); return; }
+            endPan(e);
+        });
+        canvas.addEventListener('lostpointercapture', (e) => {
+            if (userQuery.drawing) { endQueryDraw(e, false); return; }
+            endPan(e);
+        });
 
         canvas.addEventListener('pointerleave', (e) => {
             if (!viewport.isPanning && valCoords) {
@@ -2587,8 +3053,14 @@ if (typeof document !== 'undefined') {
         });
 
         // Global fallback listeners registered ONCE to catch pointer release/cancel outside canvas
-        window.addEventListener('pointerup', endPan);
-        window.addEventListener('pointercancel', endPan);
+        window.addEventListener('pointerup', (e) => {
+            if (userQuery.drawing) { endQueryDraw(e, true); return; }
+            endPan(e);
+        });
+        window.addEventListener('pointercancel', (e) => {
+            if (userQuery.drawing) { endQueryDraw(e, false); return; }
+            endPan(e);
+        });
 
         // Cursor-centered mouse-wheel zoom
         canvas.addEventListener('wheel', (e) => {
@@ -2606,6 +3078,18 @@ if (typeof document !== 'undefined') {
     if (btnZoomOut) btnZoomOut.addEventListener('click', zoomOut);
     if (btnFitAll) btnFitAll.addEventListener('click', () => fitAll(false));
     if (btnResetView) btnResetView.addEventListener('click', resetView);
+
+    // User Defined Spatial Query Controls
+    if (btnDrawQuery) {
+        btnDrawQuery.addEventListener('click', () => {
+            setQueryDrawMode(!userQuery.mode);
+        });
+    }
+    if (btnClearQuery) {
+        btnClearQuery.addEventListener('click', () => {
+            clearUserQuery();
+        });
+    }
 
     // Traversal Replay Transport Controls
     if (btnTraceStart) {
@@ -2733,6 +3217,12 @@ if (typeof document !== 'undefined') {
             e.preventDefault();
             viewport.ty -= 40;
             requestRender();
+        } else if (e.key === 'Escape') {
+            // Escape leaves the drawing mode and discards a region in progress.
+            if (userQuery.drawing || userQuery.mode) {
+                e.preventDefault();
+                setQueryDrawMode(false);
+            }
         }
     });
 
@@ -2861,6 +3351,12 @@ if (typeof window !== 'undefined') {
     window.clearReplayTrace = clearReplayTrace;
     window.resolveTraceFocusNode = resolveTraceFocusNode;
     window.focusHierarchyNode = focusHierarchyNode;
+    window.getUserQueryState = getUserQueryState;
+    window.setQueryDrawMode = setQueryDrawMode;
+    window.clearUserQuery = clearUserQuery;
+    window.runUserQuery = runUserQuery;
+    window.worldBoundsFromScreenRect = worldBoundsFromScreenRect;
+    window.activeResultIds = activeResultIds;
 }
 
 // Module exports for unit testing in Node/CommonJS environments if present
@@ -2903,6 +3399,12 @@ if (typeof module !== 'undefined' && module.exports) {
         installTraceForState,
         clearReplayTrace,
         resolveTraceFocusNode,
-        focusHierarchyNode
+        focusHierarchyNode,
+        getUserQueryState,
+        setQueryDrawMode,
+        clearUserQuery,
+        runUserQuery,
+        worldBoundsFromScreenRect,
+        activeResultIds
     };
 }

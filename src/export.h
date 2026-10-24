@@ -42,6 +42,12 @@ void collect_rtree_nodes(const RTreeNode* node, std::vector<BoundingBox>& intern
 // -> canonical hierarchy identifier mapping for every exported node.
 void export_node_hierarchy(const RTreeNode* node, std::ostream& out, int indent_level, int& next_node_id, const std::string& parent_id, int depth, bool is_root, CanonicalNodeIdMap* canonical_ids = nullptr);
 
+// Builds the canonical node id map for the RTree in DFS pre-order.
+CanonicalNodeIdMap build_canonical_node_ids(const RTree& rtree);
+
+// Serializes the recorded traversal trace into JSON format with canonical IDs.
+void write_trace_json(std::ostream& out, const CanonicalNodeIdMap& canonical_ids, const RTreeTrace* trace, std::uint64_t scene_id, std::uint64_t query_id, const BoundingBox& query_box, bool pretty = true);
+
 // Exports the complete simulation state (entities, rtree with hierarchy, query
 // and — when supplied — the recorded traversal trace) into JSON.
 //

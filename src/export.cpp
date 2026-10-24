@@ -3,6 +3,7 @@
 #include "simulator.h"
 #include "rtree.h"
 #include "entity_store.h"
+#include "scene.h"
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
@@ -144,7 +145,61 @@ void write_node_ref(std::ostream& out, const CanonicalNodeIdMap& ids, std::size_
     }
 }
 
+void collect_canonical_node_ids(const RTreeNode* node, int& next_node_id, CanonicalNodeIdMap& canonical_ids) {
+    if (!node) return;
+    canonical_ids[node->id] = hierarchy_node_id(next_node_id++);
+    if (!node->is_leaf) {
+        for (const auto& entry : node->entries) {
+            collect_canonical_node_ids(entry.child.get(), next_node_id, canonical_ids);
+        }
+    }
+}
+
 } // namespace
+
+CanonicalNodeIdMap build_canonical_node_ids(const RTree& rtree) {
+    CanonicalNodeIdMap canonical_ids;
+    int next_node_id = 0;
+    collect_canonical_node_ids(rtree.get_root(), next_node_id, canonical_ids);
+    return canonical_ids;
+}
+
+void write_trace_json(std::ostream& out, const CanonicalNodeIdMap& canonical_ids, const RTreeTrace* trace, std::uint64_t scene_id, std::uint64_t query_id, const BoundingBox& query_box, bool pretty) {
+    if (!trace) {
+        out << "null";
+        return;
+    }
+
+    const char* nl = pretty ? "\n" : "";
+    const char* sp = pretty ? " " : "";
+    const char* ind2 = pretty ? "  " : "";
+    const char* ind4 = pretty ? "    " : "";
+    const char* ind6 = pretty ? "      " : "";
+
+    out << "{" << nl;
+    out << ind4 << "\"scene_id\":" << sp << scene_id << "," << nl;
+    out << ind4 << "\"query_id\":" << sp << query_id << "," << nl;
+    out << ind4 << "\"query_bounds\":" << sp << "[" << query_box.min_x << "," << sp << query_box.min_y << "," << sp << query_box.max_x << "," << sp << query_box.max_y << "]," << nl;
+    out << ind4 << "\"truncated\":" << sp << (trace->truncated ? "true" : "false") << "," << nl;
+    out << ind4 << "\"total_events\":" << sp << trace->events.size() << "," << nl;
+    out << ind4 << "\"events\":" << sp << "[" << nl;
+    for (size_t i = 0; i < trace->events.size(); ++i) {
+        const RTreeTraceEvent& ev = trace->events[i];
+        if (i > 0) out << "," << nl;
+        out << ind6 << "{\"type\":" << sp << "\"" << to_string(ev.type) << "\""
+            << ",\"node_id\":" << sp;
+        write_node_ref(out, canonical_ids, ev.node_id);
+        out << ",\"child_node_id\":" << sp;
+        write_node_ref(out, canonical_ids, ev.child_node_id);
+        out << ",\"entity_id\":" << sp << ev.entity_id
+            << ",\"mbr\":" << sp << "[" << ev.mbr.min_x << "," << sp << ev.mbr.min_y
+            << "," << sp << ev.mbr.max_x << "," << sp << ev.mbr.max_y << "]"
+            << ",\"intersects\":" << sp << (ev.intersects ? "true" : "false")
+            << "}";
+    }
+    out << nl << ind4 << "]" << nl;
+    out << ind2 << "}";
+}
 
 void export_simulation_state(const RTree& rtree, const EntityStore& store, const BoundingBox& query_box, const std::vector<int>& query_results, std::ostream& out, const RTreeTrace* trace, std::uint64_t query_id) {
     const std::uint64_t scene_id = fnv1a64(canonical_scene_text(store, query_box));
@@ -154,6 +209,7 @@ void export_simulation_state(const RTree& rtree, const EntityStore& store, const
 
     // Scene identity: changes whenever the scene content or the query changes.
     out << "  \"scene_id\": " << scene_id << ",\n";
+    out << "  \"scene_key\": " << scene_key(store) << ",\n";
 
     // Entities
     out << "  \"entities\": [\n";
@@ -213,37 +269,9 @@ void export_simulation_state(const RTree& rtree, const EntityStore& store, const
     out << "]\n  },\n";
 
     // Recorded traversal of the query above.
-    if (!trace) {
-        out << "  \"trace\": null\n";
-        out << "}\n";
-        return;
-    }
-
-    out << "  \"trace\": {\n";
-    out << "    \"scene_id\": " << scene_id << ",\n";
-    out << "    \"query_id\": " << query_id << ",\n";
-    out << "    \"query_bounds\": [" << query_box.min_x << ", " << query_box.min_y << ", " << query_box.max_x << ", " << query_box.max_y << "],\n";
-    out << "    \"truncated\": " << (trace->truncated ? "true" : "false") << ",\n";
-    out << "    \"total_events\": " << trace->events.size() << ",\n";
-    out << "    \"events\": [\n";
-    for (size_t i = 0; i < trace->events.size(); ++i) {
-        const RTreeTraceEvent& ev = trace->events[i];
-        if (i > 0) out << ",\n";
-        out << "      {\"type\": \"" << to_string(ev.type) << "\""
-            << ", \"node_id\": ";
-        write_node_ref(out, canonical_ids, ev.node_id);
-        out << ", \"child_node_id\": ";
-        write_node_ref(out, canonical_ids, ev.child_node_id);
-        out << ", \"entity_id\": " << ev.entity_id
-            << ", \"mbr\": [" << ev.mbr.min_x << ", " << ev.mbr.min_y
-            << ", " << ev.mbr.max_x << ", " << ev.mbr.max_y << "]"
-            << ", \"intersects\": " << (ev.intersects ? "true" : "false")
-            << "}";
-    }
-    out << "\n    ]\n";
-    out << "  }\n";
-
-    out << "}\n";
+    out << "  \"trace\": ";
+    write_trace_json(out, canonical_ids, trace, scene_id, query_id, query_box);
+    out << "\n}\n";
 }
 
 } // namespace kestrel

@@ -4,6 +4,8 @@
 #include <vector>
 #include <algorithm>
 #include <random>
+#include <limits>
+#include <cmath>
 
 using namespace kestrel;
 
@@ -196,12 +198,146 @@ void test_query_completeness_under_mutations() {
     assert(run_query({95, 95, 110, 110}) == (std::vector<int>{1, 13, 14, 15, 16}));
 }
 
+void test_invalid_query_bounds() {
+    RTree tree(4, 2);
+    for (int i = 0; i < 16; ++i) {
+        double x = (i % 4) * 25.0;
+        double y = (i / 4) * 25.0;
+        tree.insert(BoundingBox{x, y, x + 10.0, y + 10.0}, i + 1);
+    }
+    assert(tree.size() == 16);
+
+    const double nan_val = std::numeric_limits<double>::quiet_NaN();
+    const double pos_inf = std::numeric_limits<double>::infinity();
+    const double neg_inf = -std::numeric_limits<double>::infinity();
+
+    std::vector<BoundingBox> invalid_queries = {
+        // 1. Reversed horizontal bounds (min_x > max_x)
+        BoundingBox{50.0, 10.0, 20.0, 60.0},
+        BoundingBox{100.0, 0.0, 0.0, 100.0},
+
+        // 2. Reversed vertical bounds (min_y > max_y)
+        BoundingBox{10.0, 60.0, 50.0, 20.0},
+        BoundingBox{0.0, 100.0, 100.0, 0.0},
+
+        // 3. Reversed both horizontal and vertical bounds
+        BoundingBox{80.0, 80.0, 20.0, 20.0},
+
+        // 4. NaN in each coordinate position
+        BoundingBox{nan_val, 10.0, 50.0, 50.0},
+        BoundingBox{10.0, nan_val, 50.0, 50.0},
+        BoundingBox{10.0, 10.0, nan_val, 50.0},
+        BoundingBox{10.0, 10.0, 50.0, nan_val},
+
+        // 5. Positive infinity in each coordinate position
+        BoundingBox{pos_inf, 10.0, 50.0, 50.0},
+        BoundingBox{10.0, pos_inf, 50.0, 50.0},
+        BoundingBox{10.0, 10.0, pos_inf, 50.0},
+        BoundingBox{10.0, 10.0, 50.0, pos_inf},
+
+        // 6. Negative infinity in each coordinate position
+        BoundingBox{neg_inf, 10.0, 50.0, 50.0},
+        BoundingBox{10.0, neg_inf, 50.0, 50.0},
+        BoundingBox{10.0, 10.0, neg_inf, 50.0},
+        BoundingBox{10.0, 10.0, 50.0, neg_inf},
+
+        // 7. Multiple invalid coordinates in the same box
+        BoundingBox{nan_val, nan_val, nan_val, nan_val},
+        BoundingBox{neg_inf, neg_inf, pos_inf, pos_inf},
+        BoundingBox{nan_val, neg_inf, pos_inf, nan_val},
+        BoundingBox{50.0, nan_val, 20.0, pos_inf}
+    };
+
+    for (const auto& inv_query : invalid_queries) {
+        RTree::QueryMetrics metrics;
+        metrics.nodes_visited = 99; // Non-zero initial state to verify metric reset
+        std::vector<int> res = tree.search(inv_query, metrics);
+        assert(res.empty());
+        assert(metrics.nodes_visited == 0);
+    }
+}
+
+void test_degenerate_and_boundary_queries() {
+    RTree tree(4, 2);
+    // Entity 1 at [10, 10, 20, 20]
+    tree.insert(BoundingBox{10.0, 10.0, 20.0, 20.0}, 1);
+    // Entity 2 at [30, 30, 40, 40]
+    tree.insert(BoundingBox{30.0, 30.0, 40.0, 40.0}, 2);
+
+    // 1. Degenerate point box inside entity 1
+    {
+        RTree::QueryMetrics m;
+        auto res = tree.search(BoundingBox{15.0, 15.0, 15.0, 15.0}, m);
+        assert(res.size() == 1 && res[0] == 1);
+        assert(m.nodes_visited > 0);
+    }
+
+    // 2. Degenerate point box touching corner of entity 1
+    {
+        RTree::QueryMetrics m;
+        auto res = tree.search(BoundingBox{10.0, 10.0, 10.0, 10.0}, m);
+        assert(res.size() == 1 && res[0] == 1);
+    }
+    {
+        RTree::QueryMetrics m;
+        auto res = tree.search(BoundingBox{20.0, 20.0, 20.0, 20.0}, m);
+        assert(res.size() == 1 && res[0] == 1);
+    }
+
+    // 3. Degenerate point box in void
+    {
+        RTree::QueryMetrics m;
+        auto res = tree.search(BoundingBox{25.0, 25.0, 25.0, 25.0}, m);
+        assert(res.empty());
+        assert(m.nodes_visited > 0);
+    }
+
+    // 4. Degenerate horizontal line box intersecting entity 1
+    {
+        RTree::QueryMetrics m;
+        auto res = tree.search(BoundingBox{5.0, 15.0, 25.0, 15.0}, m);
+        assert(res.size() == 1 && res[0] == 1);
+    }
+
+    // 5. Degenerate vertical line box intersecting entity 1
+    {
+        RTree::QueryMetrics m;
+        auto res = tree.search(BoundingBox{15.0, 5.0, 15.0, 25.0}, m);
+        assert(res.size() == 1 && res[0] == 1);
+    }
+
+    // 6. Degenerate line box disjoint
+    {
+        RTree::QueryMetrics m;
+        auto res = tree.search(BoundingBox{25.0, 5.0, 25.0, 25.0}, m);
+        assert(res.empty());
+    }
+
+    // 7. Ordinary valid query matching both entities
+    {
+        RTree::QueryMetrics m;
+        auto res = tree.search(BoundingBox{5.0, 5.0, 45.0, 45.0}, m);
+        std::sort(res.begin(), res.end());
+        assert(res.size() == 2 && res[0] == 1 && res[1] == 2);
+    }
+
+    // 8. Ordinary valid query with zero matches
+    {
+        RTree::QueryMetrics m;
+        auto res = tree.search(BoundingBox{100.0, 100.0, 200.0, 200.0}, m);
+        assert(res.empty());
+        assert(m.nodes_visited > 0);
+    }
+}
+
 int main() {
     test_empty_tree();
     test_boundary_touching();
     test_small_deterministic_query();
     test_large_random_query();
     test_query_completeness_under_mutations();
+    test_invalid_query_bounds();
+    test_degenerate_and_boundary_queries();
     std::cout << "All range query tests passed." << std::endl;
     return 0;
 }

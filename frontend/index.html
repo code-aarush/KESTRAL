@@ -46,6 +46,16 @@
 
             <div class="cmd-separator" aria-hidden="true"></div>
 
+            <!-- Spatial Query Sub-Panel -->
+            <div class="cmd-group cmd-query" role="group" aria-label="Spatial Query Tools">
+                <button id="btnDrawQuery" class="btn btn-secondary" title="Draw a query region on the map (Esc leaves the mode)" aria-pressed="false" disabled>
+                    <svg class="ui-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5h11v8h-11z"/><path d="M5.5 4.5v8M2.5 8h11"/></svg>
+                    <span>Draw Query</span>
+                </button>
+            </div>
+
+            <div class="cmd-separator" aria-hidden="true"></div>
+
             <!-- Viewport Navigation Sub-Panel -->
             <div class="cmd-group cmd-navigation" role="group" aria-label="Viewport Navigation">
                 <div class="segmented-control" role="group" aria-label="Viewport Navigation Controls">
@@ -272,6 +282,44 @@
                                 <span class="detail-val detail-val-mono" id="nodeDetailEntities">—</span>
                             </div>
                         </div>
+                    </div>
+                </section>
+
+                <!-- Structural Region: User Defined Spatial Query -->
+                <section class="query-region" aria-label="User Defined Spatial Query">
+                    <div class="panel-header">
+                        <span class="panel-title">Spatial Query</span>
+                        <span class="panel-badge" id="queryBadge">STANDBY</span>
+                    </div>
+
+                    <div class="query-status" id="queryStatus" role="status">
+                        Enable Draw Query, then drag a rectangle on the map.
+                    </div>
+
+                    <div class="query-grid">
+                        <div class="query-entry">
+                            <span class="query-key">REGION</span>
+                            <span class="query-val query-val-mono" id="queryBounds">—</span>
+                        </div>
+                        <div class="query-entry">
+                            <span class="query-key">NODES VISITED</span>
+                            <span class="query-val query-val-mono" id="queryMetrics">—</span>
+                        </div>
+                    </div>
+
+                    <div class="query-empty-state" id="queryEmptyState" hidden>
+                        No entities matched the query region.
+                    </div>
+
+                    <div class="query-error" id="queryError" role="alert" hidden></div>
+
+                    <div class="query-results" id="queryResults" aria-label="Matching entity ids"></div>
+
+                    <div class="query-actions">
+                        <button type="button" class="btn-nav btn-nav-labeled" id="btnClearQuery" title="Discard the query region and its results" disabled>
+                            <svg class="ui-icon" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                            <span>Clear Query</span>
+                        </button>
                     </div>
                 </section>
 

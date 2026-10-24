@@ -164,8 +164,19 @@ std::vector<int> RTree::search(const BoundingBox& query, QueryMetrics& metrics) 
 std::vector<int> RTree::search(const BoundingBox& query, QueryMetrics& metrics, RTreeTrace* trace) const {
     std::vector<int> result;
 
+    metrics.nodes_visited = 0;
+
     // Each trace describes exactly one query: start from a clean slate.
     if (trace) trace->clear();
+
+    if (!query.is_valid()) {
+        if (trace) {
+            RTreeTraceEvent completed;
+            completed.type = RTreeTraceEventType::TraversalCompleted;
+            trace->events.push_back(completed);
+        }
+        return result;
+    }
 
     // The recorder keeps one slot free so the terminal completion event is
     // always present, even for very large traversals.

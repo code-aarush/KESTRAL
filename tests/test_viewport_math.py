@@ -7,6 +7,8 @@ cursor-centered zooming, Fit All calculations, and degenerate handling.
 
 import math
 import os
+import re
+import shutil
 import subprocess
 import tempfile
 import time
@@ -624,15 +626,21 @@ class TestViewportTransform(unittest.TestCase):
             self.assertEqual(s_pt, (150.0, 110.0))
 
     def test_headless_browser_viewport_suite(self):
-        """Executes frontend/test_viewport.html in headless Firefox and asserts 100% pass."""
+        """Executes frontend/test_viewport.html in a headless browser and asserts 100% pass."""
         test_html = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend', 'test_viewport.html'))
         if not os.path.exists(test_html):
             self.skipTest("test_viewport.html not found")
 
+        if self._run_firefox(test_html):
+            return
+        if self._run_chromium(test_html):
+            return
+        self.skipTest("no headless browser (firefox or chromium) found on PATH")
+
+    def _run_firefox(self, test_html):
         profile_dir = tempfile.mkdtemp()
         with open(os.path.join(profile_dir, 'user.js'), 'w') as f:
             f.write('user_pref("browser.dom.window.dump.enabled", true);\n')
-
         cmd = ['firefox', '-headless', '-profile', profile_dir, test_html]
         try:
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -648,8 +656,46 @@ class TestViewportTransform(unittest.TestCase):
                     failed = int(parts[2].split(':')[1].split('===')[0].strip())
             self.assertGreater(passed, 0, f"No tests were run in browser: {stdout}")
             self.assertEqual(failed, 0, f"Browser test suite had {failed} failures: {stdout}")
+            return True
         except FileNotFoundError:
-            self.skipTest("firefox binary not found on PATH")
+            return False
+
+    def _run_chromium(self, test_html):
+        binary = None
+        for name in (
+            'chromium', 'chromium-browser', 'google-chrome', 'google-chrome-stable', 'chrome', 'msedge',
+            r'C:\Program Files\Google\Chrome\Application\chrome.exe',
+            r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
+            r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
+            r'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
+        ):
+            if os.path.isabs(name) and os.path.exists(name):
+                binary = name
+                break
+            binary = shutil.which(name)
+            if binary:
+                break
+        if not binary:
+            return False
+
+        cmd = [binary, '--headless', '--disable-gpu', '--no-sandbox', '--dump-dom',
+               '--virtual-time-budget=8000', 'file://' + test_html]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+
+        dom = result.stdout
+        counts = {}
+        for key in ('totalCount', 'passCount', 'failCount'):
+            match = re.search(r'id="' + key + r'">(\d+)<', dom)
+            if not match:
+                return False
+            counts[key] = int(match.group(1))
+
+        self.assertGreater(counts['totalCount'], 0, f"No tests were run in browser: {dom[:500]}")
+        self.assertEqual(counts['failCount'], 0, f"Browser test suite had {counts['failCount']} failures")
+        return True
 
 
 class PanSession:

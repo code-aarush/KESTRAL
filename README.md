@@ -41,18 +41,28 @@ The simulation models fictional Kepler Belt entities (asteroids, probes, navigat
 
 ---
 ## 🛠️ Tech Stack
- 
+
 <p align="center">
-  <img src="https://cdn.simpleicons.org/cplusplus" width="50" alt="C++17"/>
+  <img src="https://cdn.simpleicons.org/html5" width="45" alt="HTML5"/>
   &nbsp;&nbsp;&nbsp;
-  <img src="https://cdn.simpleicons.org/cmake" width="50" alt="CMake"/>
+  <img src="https://cdn.simpleicons.org/cplusplus" width="45" alt="C++"/>
   &nbsp;&nbsp;&nbsp;
-  <img src="https://cdn.simpleicons.org/python" width="50" alt="Python"/>
+  <img src="https://cdn.simpleicons.org/python" width="45" alt="Python"/>
+  &nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.simpleicons.org/javascript" width="45" alt="JavaScript"/>
+  &nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.simpleicons.org/css" width="45" alt="CSS3"/>
+  &nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.simpleicons.org/cmake" width="45" alt="CMake"/>
 </p>
+
 <p align="center">
-  <strong>C++17</strong> •
-  <strong>CMake / CTest</strong> •
-  <strong>Python</strong>
+  <strong>HTML</strong> •
+  <strong>C++</strong> •
+  <strong>Python</strong> •
+  <strong>JavaScript</strong> •
+  <strong>CSS</strong> •
+  <strong>CMake / CTest</strong>
 </p>
  
 ---

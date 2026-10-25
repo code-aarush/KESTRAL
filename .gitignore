@@ -79,3 +79,10 @@ frontend/.next/
 .env
 .env.*
 *.local
+
+# ----- Local Development Archive (Preserved locally, not committed) ----------
+non-release/
+/non-release/
+
+# ----- Python Test & Cache Artifacts -----------------------------------------
+.pytest_cache/

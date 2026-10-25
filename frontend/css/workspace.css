@@ -1,0 +1,745 @@
+/* ==========================================================================
+   KESTREL — Workspace Shell & Major Layout Regions (GATE-03 Modular CSS)
+   Authoritative Reference: GATE-02-DESIGN-SPEC.md Section 4 & GATE-02-RESPONSIVE-SPEC.md
+   ========================================================================== */
+
+/* 1. Ground & Master Shell */
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: var(--surface-ground);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.workstation-shell {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background-color: var(--surface-shell);
+}
+
+/* 2. Top Brand Masthead */
+.masthead {
+    height: var(--masthead-height);
+    min-height: var(--masthead-height);
+    max-height: var(--masthead-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    background-color: var(--surface-masthead);
+    border-bottom: var(--border-subtle);
+    flex: 0 0 auto;
+    z-index: var(--z-command);
+}
+
+.masthead-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+}
+
+.brand-wordmark {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--text-primary);
+}
+
+.brand-divider {
+    color: var(--accent-primary);
+    font-weight: 300;
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.brand-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.brand-descriptor {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+}
+
+.brand-context {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+}
+
+.masthead-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--status-ready);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.status-dot.error {
+    background-color: var(--status-error);
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+}
+
+.status-dot.warning {
+    background-color: var(--status-warning);
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
+.status-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    max-width: 360px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status-separator {
+    width: 1px;
+    height: 14px;
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.system-clock {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+    padding: 2px 6px;
+    background-color: var(--surface-pod);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+
+/* 3. Workstation Body: Flex row containing Launcher Rail, Dominant Canvas Stage & Right Dock Bay */
+.workstation-body {
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    gap: 8px;
+    padding: 8px;
+    position: relative;
+}
+
+/* 3a. Instrument Launcher Rail (Left Edge Dock) */
+.launcher-rail {
+    width: var(--rail-width);
+    flex: 0 0 var(--rail-width);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: var(--surface-command);
+    border: var(--border-panel);
+    border-radius: var(--radius-md);
+    padding: 8px 0;
+    gap: 8px;
+    z-index: var(--z-command);
+    user-select: none;
+}
+
+.rail-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    padding: 0;
+}
+
+.rail-btn:hover {
+    background-color: var(--surface-control-hover);
+    color: var(--text-primary);
+    border-color: var(--border-subtle);
+}
+
+.rail-btn.is-active {
+    color: var(--accent-primary);
+    background-color: rgba(0, 200, 230, 0.12);
+    border-color: rgba(0, 200, 230, 0.35);
+    box-shadow: 0 0 8px rgba(0, 200, 230, 0.2);
+}
+
+.rail-btn:focus-visible {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-focus);
+}
+
+.rail-btn-label {
+    font-size: 8px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    margin-top: 1px;
+    letter-spacing: 0.05em;
+    line-height: 1;
+}
+
+.rail-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    font-size: 8px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    background: var(--accent-primary);
+    color: #040711;
+    border-radius: 6px;
+    padding: 0 4px;
+    min-width: 12px;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.rail-spacer {
+    flex: 1 1 auto;
+}
+
+.rail-btn-reset:hover {
+    color: var(--status-warning);
+    border-color: rgba(245, 158, 11, 0.4);
+    background-color: rgba(245, 158, 11, 0.12);
+}
+
+/* 4. Dominant Spatial Canvas Stage */
+.canvas-stage {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    position: relative;
+    background-color: var(--surface-stage);
+    border: var(--border-panel);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.canvas-viewport-frame {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.canvas-heading-strip {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 25;
+    pointer-events: none;
+    user-select: none;
+}
+
+.canvas-heading-title {
+    font-size: 9px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    background: rgba(7, 11, 19, 0.75);
+    padding: 2px 7px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#radar {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: var(--surface-canvas);
+    touch-action: none;
+    cursor: default;
+}
+
+#radar.cursor-crosshair {
+    cursor: crosshair;
+}
+
+#radar.cursor-grabbing {
+    cursor: grabbing;
+}
+
+/* 4b. Bottom Mission Dock (Horizontal Traversal Deck) */
+.dock-mission-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--dock-bottom-height);
+    z-index: var(--z-dock);
+    background-color: var(--surface-dock);
+    border-top: var(--border-panel);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform var(--transition-base), height var(--transition-base);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.dock-mission-bottom.is-minimized {
+    height: 34px;
+}
+
+.dock-mission-bottom.is-minimized .traversal-dock-body {
+    display: none;
+}
+
+.dock-mission-bottom.is-closed {
+    transform: translateY(100%);
+    pointer-events: none;
+    opacity: 0;
+}
+
+/* 5. Right Dock Bay (Collapsible Multi-Instrument Bay) */
+.dock-bay-right {
+    flex: 0 0 var(--dock-bay-width);
+    width: var(--dock-bay-width);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    gap: 8px;
+    overflow: hidden;
+    background-color: var(--surface-dock);
+    border: var(--border-panel);
+    border-radius: var(--radius-md);
+    padding: 8px;
+    z-index: var(--z-dock);
+    transition: width var(--transition-base), opacity var(--transition-base), margin-right var(--transition-base);
+}
+
+.dock-bay-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 4px 6px 4px;
+    border-bottom: var(--border-subtle);
+    flex: 0 0 auto;
+}
+
+.dock-bay-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+}
+
+.dock-bay-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-dock-ctrl {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    padding: 0;
+}
+
+.btn-dock-ctrl:hover {
+    color: var(--text-primary);
+    border-color: var(--border-subtle);
+    background-color: var(--surface-control-hover);
+}
+
+.dock-bay-right.is-collapsed {
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    margin-right: -8px;
+    border: none;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0;
+}
+
+/* Sidebar Decks (Within Right Dock Bay) */
+.sidebar-deck-upper {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    gap: 0;
+    min-height: 0;
+}
+
+.sidebar-deck-lower {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* 6. Instrument Bay Section Switching Architecture (GATE-A) */
+.bay-section-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 2px 0 6px 0;
+    border-bottom: var(--border-subtle);
+    flex: 0 0 auto;
+}
+
+.bay-tab-btn {
+    height: 24px;
+    font-size: 8.5px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--surface-control);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    padding: 0 4px;
+    white-space: nowrap;
+}
+
+.bay-tab-btn:hover {
+    color: var(--text-primary);
+    background-color: var(--surface-control-hover);
+    border-color: rgba(0, 200, 230, 0.3);
+}
+
+.bay-tab-btn.is-active {
+    color: var(--accent-primary);
+    background-color: rgba(0, 200, 230, 0.14);
+    border-color: rgba(0, 200, 230, 0.45);
+    box-shadow: 0 0 6px rgba(0, 200, 230, 0.15);
+}
+
+.bay-tab-btn:focus-visible {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-focus);
+}
+
+.bay-active-heading {
+    display: flex;
+    align-items: center;
+    padding: 4px 6px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    flex: 0 0 auto;
+}
+
+.bay-active-title {
+    font-size: 9.5px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-primary);
+}
+
+.bay-content-host {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.bay-section-panel {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+/* Inactive sections consume ZERO vertical layout space */
+.bay-section-panel.is-hidden {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+}
+
+.bay-section-panel.is-active {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+#secHierarchy.bay-section-panel.is-active {
+    overflow: hidden;
+}
+
+/* 7. Macro-Region Splitters & Geometry Model (GATE-B) */
+.splitter-horizontal,
+.splitter-vertical {
+    user-select: none;
+    touch-action: none;
+    position: relative;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.splitter-horizontal:hover,
+.splitter-vertical:hover,
+.splitter-horizontal:focus-visible,
+.splitter-vertical:focus-visible,
+.splitter-horizontal.is-active,
+.splitter-vertical.is-active {
+    background-color: rgba(0, 200, 230, 0.45) !important;
+    outline: none;
+}
+
+.splitter-horizontal:focus-visible,
+.splitter-vertical:focus-visible {
+    box-shadow: var(--shadow-focus);
+}
+
+/* Header Splitter (Horizontal, between Command Toolbar and Workstation Body) */
+.header-splitter {
+    height: 6px;
+    width: 100%;
+    cursor: row-resize;
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 1005;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 6px;
+}
+
+.header-splitter .splitter-grip {
+    width: 32px;
+    height: 2px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.2);
+    transition: background var(--transition-fast);
+}
+
+.header-splitter:hover .splitter-grip {
+    background: var(--accent-primary);
+}
+
+/* Main Splitter (Vertical, between Canvas Stage and Instrument Bay) */
+.main-splitter {
+    width: 6px;
+    cursor: col-resize;
+    background: var(--surface-shell);
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    z-index: 35;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 6px;
+    margin: 0 -2px;
+}
+
+.main-splitter .splitter-grip {
+    width: 2px;
+    height: 36px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.25);
+    transition: background var(--transition-fast);
+}
+
+.main-splitter:hover .splitter-grip {
+    background: var(--accent-primary);
+}
+
+/* Traversal Splitter (Horizontal, on top of Bottom Mission Dock) */
+.traversal-splitter {
+    height: 6px;
+    width: 100%;
+    cursor: row-resize;
+    background: var(--surface-dock);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 35;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 6px;
+}
+
+.traversal-splitter .splitter-grip {
+    width: 36px;
+    height: 2px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.25);
+    transition: background var(--transition-fast);
+}
+
+.traversal-splitter:hover .splitter-grip {
+    background: var(--accent-primary);
+}
+
+body.is-resizing {
+    user-select: none !important;
+}
+
+/* Floating Instrument Window Styling (GATE-B) */
+.floating-instrument,
+.is-floating {
+    display: flex !important;
+    position: absolute !important;
+    flex-direction: column !important;
+    background: var(--surface-floating) !important;
+    backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(0, 200, 230, 0.4) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-floating) !important;
+    min-width: 260px !important;
+    min-height: 180px !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    pointer-events: auto !important;
+}
+
+.floating-instrument .instrument-header,
+.is-floating .instrument-header {
+    cursor: grab;
+    user-select: none;
+}
+
+/* 8-Directional Window Resize Handles (GATE-B) */
+.win-resize-handle {
+    position: absolute;
+    z-index: 20;
+    touch-action: none;
+    user-select: none;
+}
+
+.win-resize-n {
+    top: -3px;
+    left: 8px;
+    right: 8px;
+    height: 8px;
+    cursor: ns-resize;
+}
+
+.win-resize-s {
+    bottom: -3px;
+    left: 8px;
+    right: 8px;
+    height: 8px;
+    cursor: ns-resize;
+}
+
+.win-resize-e {
+    right: -3px;
+    top: 8px;
+    bottom: 8px;
+    width: 8px;
+    cursor: ew-resize;
+}
+
+.win-resize-w {
+    left: -3px;
+    top: 8px;
+    bottom: 8px;
+    width: 8px;
+    cursor: ew-resize;
+}
+
+.win-resize-nw {
+    top: -4px;
+    left: -4px;
+    width: 12px;
+    height: 12px;
+    cursor: nwse-resize;
+}
+
+.win-resize-ne {
+    top: -4px;
+    right: -4px;
+    width: 12px;
+    height: 12px;
+    cursor: nesw-resize;
+}
+
+.win-resize-sw {
+    bottom: -4px;
+    left: -4px;
+    width: 12px;
+    height: 12px;
+    cursor: nesw-resize;
+}
+
+.win-resize-se {
+    bottom: -4px;
+    right: -4px;
+    width: 12px;
+    height: 12px;
+    cursor: nwse-resize;
+}

@@ -1,0 +1,412 @@
+/* ==========================================================================
+   KESTREL — Reusable Component Styles (GATE-03 Modular CSS)
+   Authoritative Reference: GATE-02-DESIGN-SPEC.md Section 5
+   ========================================================================== */
+
+/* 1. Technical Slim Scrollbars */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 200, 230, 0.4);
+}
+
+/* 2. Query Result Chips */
+.query-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: #ffe4e6;
+    background-color: rgba(244, 63, 94, 0.16);
+    border: 1px solid rgba(244, 63, 94, 0.4);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.query-chip:hover {
+    background-color: rgba(244, 63, 94, 0.28);
+    border-color: var(--accent-result);
+    transform: translateY(-1px);
+}
+
+.query-chip:focus-visible {
+    outline: none;
+    border-color: var(--accent-result);
+    box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.45);
+}
+
+/* 3. Empty State Radar Overlay */
+.empty-state-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, rgba(8, 11, 18, 0.88) 0%, rgba(4, 6, 10, 0.96) 100%);
+    backdrop-filter: blur(5px);
+    z-index: 10;
+    transition: opacity 0.25s ease, visibility 0.25s;
+}
+
+.empty-state-overlay.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.empty-state-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 420px;
+    padding: 24px 28px;
+    background-color: var(--surface-dock);
+    border: var(--border-panel);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    gap: 12px;
+}
+
+.empty-target-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    background-color: rgba(0, 200, 230, 0.14);
+    border: 1px solid rgba(0, 200, 230, 0.35);
+    border-radius: var(--radius-sm);
+    color: var(--accent-primary);
+    font-size: 10px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+}
+
+.empty-state-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.empty-state-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.empty-state-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.empty-drop-zone {
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 6px 12px;
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+    border-radius: var(--radius-sm);
+    width: 100%;
+}
+
+.empty-drop-zone code {
+    font-family: var(--font-mono);
+    color: var(--accent-primary);
+}
+
+/* 4. Reticles & Viewport HUD */
+.reticle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    pointer-events: none;
+    border-color: rgba(0, 200, 230, 0.5);
+    border-style: solid;
+    z-index: 5;
+}
+
+.reticle-tl { top: 8px; left: 8px; border-width: 1.5px 0 0 1.5px; }
+.reticle-tr { top: 8px; right: 8px; border-width: 1.5px 1.5px 0 0; }
+.reticle-bl { bottom: 8px; left: 8px; border-width: 0 0 1.5px 1.5px; }
+.reticle-br { bottom: 8px; right: 8px; border-width: 0 1.5px 1.5px 0; }
+
+.viewport-hud-hints {
+    position: absolute;
+    bottom: 10px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    background-color: rgba(8, 11, 18, 0.85);
+    backdrop-filter: blur(4px);
+    border: var(--border-subtle);
+    border-radius: var(--radius-sm);
+    font-size: 10.5px;
+    color: var(--text-dim);
+    pointer-events: none;
+    z-index: 5;
+    user-select: none;
+}
+
+.kbd-hud {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    padding: 1px 4px;
+    background-color: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+    color: var(--text-secondary);
+}
+
+.hud-hint-sep {
+    color: rgba(255, 255, 255, 0.2);
+}
+
+/* 5. Tree Node Items */
+.tree-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.tree-item:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+}
+
+.tree-item.selected {
+    background-color: rgba(0, 200, 230, 0.2);
+    color: #e0f9ff;
+    outline: 1px solid var(--accent-primary);
+    border-left: 2px solid var(--accent-primary);
+}
+
+.tree-item:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 1px var(--accent-primary);
+}
+
+.tree-toggle {
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+.tree-toggle:hover {
+    color: var(--text-primary);
+}
+
+/* 6. Trace Log Events */
+.trace-log-item {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 3px 6px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.trace-log-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.trace-log-item.active {
+    background-color: rgba(0, 200, 230, 0.16);
+    color: #e0f9ff;
+    border-left: 2px solid var(--accent-primary);
+}
+
+/* 7. Persistent Spatial Query Context HUD (GATE-05 Workbench) */
+.query-hud-strip {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-hud);
+    background-color: var(--surface-hud);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 20px;
+    box-shadow: var(--shadow-hud);
+    padding: 4px 12px;
+    max-width: 90%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.query-hud-strip.is-active {
+    border-color: var(--accent-primary);
+    box-shadow: 0 8px 28px -2px rgba(0, 0, 0, 0.7), 0 0 16px rgba(0, 200, 230, 0.35);
+}
+
+.hud-strip-inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.hud-strip-badge-wrap {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.hud-strip-status {
+    font-size: 11px;
+    color: var(--text-muted);
+    max-width: 260px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+
+.hud-strip-metrics {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10.5px;
+    flex-shrink: 0;
+}
+
+.hud-key {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+}
+
+.hud-val {
+    color: var(--text-secondary);
+}
+
+.hud-strip-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.btn-hud-clear {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 20px;
+    padding: 0 6px;
+    font-size: 10px;
+    font-family: var(--font-sans);
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-hud-clear:hover:not(:disabled) {
+    color: #fca5a5;
+    border-color: rgba(244, 63, 94, 0.5);
+    background-color: rgba(244, 63, 94, 0.12);
+}
+
+.btn-hud-clear:disabled {
+    opacity: 0.35;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* 8. Floating Instrument Windows (GATE-05 Workbench) */
+.floating-instrument,
+.is-floating {
+    position: absolute !important;
+    z-index: var(--z-floating-base);
+    background: var(--surface-floating);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-floating);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-width: 260px;
+    min-height: 180px;
+}
+
+.floating-instrument.is-focused,
+.is-floating.is-focused {
+    border-color: var(--accent-primary);
+    box-shadow: 0 16px 40px -4px rgba(0, 0, 0, 0.8), 0 0 16px rgba(0, 200, 230, 0.3);
+}
+
+.window-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 14px;
+    height: 14px;
+    cursor: nwse-resize;
+    z-index: 10;
+    background: linear-gradient(135deg, transparent 50%, rgba(255, 255, 255, 0.25) 50%, rgba(255, 255, 255, 0.25) 60%, transparent 60%, transparent 75%, rgba(255, 255, 255, 0.25) 75%);
+}
+
+.window-resize-handle:hover {
+    background: linear-gradient(135deg, transparent 50%, var(--accent-primary) 50%, var(--accent-primary) 60%, transparent 60%, transparent 75%, var(--accent-primary) 75%);
+}
+
+/* 9. Docking Ghost Preview */
+.dock-ghost-preview {
+    position: absolute;
+    pointer-events: none;
+    border: 2px dashed var(--accent-primary);
+    background: rgba(56, 189, 248, 0.12);
+    border-radius: var(--radius-md);
+    z-index: 400;
+    display: none;
+    transition: opacity 0.1s ease;
+}
+
+.dock-ghost-preview.is-active {
+    display: block;
+}

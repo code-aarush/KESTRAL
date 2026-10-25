@@ -1038,9 +1038,10 @@ body {
    -------------------------------------------------------------------------- */
 
 .hierarchy-dock {
-    flex: 1.5 1 260px;
+    flex: 1 1 auto;
     min-height: 180px;
-    max-height: min(650px, calc(100% - 130px));
+    max-height: none;
+    height: 100%;
     background-color: var(--surface-dock);
     border: var(--border-panel);
     border-radius: var(--radius-sm);
@@ -1049,6 +1050,7 @@ body {
     flex-direction: column;
     gap: 6px;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .hierarchy-dock .panel-header {
@@ -1091,8 +1093,11 @@ body {
 
 /* Tree Scroll Container */
 .hierarchy-tree-container {
-    flex: 1 1 140px;
-    min-height: 60px;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    height: 100%;
+    box-sizing: border-box;
     background-color: var(--surface-pod);
     border: var(--border-subtle);
     border-radius: var(--radius-sm);
@@ -1183,15 +1188,18 @@ body {
     margin: 0;
     padding: 0;
     position: relative;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 /* Node Row */
 .tree-node-row {
     display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 3px 6px;
-    min-height: 23px;
+    gap: 4px;
+    padding: 2px 5px;
+    min-height: 22px;
     border-radius: var(--radius-sm);
     cursor: pointer;
     user-select: none;
@@ -1199,7 +1207,10 @@ body {
     border-left: 2px solid transparent;
     background-color: transparent;
     transition: background-color 0.12s ease, border-color 0.12s ease;
-    font-size: 11.5px;
+    font-size: 11px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .tree-node-row:hover {
@@ -1366,21 +1377,22 @@ body {
 .tree-children {
     list-style: none;
     margin: 0;
-    padding: 0 0 0 10px;
-    margin-left: 7px;
+    padding: 0 0 0 8px;
+    margin-left: 5px;
     border-left: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     flex-direction: column;
     gap: 2px;
     position: relative;
+    min-width: 0;
 }
 
 .tree-children > .tree-item::before {
     content: "";
     position: absolute;
     top: 11px;
-    left: -10px;
-    width: 7px;
+    left: -8px;
+    width: 5px;
     height: 1px;
     background-color: rgba(255, 255, 255, 0.08);
 }
@@ -1390,14 +1402,16 @@ body {
     background-color: #0c101b;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-sm);
-    padding: 5px 8px;
+    padding: 6px 10px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-    flex: 0 1 auto;
-    min-height: 70px;
-    max-height: 135px;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    height: 100%;
+    box-sizing: border-box;
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;
@@ -1872,14 +1886,16 @@ canvas.query-draw-mode {
 
 .trace-log-item {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 6px;
-    padding: 3px 7px;
+    padding: 2px 6px;
     font-size: 10.5px;
-    line-height: 1.35;
+    line-height: 1.3;
+    min-height: 20px;
     color: var(--text-dim);
     border-left: 2px solid transparent;
     cursor: pointer;
+    box-sizing: border-box;
     transition: background-color 0.12s ease, color 0.12s ease;
 }
 
@@ -2197,14 +2213,15 @@ canvas.query-draw-mode {
     }
 
     .hierarchy-dock {
-        height: auto;
-        min-height: 280px;
-        max-height: 480px;
+        height: 100%;
+        min-height: 0;
+        max-height: none;
     }
 
     .hierarchy-tree-container {
-        min-height: 120px;
-        max-height: 260px;
+        min-height: 0;
+        max-height: none;
+        height: 100%;
     }
 
     .telemetry-region {

@@ -1,0 +1,105 @@
+/* ==========================================================================
+   KESTREL — Design System Tokens (GATE-04 Visual Polish)
+   Authoritative Reference: GATE-02-DESIGN-SPEC.md Section 5
+   ========================================================================== */
+
+:root {
+    /* 1. Interface Typography Stacks */
+    --font-sans: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Liberation Sans', 'Nimbus Sans', 'Noto Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Liberation Mono', Menlo, Consolas, monospace;
+
+    /* 2. Type Scale & Line Heights */
+    --text-2xs: 9.5px;
+    --lh-2xs: 12px;
+    --text-xs: 11px;
+    --lh-xs: 14px;
+    --text-sm: 12px;
+    --lh-sm: 16px;
+    --text-base: 13px;
+    --lh-base: 18px;
+    --text-lg: 15px;
+    --lh-lg: 20px;
+    --text-metric: 20px;
+    --lh-metric: 24px;
+
+    /* 3. Surface Hierarchy (Matte, High-Legibility Technical Console) */
+    --surface-ground: #06080d;           /* Deep viewport foundation */
+    --surface-shell: #090d16;            /* Master workstation outer shell */
+    --surface-masthead: #0d121e;         /* Top brand & status masthead */
+    --surface-command: #0b0f19;          /* Command & control toolbar */
+    --surface-stage: #080b12;            /* Canvas surrounding stage */
+    --surface-canvas: #04060a;           /* Spatial radar canvas background */
+    --surface-dock: #0c101b;             /* Lower inspector dock */
+    --surface-deck-upper: #0f1422;       /* Upper pinned active context deck */
+    --surface-pod: #080b14;              /* Inset readout & metric wells */
+    --surface-popover: #0f1524;          /* Anchored layers popover background */
+    --surface-popover-glass: rgba(15, 21, 36, 0.92);
+    --surface-control: #131926;          /* Button idle surface */
+    --surface-control-hover: #1b2336;    /* Button hover state */
+    --surface-control-active: #0c101a;   /* Button depressed state */
+    --surface-control-active-accent: rgba(0, 200, 230, 0.16);
+
+    /* 4. Visible Component Boundaries & Borders */
+    --border-panel: 1px solid rgba(255, 255, 255, 0.12);
+    --border-subtle: 1px solid rgba(255, 255, 255, 0.08);
+    --border-control: 1px solid rgba(255, 255, 255, 0.15);
+    --border-control-hover: 1px solid rgba(255, 255, 255, 0.32);
+    --border-focus: 2px solid #00c8e6;
+
+    /* 5. Semantic Spatial Channels & State Accents */
+    --accent-primary: #00c8e6;           /* Precision Cyan: Active Tools, Selection, Focus */
+    --accent-primary-hover: #33d6ee;
+    --accent-primary-glow: rgba(0, 200, 230, 0.35);
+    --accent-entity: #10b981;            /* Emerald: Active Spatial Entities */
+    --accent-result: #f43f5e;            /* Crimson: Query Match Hits & Errors */
+    --accent-leaf: #a855f7;              /* Purple: Leaf MBRs */
+    --accent-internal: #94a3b8;          /* Slate: Directory MBRs */
+    --accent-query: #eab308;             /* Amber: Query Region Window */
+
+    /* 6. Operational Status Tokens */
+    --status-ready: #10b981;             /* Operational / Synchronized */
+    --status-warning: #f59e0b;           /* Drawing / Zero Hits / Fallback */
+    --status-error: #ef4444;             /* API Failure / Error Alert */
+    --status-active: #00c8e6;            /* Armed / Stepping / Focused */
+
+    /* 7. Typography Tones (WCAG AA Compliant High Contrast) */
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #a3b3c9;               /* Enhanced contrast */
+    --text-dim: #8292a8;                 /* Enhanced contrast (passes 4.5:1 on dark surfaces) */
+
+    /* 8. Component Dimensions & Spacing Scale */
+    --radius-sm: 3px;
+    --radius-md: 5px;
+    --radius-lg: 7px;
+    --control-height: 30px;
+    --control-height-sm: 24px;
+    --toolbar-height: 42px;
+    --masthead-height: 40px;
+
+    /* 9. Elevations & Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.75);
+    --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.12);
+    --shadow-focus: 0 0 0 2px rgba(0, 200, 230, 0.35);
+
+    /* 10. Motion & Transitions */
+    --transition-fast: 0.12s ease;
+    --transition-base: 0.18s ease;
+
+    /* 11. Dockable Mission Workbench Dimensions & Layers (GATE-05) */
+    --rail-width: 44px;
+    --dock-bay-width: 340px;
+    --dock-bottom-height: 180px;
+    --surface-floating: rgba(10, 15, 29, 0.88);
+    --surface-hud: rgba(15, 23, 42, 0.92);
+    --shadow-floating: 0 16px 36px -4px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(56, 189, 248, 0.25);
+    --shadow-hud: 0 8px 24px -2px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 200, 230, 0.25);
+    --z-canvas: 10;
+    --z-hud: 200;
+    --z-dock: 300;
+    --z-floating-base: 500;
+    --z-command: 1000;
+    --z-popover: 1100;
+}

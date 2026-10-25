@@ -65,6 +65,7 @@ const traceBadge = typeof document !== 'undefined' ? document.getElementById('tr
 const traceStatus = typeof document !== 'undefined' ? document.getElementById('traceStatus') : null;
 const traceStepLabel = typeof document !== 'undefined' ? document.getElementById('traceStep') : null;
 const traceProgressFill = typeof document !== 'undefined' ? document.getElementById('traceProgressFill') : null;
+const traceScrubber = typeof document !== 'undefined' ? document.getElementById('traceScrubber') : null;
 const traceEventTag = typeof document !== 'undefined' ? document.getElementById('traceEventTag') : null;
 const traceEventText = typeof document !== 'undefined' ? document.getElementById('traceEventText') : null;
 const traceLog = typeof document !== 'undefined' ? document.getElementById('traceLog') : null;
@@ -1419,12 +1420,12 @@ function renderTraceLog() {
     // Keep the current entry visible without scrolling any ancestor page.
     const current = traceLog.querySelector('.trace-log-item.is-current');
     if (current && typeof traceLog.scrollTop === 'number') {
-        const itemTop = current.offsetTop;
-        const itemBottom = itemTop + current.offsetHeight;
-        if (itemTop < traceLog.scrollTop) {
-            traceLog.scrollTop = itemTop;
-        } else if (itemBottom > traceLog.scrollTop + traceLog.clientHeight) {
-            traceLog.scrollTop = itemBottom - traceLog.clientHeight;
+        const logRect = traceLog.getBoundingClientRect();
+        const itemRect = current.getBoundingClientRect();
+        if (itemRect.top < logRect.top) {
+            traceLog.scrollTop -= (logRect.top - itemRect.top);
+        } else if (itemRect.bottom > logRect.bottom) {
+            traceLog.scrollTop += (itemRect.bottom - logRect.bottom);
         }
     }
 }
@@ -1436,6 +1437,8 @@ function updateReplayUi() {
     const hasTrace = !!replay.trace;
     const total = hasTrace ? replay.trace.totalEvents : 0;
     const step = hasTrace ? replay.index + 1 : 0;
+    const currentEvent = hasTrace ? replay.trace.events[replay.index] : null;
+    const meta = TRACE_EVENT_META[currentEvent && currentEvent.type] || { tag: 'IDLE', glyph: '·' };
 
     if (traceBadge) {
         traceBadge.textContent = hasTrace ? `${total} EVENTS` : 'NO TRACE';
@@ -1462,8 +1465,27 @@ function updateReplayUi() {
         traceProgressFill.style.width = `${Math.round(ratio * 100)}%`;
     }
 
-    const currentEvent = hasTrace ? replay.trace.events[replay.index] : null;
-    const meta = TRACE_EVENT_META[currentEvent && currentEvent.type] || { tag: 'IDLE', glyph: '·' };
+    if (traceScrubber) {
+        if (hasTrace && total > 0) {
+            traceScrubber.disabled = false;
+            traceScrubber.min = '0';
+            traceScrubber.max = String(total - 1);
+            traceScrubber.value = String(replay.index);
+            traceScrubber.setAttribute('aria-valuemin', '0');
+            traceScrubber.setAttribute('aria-valuemax', String(total - 1));
+            traceScrubber.setAttribute('aria-valuenow', String(replay.index));
+            traceScrubber.setAttribute('aria-valuetext', `Step ${step} of ${total}: ${currentEvent ? meta.tag : 'None'}`);
+        } else {
+            traceScrubber.disabled = true;
+            traceScrubber.min = '0';
+            traceScrubber.max = '0';
+            traceScrubber.value = '0';
+            traceScrubber.setAttribute('aria-valuemin', '0');
+            traceScrubber.setAttribute('aria-valuemax', '0');
+            traceScrubber.setAttribute('aria-valuenow', '0');
+            traceScrubber.setAttribute('aria-valuetext', 'No traversal active');
+        }
+    }
 
     if (traceEventTag) {
         traceEventTag.textContent = currentEvent ? meta.tag : 'IDLE';
@@ -2472,6 +2494,9 @@ function selectHierarchyNode(nodeId) {
             if (row) {
                 row.classList.add('selected');
                 item.setAttribute('aria-selected', 'true');
+                if (typeof row.scrollIntoView === 'function') {
+                    row.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                }
             }
         }
     }
@@ -2555,6 +2580,7 @@ function createTreeNodeElement(node) {
     row.className = 'tree-node-row';
     row.setAttribute('tabindex', '0');
     row.dataset.nodeId = node.id;
+    row.title = `${node.id} (${node.type.toUpperCase()}) - Click to inspect in Node Inspector`;
     if (selectedNodeId === node.id) {
         row.classList.add('selected');
         li.setAttribute('aria-selected', 'true');
@@ -3135,6 +3161,22 @@ if (typeof document !== 'undefined') {
     if (btnTraceClear) {
         btnTraceClear.addEventListener('click', () => {
             clearReplayTrace();
+        });
+    }
+
+    if (traceScrubber) {
+        traceScrubber.addEventListener('input', (e) => {
+            if (!replay.trace) return;
+            if (replay.playing) {
+                stopReplayTimer();
+            }
+            const targetIndex = Number(e.target.value);
+            setReplayIndex(targetIndex);
+        });
+        traceScrubber.addEventListener('change', (e) => {
+            if (!replay.trace) return;
+            const targetIndex = Number(e.target.value);
+            setReplayIndex(targetIndex);
         });
     }
 

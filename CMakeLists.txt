@@ -39,16 +39,18 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     )
 endif()
 
-# ----- Source directories (populated at Gate 01 and later) --------------------
-enable_testing()
+# ----- Source directories ----------------------------------------------------
 add_subdirectory(src)
-add_subdirectory(tests)
-add_subdirectory(benchmarks)
 
-# Note: CTest support will be enabled (enable_testing()) when tests are added.
-# Do not uncomment the above subdirectories until the relevant gate introduces
-# the corresponding CMakeLists.txt within those directories.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 
-message(STATUS "KESTREL CMake scaffold configured. No targets defined yet.")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/CMakeLists.txt")
+    add_subdirectory(benchmarks)
+endif()
+
+message(STATUS "KESTREL CMake project configured.")
 message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C++ standard: ${CMAKE_CXX_STANDARD}")

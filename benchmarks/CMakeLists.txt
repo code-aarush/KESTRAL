@@ -1,2 +1,0 @@
-add_executable(kestrel_benchmark benchmark_main.cpp)
-target_link_libraries(kestrel_benchmark PRIVATE kestrel_mission kestrel_entity kestrel_rtree kestrel_geometry)

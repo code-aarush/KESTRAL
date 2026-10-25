@@ -1,0 +1,175 @@
+/* ==========================================================================
+   KESTREL — Multi-Tier Responsive Layout & Overflow Rules (GATE-03 Modular CSS)
+   Authoritative Reference: GATE-02-RESPONSIVE-SPEC.md Section 2 & Section 3
+   ========================================================================== */
+
+/* 1. Intermediate Desktop / Standard Laptop (<= 1440px) */
+@media (max-width: 1440px) {
+    .dock-bay-right {
+        --dock-bay-width: 320px;
+    }
+
+    .brand-context {
+        display: none;
+    }
+}
+
+/* 2. Widescreen Notebook & 720p (<= 1366px) */
+@media (max-width: 1366px) {
+    .dock-bay-right {
+        --dock-bay-width: 300px;
+    }
+
+    .status-text {
+        max-width: 200px;
+    }
+
+    .sensor-coords {
+        min-width: 110px;
+    }
+}
+
+/* 3. Compact 720p & Small Desktop (<= 1280px) */
+@media (max-width: 1280px) {
+    .dock-bay-right {
+        --dock-bay-width: 290px;
+    }
+
+    .brand-descriptor {
+        display: none;
+    }
+
+    .status-text {
+        max-width: 160px;
+    }
+}
+
+/* 4. Touch / Tablet Viewport (<= 1024px) */
+@media (max-width: 1024px) {
+    .dock-bay-right {
+        --dock-bay-width: 280px;
+    }
+
+    .launcher-rail {
+        --rail-width: 40px;
+        padding: 4px 0;
+        gap: 6px;
+    }
+
+    .rail-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    .hud-strip-status {
+        max-width: 180px;
+    }
+
+    .trace-transport .trace-btn span {
+        display: none;
+    }
+
+    .trace-transport .trace-btn {
+        padding: 0 5px;
+    }
+}
+
+/* 5. Constrained SVGA / Narrow Viewports (<= 860px) */
+@media (max-width: 860px) {
+    html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .workstation-shell {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .command-workspace {
+        gap: 4px;
+        padding: 0 6px;
+    }
+
+    .cmd-separator {
+        margin: 0 1px;
+    }
+
+    .btn {
+        padding: 0 6px;
+        font-size: 11px;
+    }
+
+    .sensor-coords {
+        display: none;
+    }
+
+    .dock-bay-right {
+        --dock-bay-width: 270px;
+        padding: 4px;
+        gap: 4px;
+    }
+
+    .launcher-rail {
+        --rail-width: 36px;
+        gap: 4px;
+    }
+
+    .rail-btn {
+        width: 30px;
+        height: 30px;
+    }
+
+    .rail-btn-label {
+        display: none;
+    }
+
+    .viewport-hud-hints {
+        display: none;
+    }
+}
+
+/* 6. Extreme Compact (<= 640px) */
+@media (max-width: 640px) {
+    .masthead-brand .brand-meta {
+        display: none;
+    }
+
+    .system-clock {
+        display: none;
+    }
+
+    .dock-bay-right {
+        --dock-bay-width: 250px;
+    }
+}
+
+/* 7. Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* 8. Splitter & Floating Window Responsive Rules (GATE-B) */
+@media (max-width: 1024px) {
+    .header-splitter {
+        display: none;
+    }
+
+    .floating-instrument, .is-floating {
+        max-width: calc(100vw - 60px);
+        max-height: calc(100vh - 80px);
+    }
+}
+
+@media (max-width: 800px) {
+    .main-splitter {
+        display: none;
+    }
+}
